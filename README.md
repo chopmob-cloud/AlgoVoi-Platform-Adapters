@@ -52,6 +52,18 @@ Each guide covers:
 | Shopware | [shopware.md](./shopware.md) | Available |
 | TikTok Shop | [tiktok-shop.md](./tiktok-shop.md) | Available |
 
+## Accounting integrations
+
+| Platform | Guide | Status |
+|----------|-------|--------|
+| QuickBooks Online | [quickbooks-online.md](./quickbooks-online.md) | Available |
+| Xero | Coming soon | |
+| FreshBooks | Coming soon | |
+| Sage Business Cloud | Coming soon | |
+| Zoho Books | Coming soon | |
+| Wave | Coming soon | |
+| MYOB | Coming soon | |
+
 ## AI agent payments (x402)
 
 | Guide | Description |
