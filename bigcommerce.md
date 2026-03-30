@@ -121,7 +121,7 @@ Content-Type: application/json
 }
 ```
 
-> BigCommerce signs webhooks using the `client_id` of your API account as the HMAC key. Set the `X-Bc-Signature-Key` header so AlgoVoi can verify the signature.
+> BigCommerce does not natively sign webhook payloads. The `headers` field lets you inject a custom header that BigCommerce echoes verbatim on every delivery. AlgoVoi reads `X-Bc-Signature-Key` from the incoming request and compares it to the stored `webhook_secret` to authenticate the delivery.
 
 ---
 
@@ -142,7 +142,7 @@ Once connected, every new BigCommerce order triggers AlgoVoi to:
 
 | Symptom | Likely cause |
 |---------|-------------|
-| HTTP 401 on webhook | Signature mismatch — check `store_hash` and `access_token` |
+| HTTP 401 on webhook | `X-Bc-Signature-Key` mismatch — check `webhook_secret` matches the value set at webhook registration |
 | HTTP 422 "No network config" | Network config missing for `preferred_network` |
 | Order fetch failed | `access_token` lacks Orders read scope |
 | Order not completing | `access_token` lacks Orders modify scope |

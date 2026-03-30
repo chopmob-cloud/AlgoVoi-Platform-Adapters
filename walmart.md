@@ -19,7 +19,7 @@ Walmart Marketplace processes all buyer checkout payments through **Walmart Pay*
 ```
 Walmart Marketplace order notification (webhook)
             ↓
-AlgoVoi receives + verifies WM-QOS-CORRELATION-ID HMAC signature → parses order
+AlgoVoi receives + verifies WM-WEBHOOK-SIGNATURE HMAC → parses order
             ↓
 AlgoVoi creates a hosted checkout link (USDC or aUSDC)
             ↓
