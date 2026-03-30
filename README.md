@@ -44,7 +44,7 @@ Each guide covers:
 | PrestaShop | [prestashop.md](./prestashop.md) | Available |
 | Squarespace Commerce | [squarespace.md](./squarespace.md) | Available |
 | eBay | [ebay.md](./ebay.md) | Available |
-| Walmart | Coming soon | |
+| Walmart | [walmart.md](./walmart.md) | Available |
 
 ## AI agent payments (x402)
 
