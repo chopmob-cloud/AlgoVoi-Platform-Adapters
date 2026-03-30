@@ -39,6 +39,10 @@ Each guide covers:
 | Shopify | [shopify.md](./shopify.md) | Available |
 | WooCommerce | [woocommerce.md](./woocommerce.md) | Available |
 | Magento 1 & 2 | [magento.md](./magento.md) | Available |
+| BigCommerce | [bigcommerce.md](./bigcommerce.md) | Available |
+| Wix eCommerce | [wix.md](./wix.md) | Available |
+| PrestaShop | [prestashop.md](./prestashop.md) | Available |
+| Squarespace Commerce | [squarespace.md](./squarespace.md) | Available |
 | eBay | Coming soon | |
 | Walmart | Coming soon | |
 
