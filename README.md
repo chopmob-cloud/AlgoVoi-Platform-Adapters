@@ -47,6 +47,10 @@ Each guide covers:
 | Walmart | [walmart.md](./walmart.md) | Available |
 | Amazon | [amazon.md](./amazon.md) | Available |
 | CeX | [cex.md](./cex.md) | Available |
+| Ecwid | [ecwid.md](./ecwid.md) | Available |
+| OpenCart | [opencart.md](./opencart.md) | Available |
+| Shopware | [shopware.md](./shopware.md) | Available |
+| TikTok Shop | [tiktok-shop.md](./tiktok-shop.md) | Available |
 
 ## AI agent payments (x402)
 
