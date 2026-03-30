@@ -62,7 +62,7 @@ Content-Type: application/json
 Your resource is now live at:
 
 ```
-GET https://api.algovoi.com/protected/my-inference-api
+GET https://api1.ilovechicken.co.uk/protected/my-inference-api
 ```
 
 Any client without payment receives HTTP 402 with the payment requirement.
@@ -74,7 +74,7 @@ Any client without payment receives HTTP 402 with the payment requirement.
 ### Step 1 — Discover what to pay
 
 ```http
-GET https://api.algovoi.com/protected/my-inference-api
+GET https://api1.ilovechicken.co.uk/protected/my-inference-api
 ```
 
 **Response:**
@@ -92,7 +92,7 @@ Decoded `X-PAYMENT-REQUIRED`:
     "scheme": "exact",
     "network": "algorand-mainnet",
     "maxAmountRequired": "10000",
-    "resource": "https://api.algovoi.com/protected/my-inference-api",
+    "resource": "https://api1.ilovechicken.co.uk/protected/my-inference-api",
     "description": "AlgoVoi: my-inference-api",
     "payTo": "<provider-payout-address>",
     "maxTimeoutSeconds": 300,
@@ -114,7 +114,7 @@ Submit an Algorand or VOI transaction:
 ### Step 3 — Retry with proof
 
 ```http
-GET https://api.algovoi.com/protected/my-inference-api
+GET https://api1.ilovechicken.co.uk/protected/my-inference-api
 X-PAYMENT: <base64-encoded JSON>
 ```
 
@@ -164,7 +164,7 @@ import httpx
 from algosdk.v2client import algod
 from algosdk import transaction, encoding
 
-RESOURCE_URL = "https://api.algovoi.com/protected/my-inference-api"
+RESOURCE_URL = "https://api1.ilovechicken.co.uk/protected/my-inference-api"
 
 def b64_json(obj: dict) -> str:
     return base64.b64encode(json.dumps(obj).encode()).decode()
