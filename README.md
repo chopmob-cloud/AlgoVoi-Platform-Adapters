@@ -57,12 +57,12 @@ Each guide covers:
 | Platform | Guide | Status |
 |----------|-------|--------|
 | QuickBooks Online | [quickbooks-online.md](./quickbooks-online.md) | Available |
-| Xero | Coming soon | |
-| FreshBooks | Coming soon | |
-| Sage Business Cloud | Coming soon | |
-| Zoho Books | Coming soon | |
-| Wave | Coming soon | |
-| MYOB | Coming soon | |
+| Xero | [xero.md](./xero.md) | Available |
+| FreshBooks | [freshbooks.md](./freshbooks.md) | Available |
+| Sage Business Cloud | [sage-business-cloud.md](./sage-business-cloud.md) | Available |
+| Zoho Books | [zoho-books.md](./zoho-books.md) | Available |
+| Wave | [wave.md](./wave.md) | Available |
+| MYOB | [myob.md](./myob.md) | Available |
 
 ## AI agent payments (x402)
 
