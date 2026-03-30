@@ -32,7 +32,7 @@ Each guide covers:
 
 ---
 
-## Available integrations
+## E-commerce integrations
 
 | Platform | Guide | Status |
 |----------|-------|--------|
@@ -45,6 +45,12 @@ Each guide covers:
 | Squarespace Commerce | [squarespace.md](./squarespace.md) | Available |
 | eBay | Coming soon | |
 | Walmart | Coming soon | |
+
+## AI agent payments (x402)
+
+| Guide | Description |
+|-------|-------------|
+| [x402-ai-agents.md](./x402-ai-agents.md) | Autonomous AI agent payments via the x402 protocol |
 
 ---
 
