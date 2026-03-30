@@ -43,7 +43,7 @@ Each guide covers:
 | Wix eCommerce | [wix.md](./wix.md) | Available |
 | PrestaShop | [prestashop.md](./prestashop.md) | Available |
 | Squarespace Commerce | [squarespace.md](./squarespace.md) | Available |
-| eBay | Coming soon | |
+| eBay | [ebay.md](./ebay.md) | Available |
 | Walmart | Coming soon | |
 
 ## AI agent payments (x402)
