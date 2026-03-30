@@ -45,6 +45,8 @@ Each guide covers:
 | Squarespace Commerce | [squarespace.md](./squarespace.md) | Available |
 | eBay | [ebay.md](./ebay.md) | Available |
 | Walmart | [walmart.md](./walmart.md) | Available |
+| Amazon | [amazon.md](./amazon.md) | Available |
+| CeX | [cex.md](./cex.md) | Available |
 
 ## AI agent payments (x402)
 
