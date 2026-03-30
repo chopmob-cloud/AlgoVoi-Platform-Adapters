@@ -38,7 +38,7 @@ Each guide covers:
 |----------|-------|--------|
 | Shopify | [shopify.md](./shopify.md) | Available |
 | WooCommerce | [woocommerce.md](./woocommerce.md) | Available |
-| Magento | Coming soon | |
+| Magento 1 & 2 | [magento.md](./magento.md) | Available |
 | eBay | Coming soon | |
 | Walmart | Coming soon | |
 
