@@ -37,6 +37,7 @@ Each guide covers:
 | Platform | Guide | Status |
 |----------|-------|--------|
 | Shopify | [shopify.md](./shopify.md) | Available |
+| WooCommerce | [woocommerce.md](./woocommerce.md) | Available |
 | Magento | Coming soon | |
 | eBay | Coming soon | |
 | Walmart | Coming soon | |
@@ -65,7 +66,7 @@ Payments are verified directly on-chain — no intermediary holds funds. Settlem
 
 ## Getting started
 
-1. [Create an AlgoVoi tenant account](https://algovoi.com)
+1. [Create an AlgoVoi tenant account](https://av.ilc-n.xyz)
 2. Configure your network and payout address via the AlgoVoi Control Plane API
 3. Follow the integration guide for your platform (see table above)
 
