@@ -103,22 +103,30 @@ The response includes a `webhook_secret` and a `webhook_url`.
 
 OpenCart does not have native outbound webhooks. Use one of the following approaches:
 
-### Option A — AlgoVoi OpenCart Extension (recommended)
+### Option A — AlgoVoi OpenCart Extension (coming soon)
 
-Install the AlgoVoi payment extension from the OpenCart Marketplace. It automatically POSTs new orders to your `webhook_url` with an `X-AlgoVoi-Signature` header:
+> **The AlgoVoi Payments extension is not yet published to the OpenCart
+> Marketplace.** Once available, it will appear under Extensions → Payments →
+> AlgoVoi. Watch the [AlgoVoi releases page](https://github.com/chopmob-cloud)
+> for availability.
+
+### Option B — Event-hook module (recommended until extension is published)
+
+OpenCart 3.x and 4.x support an internal event system. You can trigger an
+outbound webhook on `catalog/model/checkout/order/addOrder/after` using a
+lightweight custom extension or a third-party tool such as
+[OpenCart Webhooks Pro](https://www.opencart.com/index.php?route=marketplace/extension).
+
+Configure the webhook to POST to your `webhook_url` with:
 
 ```
-X-AlgoVoi-Signature: <hex(HMAC-SHA256(webhook_secret, raw_body))>
+Authorization: Bearer <webhook_secret>
 ```
 
-1. Download and install the **AlgoVoi Payments** extension from the OpenCart Marketplace
-2. Go to **Extensions → Payments → AlgoVoi**
-3. Enter your `webhook_url` and `webhook_secret`
-4. Enable the extension
+### Option C — Direct operator POST (bypass mode)
 
-### Option B — Direct operator POST (bypass mode)
-
-POST order data directly from your custom code or a third-party automation tool with `Authorization: Bearer <webhook_secret>`.
+POST order data directly from your backend or automation tool with
+`Authorization: Bearer <tenant_token>`.
 
 ---
 

@@ -64,6 +64,14 @@ Each guide covers:
 | Wave | [wave.md](./wave.md) | Available |
 | MYOB | [myob.md](./myob.md) | Available |
 
+## Financial services integrations
+
+| Platform | Guide | Status |
+|----------|-------|--------|
+| TrueLayer | [truelayer.md](./truelayer.md) | Available |
+| Yapily | [yapily.md](./yapily.md) | Available |
+| Wormhole | [wormhole.md](./wormhole.md) | Available |
+
 ## AI agent payments (x402)
 
 | Guide | Description |

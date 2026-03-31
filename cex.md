@@ -4,21 +4,30 @@ Accept **USDC on Algorand** and **aUSDC on VOI** for CeX Marketplace orders via 
 
 ---
 
-## Important: CeX Marketplace payment model
+## Important: CeX has no public Seller API
 
-CeX (Computer Exchange) operates as a managed resale marketplace — CeX handles buyer payments internally. AlgoVoi's CeX integration targets:
+CeX (Computer Exchange) does not provide a public Seller API, webhook system,
+or Seller Hub portal. The only public CeX API is a read-only catalogue API
+(`wss2.cex.{cc}.webuy.io/v3`) for product lookups — it has no order management
+or outbound events.
 
-- **Seller-initiated crypto invoicing** — receive a CeX order notification, AlgoVoi creates a payment link for B2B settlement or supplier payment
-- **Operator-initiated flows** — your own backend posts order data directly to AlgoVoi (bypass mode)
+AlgoVoi's CeX integration operates in **bypass mode only**:
+
+- Your backend (or a CeX trade notification email parser) POSTs order data
+  directly to AlgoVoi with `Authorization: Bearer <tenant_token>`
+- AlgoVoi creates a hosted checkout link which you share with the counterparty
+  via CeX messaging or email
+
+There is no automated webhook path.
 
 ---
 
 ## How it works
 
 ```
-CeX order placed → CeX Seller API webhook fired
+CeX order placed → you receive notification (email / polling)
             ↓
-AlgoVoi receives + verifies X-CeX-Signature HMAC → parses order
+Your backend POSTs order data to AlgoVoi with Bearer token
             ↓
 AlgoVoi creates a hosted checkout link (USDC or aUSDC)
             ↓
@@ -26,7 +35,7 @@ Counterparty pays on-chain
             ↓
 AlgoVoi verifies transaction on-chain
             ↓
-CeX order updated with AlgoVoi TX reference
+TX reference returned to your backend
 ```
 
 ---
@@ -34,8 +43,7 @@ CeX order updated with AlgoVoi TX reference
 ## Prerequisites
 
 - An active AlgoVoi tenant account
-- A CeX Marketplace seller account with API access
-- A CeX API key and signing secret from the CeX Seller Hub
+- A CeX Marketplace seller account
 
 ---
 
@@ -73,16 +81,7 @@ Content-Type: application/json
 
 ---
 
-## Step 2 — Get CeX API credentials
-
-1. Log in to the [CeX Seller Hub](https://sellers.cex.io)
-2. Navigate to **Settings → API Access**
-3. Generate an **API Key** and note the associated **Signing Secret**
-4. Ensure the API key has order read and write permissions
-
----
-
-## Step 3 — Connect the integration
+## Step 2 — Connect the integration
 
 ```http
 POST /internal/integrations/{tenant_id}/cex
@@ -90,10 +89,7 @@ Authorization: Bearer <admin-key>
 Content-Type: application/json
 
 {
-  "credentials": {
-    "api_key": "<cex-api-key>",
-    "signing_secret": "<cex-signing-secret>"
-  },
+  "credentials": {},
   "shop_identifier": "<your-cex-seller-id>",
   "base_currency": "GBP",
   "preferred_network": "algorand_mainnet"
@@ -104,36 +100,15 @@ The response includes a `webhook_secret` and a `webhook_url`.
 
 ---
 
-## Step 4 — Register the webhook
+## Step 3 — POST order data (bypass mode)
 
-Register your AlgoVoi webhook endpoint in the CeX Seller Hub:
+Since CeX has no outbound webhook, your backend posts order data directly to AlgoVoi:
 
-1. Go to **Settings → Webhooks** in the CeX Seller Hub
-2. Add a new webhook pointing to your `webhook_url` from Step 3
-3. Select the **Order Created** event type
-4. Save — CeX will begin signing requests with `X-CeX-Signature`
+```http
+POST <webhook_url>
+Authorization: Bearer <webhook_secret>
+Content-Type: application/json
 
-### Signature verification
-
-CeX signs webhook payloads using HMAC-SHA256 with your `signing_secret`. The hex digest is delivered in the `X-CeX-Signature` header:
-
-```
-X-CeX-Signature: <hex(HMAC-SHA256(signing_secret, raw_body))>
-```
-
-AlgoVoi verifies this signature automatically on receipt.
-
-### Option B — Direct operator POST (bypass mode)
-
-POST order data directly from your backend with `Authorization: Bearer <webhook_secret>`.
-
----
-
-## Webhook payload structure
-
-AlgoVoi processes CeX order created events. Relevant fields:
-
-```json
 {
   "event": "order.created",
   "order": {
@@ -159,11 +134,11 @@ AlgoVoi processes CeX order created events. Relevant fields:
 
 Once connected:
 
-1. AlgoVoi receives the `order.created` webhook
+1. Your backend POSTs order data to AlgoVoi after receiving a CeX notification
 2. A hosted checkout link is created (valid 30 minutes)
 3. Share the checkout URL with the counterparty via CeX messaging or email
 4. Counterparty pays in USDC or aUSDC on-chain
-5. AlgoVoi verifies the transaction and records the TX ID against the CeX order
+5. AlgoVoi verifies the transaction and returns the TX ID
 
 ---
 
@@ -171,9 +146,8 @@ Once connected:
 
 | Symptom | Likely cause |
 |---------|-------------|
-| HTTP 401 on webhook | `X-CeX-Signature` mismatch — check signing secret or re-register |
+| HTTP 401 on POST | Bearer token mismatch — check `webhook_secret` |
 | HTTP 422 "No network config" | Network config missing for `preferred_network` |
-| Order not updating | API key lacks write permissions or has expired |
 
 ---
 

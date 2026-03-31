@@ -180,6 +180,39 @@ Once connected:
 3. Customer pays in USDC or aUSDC on-chain
 4. AlgoVoi verifies the transaction and records the payment via:
 
+#### Finding your receivables accountId
+
+Before AlgoVoi can record payments, it needs the Wave `accountId` for your
+Accounts Receivable (or equivalent income) account. Query it once after auth:
+
+```graphql
+query {
+  business(id: "<BUSINESS_ID>") {
+    accounts(subtypes: [ACCOUNTS_RECEIVABLE]) {
+      edges {
+        node {
+          id
+          name
+        }
+      }
+    }
+  }
+}
+```
+
+Copy the `id` value (format: `QWNjb3VudDo...`) and pass it as
+`accountId` in the Step 3 credentials payload:
+
+```http
+POST /internal/integrations/{tenant_id}/wave
+{
+  "credentials": {
+    ...
+    "receivables_account_id": "<accountId from above>"
+  }
+}
+```
+
 ```graphql
 mutation {
   moneyTransactionCreate(input: {

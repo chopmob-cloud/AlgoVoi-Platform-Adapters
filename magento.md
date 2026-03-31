@@ -162,6 +162,35 @@ Configure the webhook:
 - **Authentication**: set `Authorization` header to `Bearer <webhook_secret>`
 - **Body**: full order object (JSON)
 
+### Magento 1: Mark order as paid via XML-RPC
+
+After AlgoVoi confirms the on-chain payment, it calls back to your Magento 1
+store to update the order status using the Magento 1 XML-RPC API:
+
+```
+POST https://yourstore.com/api/xmlrpc/
+```
+
+```xml
+<methodCall>
+  <methodName>call</methodName>
+  <params>
+    <param><value><string><SESSION_ID></string></value></param>
+    <param><value><string>sales_order.addComment</string></value></param>
+    <param><value><array><data>
+      <value><string><ORDER_INCREMENT_ID></string></value>
+      <value><string>processing</string></value>
+      <value><string>AlgoVoi TX: <TX_ID></string></value>
+      <value><boolean>1</boolean></value>
+    </data></array></value></param>
+  </params>
+</methodCall>
+```
+
+AlgoVoi uses the `api_user` and `api_key` from Step 3 to authenticate this
+call. Ensure the XML-RPC endpoint is publicly accessible and not blocked by
+your firewall or `.htaccess`.
+
 ---
 
 ## Payment flow for your customers
