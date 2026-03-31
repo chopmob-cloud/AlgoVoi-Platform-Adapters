@@ -52,6 +52,15 @@ Each guide covers:
 | Shopware | [shopware.md](./shopware.md) | Available |
 | TikTok Shop | [tiktok-shop.md](./tiktok-shop.md) | Available |
 
+## Regional & international marketplace integrations
+
+| Platform | Guide | Region | Status |
+|----------|-------|--------|--------|
+| Bol.com | [bolcom.md](./bolcom.md) | Netherlands / Belgium | Available |
+| Lazada | [lazada.md](./lazada.md) | SE Asia (MY, TH, PH, SG, ID, VN) | Available |
+| Tokopedia | [tokopedia.md](./tokopedia.md) | Indonesia | Available |
+| Rakuten | [rakuten.md](./rakuten.md) | Japan / France / Germany | Available |
+
 ## Accounting integrations
 
 | Platform | Guide | Status |
