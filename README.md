@@ -56,6 +56,10 @@ Each guide covers:
 
 | Platform | Guide | Region | Status |
 |----------|-------|--------|--------|
+| Flipkart | [flipkart.md](./flipkart.md) | India | Available |
+| Etsy | [etsy.md](./etsy.md) | Global | Available |
+| Printful | [printful.md](./printful.md) | Global (print-on-demand) | Available |
+| Printify | [printify.md](./printify.md) | Global (print-on-demand) | Available |
 | Bol.com | [bolcom.md](./bolcom.md) | Netherlands / Belgium | Available |
 | Lazada | [lazada.md](./lazada.md) | SE Asia (MY, TH, PH, SG, ID, VN) | Available |
 | Tokopedia | [tokopedia.md](./tokopedia.md) | Indonesia | Available |
