@@ -131,6 +131,8 @@ Webhook-Signature: <hex(HMAC-SHA256(webhook_secret, raw_body))>
 
 AlgoVoi verifies this signature automatically on receipt.
 
+> **Note:** TikTok Shop's webhook signature header name is not clearly documented in their public partner docs. `Webhook-Signature` is the value used here, but you should confirm the exact header name from your TikTok Shop Partner dashboard or by inspecting a live webhook delivery. If it differs, update your AlgoVoi integration credentials accordingly.
+
 ### Option B — Direct operator POST (bypass mode)
 
 POST order data directly from your backend with `Authorization: Bearer <webhook_secret>`.
@@ -153,7 +155,7 @@ Once connected:
 
 | Symptom | Likely cause |
 |---------|-------------|
-| HTTP 401 on webhook | `Webhook-Signature` mismatch — check secret or re-register subscription |
+| HTTP 401 on webhook | `Webhook-Signature` mismatch — check secret, re-register subscription, or verify exact header name in Partner dashboard |
 | HTTP 422 "No network config" | Network config missing for `preferred_network` |
 | OAuth token expired | TikTok Shop tokens expire — use refresh token to obtain a new access token |
 | Order not updating | Access token lacks `order:write` scope |
