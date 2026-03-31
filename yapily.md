@@ -105,7 +105,7 @@ The response includes a `webhook_secret` and a `webhook_url`.
 
 1. In the Yapily Dashboard go to **Applications → [your app] → Webhooks**
 2. Add a new webhook endpoint pointing to your `webhook_url` from Step 3
-3. Select the **PAYMENT_COMPLETED** and **PAYMENT_FAILED** event types
+3. Select the **single_payment.status.completed** and **single_payment.status.updated** event types
 4. Yapily signs payloads with HMAC-SHA256 — AlgoVoi verifies using your `webhook_secret`
 
 ### Webhook signature verification
@@ -118,6 +118,22 @@ webhook-signature: <hex(HMAC-SHA256(webhook_secret, raw_body))>
 
 AlgoVoi verifies this signature automatically on receipt.
 
+### Webhook payload format
+
+```json
+{
+  "type": "single_payment.status.completed",
+  "event": {
+    "id": "<payment-id>",
+    "status": "COMPLETED",
+    "amount": 100.00
+  },
+  "metadata": {
+    "tracingId": "<tracing-id>"
+  }
+}
+```
+
 ---
 
 ## Payment flow
@@ -128,7 +144,7 @@ Once connected:
 2. AlgoVoi calls the Yapily Payments API to create a payment authorisation request
 3. Customer is redirected to their bank to authorise the transfer
 4. Yapily processes over Faster Payments (UK) or SEPA Instant (EU)
-5. On `PAYMENT_COMPLETED` webhook: AlgoVoi records the fiat receipt and triggers on-chain settlement
+5. On `single_payment.status.completed` webhook: AlgoVoi records the fiat receipt and triggers on-chain settlement
 6. USDC (or aUSDC) is transferred to the merchant's payout wallet on-chain
 7. TX ID returned to your backend
 
@@ -152,7 +168,7 @@ Once connected:
 | HTTP 401 on webhook | `webhook-signature` mismatch — check `webhook_secret` matches Yapily dashboard |
 | HTTP 422 "No network config" | Network config missing for `preferred_network` |
 | Payment authorisation rejected | Customer's bank not in Yapily's supported institution list |
-| `PAYMENT_FAILED` event received | Customer abandoned bank auth or insufficient funds — no settlement triggered |
+| `single_payment.status.updated` with status `FAILED` | Customer abandoned bank auth or insufficient funds — no settlement triggered |
 | Application credentials invalid | Application ID or secret rotated — reconnect via Step 3 |
 
 ---
