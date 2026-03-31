@@ -64,6 +64,13 @@ Each guide covers:
 | Wave | [wave.md](./wave.md) | Available |
 | MYOB | [myob.md](./myob.md) | Available |
 
+## Social commerce integrations
+
+| Platform | Guide | Status |
+|----------|-------|--------|
+| Telegram | [telegram.md](./telegram.md) | Available |
+| Discord | [discord.md](./discord.md) | Available |
+
 ## Financial services integrations
 
 | Platform | Guide | Status |
