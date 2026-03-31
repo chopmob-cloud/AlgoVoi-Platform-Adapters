@@ -70,6 +70,8 @@ Each guide covers:
 |----------|-------|--------|
 | Telegram | [telegram.md](./telegram.md) | Available |
 | Discord | [discord.md](./discord.md) | Available |
+| WhatsApp Business | [whatsapp.md](./whatsapp.md) | Available |
+| Instagram & Facebook Shops | [instagram-shops.md](./instagram-shops.md) | Requires Meta Tech Provider agreement |
 
 ## Financial services integrations
 
