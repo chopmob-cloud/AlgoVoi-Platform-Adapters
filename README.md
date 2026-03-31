@@ -64,6 +64,13 @@ Each guide covers:
 | Lazada | [lazada.md](./lazada.md) | SE Asia (MY, TH, PH, SG, ID, VN) | Available |
 | Tokopedia | [tokopedia.md](./tokopedia.md) | Indonesia | Available |
 | Rakuten | [rakuten.md](./rakuten.md) | Japan / France / Germany | Available |
+| Allegro | [allegro.md](./allegro.md) | Poland / Central & Eastern Europe | Available |
+| Shopee | [shopee.md](./shopee.md) | SE Asia / Brazil | Available |
+| Mercado Libre | [mercadolibre.md](./mercadolibre.md) | Latin America | Available |
+| OnBuy | [onbuy.md](./onbuy.md) | United Kingdom | Available |
+| Jumia | [jumia.md](./jumia.md) | Africa (NG, KE, EG, GH + more) | Available |
+| Cdiscount | [cdiscount.md](./cdiscount.md) | France / Belgium | Available |
+| Faire | [faire.md](./faire.md) | Global (B2B wholesale) | Requires Faire API approval |
 
 ## Accounting integrations
 
