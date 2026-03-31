@@ -19,7 +19,7 @@ Walmart Marketplace processes all buyer checkout payments through **Walmart Pay*
 ```
 Walmart Marketplace order notification (webhook)
             ↓
-AlgoVoi receives + verifies WM-WEBHOOK-SIGNATURE HMAC → parses order
+AlgoVoi receives + verifies WM_SEC.SIGNATURE HMAC → parses order
             ↓
 AlgoVoi creates a hosted checkout link (USDC or aUSDC)
             ↓
@@ -120,7 +120,7 @@ WM-SVC.NAME: Walmart Marketplace
 Content-Type: application/json
 
 {
-  "eventTypes": ["orderCreated", "orderLineShipped"],
+  "eventTypes": ["PO_CREATED"],
   "deliveryConfig": {
     "type": "webhook",
     "endpoint": "<webhook_url from Step 3>",
@@ -129,7 +129,7 @@ Content-Type: application/json
 }
 ```
 
-Walmart signs webhook payloads with HMAC-SHA256 using your `webhook_secret`. The signature is delivered in the `WM-WEBHOOK-SIGNATURE` header.
+Walmart signs webhook payloads with HMAC-SHA256 using your `webhook_secret`. The signature is delivered in the `WM_SEC.SIGNATURE` header.
 
 To obtain a Walmart access token for the subscription call:
 
@@ -149,11 +149,11 @@ POST order data directly from your backend with `Authorization: Bearer <webhook_
 
 ## Webhook payload structure
 
-AlgoVoi processes `orderCreated` events. Relevant fields:
+AlgoVoi processes `PO_CREATED` events. Relevant fields:
 
 ```json
 {
-  "eventType": "orderCreated",
+  "eventType": "PO_CREATED",
   "order": {
     "purchaseOrderId": "1234567890",
     "customerOrderId": "ABC123",
@@ -183,7 +183,7 @@ AlgoVoi processes `orderCreated` events. Relevant fields:
 
 | Symptom | Likely cause |
 |---------|-------------|
-| HTTP 401 on webhook | `WM-WEBHOOK-SIGNATURE` mismatch — check secret or re-register subscription |
+| HTTP 401 on webhook | `WM_SEC.SIGNATURE` mismatch — check secret or re-register subscription |
 | HTTP 422 "No network config" | Network config missing for `preferred_network` |
 | Token exchange failing | Client ID/Secret incorrect or seller account not API-enabled |
 | Order not acknowledging | Access token expired — credential refresh required |

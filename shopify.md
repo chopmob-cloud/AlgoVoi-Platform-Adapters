@@ -131,7 +131,7 @@ The response includes a `webhook_secret` and a `webhook_url`. Save both — the 
    - **Format**: JSON
 4. Copy the **Signing secret** Shopify shows — this must match the `webhook_secret` from Step 3
 
-> AlgoVoi verifies every inbound webhook using HMAC-SHA256 against the `X-Shopify-Hmac-Sha256` header. Mismatched secrets will be rejected with HTTP 401.
+> AlgoVoi verifies every inbound webhook using HMAC-SHA256 against the `X-Shopify-Hmac-SHA256` header. Mismatched secrets will be rejected with HTTP 401.
 
 ---
 
