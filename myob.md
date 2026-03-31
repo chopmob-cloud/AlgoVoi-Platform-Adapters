@@ -9,7 +9,7 @@ Accept **USDC on Algorand** and **aUSDC on VOI** as payment against MYOB invoice
 ```
 Invoice created in MYOB AccountRight or Essentials
             ↓
-MYOB webhook fires (x-myob-signature HMAC verified)
+AlgoVoi polls MYOB API for new invoices (no native webhooks)
             ↓
 AlgoVoi generates a hosted payment link (USDC or aUSDC)
             ↓
@@ -84,7 +84,7 @@ GET https://secure.myob.com/oauth2/account/authorize
 4. Exchange the code for tokens:
 
 ```http
-POST https://secure.myob.com/oauth2/v1/authorize
+POST https://secure.myob.com/oauth2/v1/token
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=authorization_code
@@ -125,38 +125,26 @@ Content-Type: application/json
 }
 ```
 
-The response includes a `webhook_secret` and a `webhook_url`.
-
 > MYOB access tokens expire after 20 minutes. AlgoVoi refreshes them automatically using the refresh token.
 
 ---
 
-## Step 4 — Register the webhook
+## Step 4 — Invoice polling
 
-Register a webhook subscription via the MYOB API:
+> **MYOB does not support outbound webhooks.** AlgoVoi detects new invoices by polling the MYOB API at regular intervals using the `$filter` and `If-Modified-Since` headers.
+
+AlgoVoi polls for new invoices via:
 
 ```http
-POST https://api.myob.com/accountright/<company-file-id>/sale/invoice/service/webhook
+GET https://api.myob.com/accountright/<company-file-id>/sale/invoice/service
 Authorization: Bearer <access_token>
 x-myobapi-key: <api_key>
-Content-Type: application/json
-
-{
-  "callbackUrl": "<webhook_url from Step 3>",
-  "events": ["created"],
-  "secretKey": "<webhook_secret from Step 3>"
-}
+If-Modified-Since: <last_poll_timestamp>
 ```
 
-MYOB signs every webhook delivery with an `x-myob-signature` header:
+No webhook URL or secret is required. AlgoVoi handles the polling schedule automatically after the integration is connected.
 
-```
-x-myob-signature: <base64(HMAC-SHA256(secret_key, raw_body))>
-```
-
-AlgoVoi verifies this signature automatically on receipt.
-
-> Register separate subscriptions for `sale/invoice/service` and `sale/invoice/item` to capture both service and product invoices.
+> Poll separate endpoints for service invoices (`sale/invoice/service`) and product invoices (`sale/invoice/item`) to capture all invoice types.
 
 ---
 
@@ -178,7 +166,7 @@ Once connected:
 
 | Symptom | Likely cause |
 |---------|-------------|
-| HTTP 401 on webhook | `x-myob-signature` mismatch — check `webhook_secret` / `secretKey` |
+| Invoices not detected | Check polling is active and `company_file_uri` is correct |
 | HTTP 422 "No network config" | Network config missing for `preferred_network` |
 | Token refresh failing | MYOB refresh tokens expire after 365 days — re-authorise if expired |
 | Company file 404 | `company_file_uri` incorrect — re-list files via `/accountright` |

@@ -83,6 +83,8 @@ GET https://www.sageone.com/oauth2/auth/central
   &scope=full_access
 ```
 
+> Sage may redirect to a region-specific authorize URL (e.g. `oauth.uk.sageone.com`). Use the exact URL shown in your Sage Developer app settings.
+
 6. Exchange the code for tokens:
 
 ```http

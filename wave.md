@@ -6,7 +6,7 @@ Accept **USDC on Algorand** and **aUSDC on VOI** as payment against Wave invoice
 
 ## Important: Wave webhook support
 
-Wave provides a **GraphQL API** and supports webhooks for invoice events. Webhook payloads are not HMAC-signed by Wave — AlgoVoi authenticates deliveries using a shared token passed as a custom header.
+Wave provides a **GraphQL API** and supports webhooks for invoice events. Wave signs webhook payloads using HMAC-SHA256 — the signature is delivered in the `Wave-Signature` header.
 
 ---
 
@@ -15,7 +15,7 @@ Wave provides a **GraphQL API** and supports webhooks for invoice events. Webhoo
 ```
 Invoice created or sent in Wave
             ↓
-Wave webhook fires → AlgoVoi verifies X-Wave-Webhook-Token
+Wave webhook fires → AlgoVoi verifies Wave-Signature HMAC
             ↓
 AlgoVoi generates a hosted payment link (USDC or aUSDC)
             ↓
@@ -140,34 +140,33 @@ Content-Type: application/json
 }
 ```
 
-The response includes a `webhook_token` and a `webhook_url`.
+The response includes a `webhook_secret` and a `webhook_url`.
 
 ---
 
 ## Step 4 — Register the webhook
 
-Register a webhook via the Wave GraphQL API:
+Register a webhook via the Wave REST API:
 
-```graphql
-mutation {
-  webhookCreate(input: {
-    businessId: "<business_id>",
-    url: "<webhook_url from Step 3>",
-    events: [INVOICE_CREATED, INVOICE_SENT]
-  }) {
-    webhook {
-      id
-    }
-    didSucceed
-  }
+```http
+POST https://api.waveapps.com/webhooks/v1/create
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "url": "<webhook_url from Step 3>",
+  "events": ["invoice.created", "invoice.sent"],
+  "secret": "<webhook_secret from Step 3>"
 }
 ```
 
-Wave does not sign webhook payloads. AlgoVoi expects an `X-Wave-Webhook-Token` header. Since Wave does not support custom headers natively, append the token as a query parameter instead — AlgoVoi accepts both:
+Wave signs every webhook delivery with a `Wave-Signature` header:
 
 ```
-<webhook_url>?token=<webhook_token>
+Wave-Signature: t=<timestamp>,v1=<hex(HMAC-SHA256(secret, timestamp + "." + raw_body))>
 ```
+
+AlgoVoi verifies this signature automatically on receipt.
 
 ---
 
@@ -237,7 +236,7 @@ mutation {
 
 | Symptom | Likely cause |
 |---------|-------------|
-| HTTP 401 on webhook | `token` query parameter missing or incorrect |
+| HTTP 401 on webhook | `Wave-Signature` verification failed — check `webhook_secret` |
 | HTTP 422 "No network config" | Network config missing for `preferred_network` |
 | Token refresh failing | Wave refresh tokens are long-lived but can expire — re-authorise |
 | Payment not posting | `accountId` for the receivables account must be pre-configured |
