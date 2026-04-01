@@ -205,7 +205,7 @@ The `algovoi-gateway.php` plugin provides two WooCommerce payment gateways. Both
    ```
 2. Copy the plugin file:
    ```bash
-   scp -i ~/.ssh/woocommerce_test algovoi-gateway.php \
+   scp -i ~/.ssh/woocommerce_test woocommerce/algovoi-gateway.php \
      root@<server-ip>:/var/www/html/wordpress/wp-content/plugins/algovoi-gateway/algovoi-gateway.php
    ```
 3. In WordPress Admin go to **Plugins → Installed Plugins**, find **AlgoVoi Payment Gateway**, click **Activate**.
@@ -381,4 +381,4 @@ Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`, real W
 
 Signature verification uses `HMAC-SHA256` over the raw request body, base64-encoded, in the `X-WC-Webhook-Signature` header.
 
-WooCommerce 10.x REST API requires a custom Basic Auth plugin (`wc-basic-auth.php`) since WC 9+ removed HTTP Basic Auth support. See [wc-basic-auth.php](wc-basic-auth.php) in this repo.
+WooCommerce 10.x REST API requires a custom Basic Auth plugin (`wc-basic-auth.php`) since WC 9+ removed HTTP Basic Auth support. See [woocommerce/wc-basic-auth.php](woocommerce/wc-basic-auth.php) in this repo.
