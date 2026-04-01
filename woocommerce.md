@@ -106,8 +106,8 @@ Content-Type: application/json
 
 | Value | Settles in |
 |-------|-----------|
-| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
-| Webhook → checkout link | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass |
+| `algorand_mainnet` | USDC (ASA 31566704) |
+| `voi_mainnet` | aUSDC (ARC200 app 302190) |
 
 The response includes a `webhook_secret` and a `webhook_url`. Save both — the secret is shown once.
 
@@ -184,8 +184,8 @@ Content-Type: application/json
 
 | Network | Asset | Notes |
 |---------|-------|-------|
-| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass | Requires ASA opt-in on payout wallet |
-| Webhook → checkout link | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass | |
+| `algorand_mainnet` | USDC (ASA 31566704) | Requires ASA opt-in on payout wallet |
+| `voi_mainnet` | aUSDC (ARC200 app 302190) | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
 
@@ -193,10 +193,12 @@ Content-Type: application/json
 
 ## Live test status
 
-Confirmed end-to-end on **2026-03-31** against `api1.ilovechicken.co.uk`:
+Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`, real WooCommerce store at `104.207.130.27` running WooCommerce 10.6.2 / WordPress 6.9.4:
 
 | Test | Network | Result |
 |------|---------|--------|
-| `order.created` webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
+| `order.created` webhook → checkout link created | `algorand_mainnet` | Pass |
 
-Signature verification uses `HMAC-SHA256` over the raw request body, base64-encoded, in the `X-Wc-Webhook-Signature` header.
+Signature verification uses `HMAC-SHA256` over the raw request body, base64-encoded, in the `X-WC-Webhook-Signature` header.
+
+WooCommerce 10.x REST API requires a custom Basic Auth plugin (`wc-basic-auth.php`) since WC 9+ removed HTTP Basic Auth support. See [wc-basic-auth.php](wc-basic-auth.php) in this repo.
