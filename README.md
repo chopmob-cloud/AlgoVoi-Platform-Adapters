@@ -28,29 +28,46 @@ Each guide covers:
 - Webhook registration
 - Troubleshooting
 
+Where a platform requires installable files (WordPress plugins, config templates, etc.) they are included in a subfolder alongside the guide.
+
 > This repository contains documentation only. AlgoVoi platform source code is not published here.
+
+---
+
+## Repository structure
+
+```
+platform-adapters/
+├── {adapter}.md          # Integration guide (one per platform)
+└── {adapter}/            # Adapter-specific files where applicable
+    ├── *.php             # WordPress/WooCommerce plugins
+    ├── *.json            # Config templates
+    └── ...
+```
+
+Integration guides (`.md`) are always at the root. Supporting files — plugins, config templates, deployment scripts — live in a matching subfolder named after the adapter.
 
 ---
 
 ## E-commerce integrations
 
-| Platform | Guide | Status |
-|----------|-------|--------|
-| Shopify | [shopify.md](./shopify.md) | Available |
-| WooCommerce | [woocommerce.md](./woocommerce.md) | Available |
-| Magento 1 & 2 | [magento.md](./magento.md) | Available |
-| BigCommerce | [bigcommerce.md](./bigcommerce.md) | Available |
-| Wix eCommerce | [wix.md](./wix.md) | Available |
-| PrestaShop | [prestashop.md](./prestashop.md) | Available |
-| Squarespace Commerce | [squarespace.md](./squarespace.md) | Available |
-| eBay | [ebay.md](./ebay.md) | Available |
-| Walmart | [walmart.md](./walmart.md) | Available |
-| Amazon | [amazon.md](./amazon.md) | Available |
-| CeX | [cex.md](./cex.md) | Available |
-| Ecwid | [ecwid.md](./ecwid.md) | Available |
-| OpenCart | [opencart.md](./opencart.md) | Available |
-| Shopware | [shopware.md](./shopware.md) | Available |
-| TikTok Shop | [tiktok-shop.md](./tiktok-shop.md) | Available |
+| Platform | Guide | Files | Status |
+|----------|-------|-------|--------|
+| Shopify | [shopify.md](./shopify.md) | — | Available |
+| WooCommerce | [woocommerce.md](./woocommerce.md) | [woocommerce/](./woocommerce/) | Available |
+| Magento 1 & 2 | [magento.md](./magento.md) | — | Available |
+| BigCommerce | [bigcommerce.md](./bigcommerce.md) | — | Available |
+| Wix eCommerce | [wix.md](./wix.md) | — | Available |
+| PrestaShop | [prestashop.md](./prestashop.md) | — | Available |
+| Squarespace Commerce | [squarespace.md](./squarespace.md) | — | Available |
+| eBay | [ebay.md](./ebay.md) | — | Available |
+| Walmart | [walmart.md](./walmart.md) | — | Available |
+| Amazon | [amazon.md](./amazon.md) | — | Available |
+| CeX | [cex.md](./cex.md) | — | Available |
+| Ecwid | [ecwid.md](./ecwid.md) | — | Available |
+| OpenCart | [opencart.md](./opencart.md) | — | Available |
+| Shopware | [shopware.md](./shopware.md) | — | Available |
+| TikTok Shop | [tiktok-shop.md](./tiktok-shop.md) | — | Available |
 
 ## Regional & international marketplace integrations
 
