@@ -1,0 +1,17 @@
+# Environment / secrets
+.env
+.env.*
+*.env
+
+# Local overrides
+*.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db

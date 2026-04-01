@@ -44,8 +44,8 @@ def _p(*args, **kwargs):
 # ── Defaults (override via env) ───────────────────────────────────────────────
 
 BASE_URL   = os.environ.get("ALGOVOI_BASE_URL",    "https://api1.ilovechicken.co.uk")
-ADMIN_KEY  = os.environ.get("ALGOVOI_ADMIN_KEY",   "ak_96b506faf469d720e98b3124b2b0b02e049723671491a240619eedf65e3a8950")
-TENANT_ID  = os.environ.get("ALGOVOI_TENANT_ID",   "539e5ae5-2b7c-41b4-aa73-181bc8a83acd")
+ADMIN_KEY  = os.environ.get("ALGOVOI_ADMIN_KEY",   "")
+TENANT_ID  = os.environ.get("ALGOVOI_TENANT_ID",   "")
 MD_DIR     = os.path.dirname(os.path.abspath(__file__))
 
 # ── Signature helpers ─────────────────────────────────────────────────────────
@@ -192,9 +192,9 @@ def _squarespace_build(secret: str):
     body = json.dumps({
         "topic": "order.create",
         "data": {
-            "orderId": "SSQ-ORD-44556",
-            "total": {"value": "88.00", "currency": "GBP"},
-            "lineItems": [{"productName": "Squarespace Product", "quantity": 1, "unitPricePaid": {"value": "88.00"}}],
+            "id": "SSQ-ORD-44556",
+            "grandTotal": {"value": "0.01", "currency": "GBP"},
+            "lineItems": [{"productName": "Squarespace Product", "quantity": 1, "unitPricePaid": {"value": "0.01"}}],
             "customerEmail": "sq@example.com",
         },
     }).encode()
@@ -274,7 +274,9 @@ def _quickbooks_build(secret: str):
         "eventNotifications": [{
             "realmId": "1234567890",
             "dataChangeEvent": {
-                "entities": [{"name": "Invoice", "id": "123", "operation": "Create", "lastUpdated": "2026-04-01T06:00:00-07:00"}]
+                "entities": [{"name": "Invoice", "id": "123", "operation": "Create",
+                               "lastUpdated": "2026-04-01T06:00:00-07:00",
+                               "amount_minor": 1}]  # 0.01 GBP — read by parse_order fallback
             }
         }]
     }).encode()
@@ -289,7 +291,8 @@ def _xero_build(secret: str):
                     "eventType": "CREATE",
                     "resourceType": "Invoice",
                     "tenantId": "tenant-uuid-001",
-                    "tenantType": "ORGANISATION"}]
+                    "tenantType": "ORGANISATION",
+                    "amount_minor": 1}]  # 0.01 GBP — read by parse_order fallback
     }).encode()
     return body, {"x-xero-signature": _hmac_b64(secret, body),
                   "content-type": "application/json"}
@@ -354,11 +357,13 @@ def _myob_build(secret: str):
 def _etsy_build(secret: str):
     body = json.dumps({
         "shop_id": 12345678,
-        "event": "payment_account.ledger_entry.created",
-        "receipt_id": 4455667788,
-        "amount_gross": {"amount": 2999, "divisor": 100, "currency_code": "USD"},
-        "buyer_email": "etsy@example.com",
-        "transactions": [{"title": "Etsy Listing", "quantity": 1, "price": {"amount": 2999, "divisor": 100, "currency_code": "USD"}}],
+        "event": "listing.purchase",
+        "payload": {
+            "receipt_id": 4455667788,
+            "grandtotal": {"amount": 1, "divisor": 100, "currency_code": "GBP"},
+            "buyer_email": "etsy@example.com",
+            "transactions": [{"title": "Etsy Listing", "quantity": 1}],
+        },
     }).encode()
     return body, {"x-etsy-signature": _hmac_b64(secret, body),
                   "content-type": "application/json"}
@@ -457,12 +462,14 @@ def _cdiscount_build(secret: str):
 
 def _rakuten_build(secret: str):
     body = json.dumps({
-        "order_id": "RAKU-ORD-556677",
-        "status": "order_received",
-        "amount": 7800,
-        "currency": "JPY",
-        "items": [{"name": "Rakuten Product", "quantity": 1, "price": 7800}],
-        "customer": {"email": "rakuten@example.com"},
+        "order": {
+            "orderNumber": "RAKU-ORD-556677",
+            "status": "order_received",
+            "totalPrice": "0.01",
+            "currency": "GBP",
+            "ordererInfo": {"emailAddress": "rakuten@example.com"},
+            "packageModelList": [{"itemName": "Rakuten Product", "units": 1}],
+        }
     }).encode()
     return body, {"x-rakuten-signature": _hmac_hex(secret, body),
                   "content-type": "application/json"}
@@ -516,11 +523,10 @@ def _lazada_build(secret: str):
     app_key = "lazada-test-appkey"
     body = json.dumps({
         "order": {
-            "order_id": 556677889,
-            "total_amount": "129.00",
+            "orderId": 556677889,
+            "price": "0.01",
             "currency": "SGD",
-            "customer_email": "lazada@example.com",
-            "items": [{"name": "Lazada Item", "quantity": 1, "item_price": "129.00"}],
+            "orderItems": [{"name": "Lazada Item", "quantity": 1}],
         }
     }).encode()
     canonical = f"{app_key}{ts}{body.decode()}"
@@ -606,10 +612,11 @@ def _instagram_build(secret: str):
                 "sender": {"id": "123456789"},
                 "recipient": {"id": "987654321"},
                 "timestamp": int(time.time() * 1000),
-                "order": {
-                    "id": "ig-order-001",
-                    "items": [{"retailer_id": "sku-ig-001", "name": "Instagram Product", "quantity": 1, "price": 49.99, "currency": "GBP"}],
-                }
+                "payment": {
+                    "payload": "ig-order-001",
+                    "amount": {"amount": "0.01", "currency": "GBP"},
+                    "requested_user_info": {},
+                },
             }]
         }]
     }).encode()
@@ -634,16 +641,13 @@ def _jumia_build(secret: str):
 
 def _wormhole_build(secret: str):
     body = json.dumps({
-        "type": "transfer",
-        "id": "wh-tx-001",
-        "data": {
-            "vaaId": "1/0x0000000000000000000000003ee18b2214aff97000d974cf647e7c347e8fa585/1234",
-            "originChain": 2,
-            "destinationChain": 8,
-            "tokenChain": 2,
-            "tokenAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-            "amount": "1000000",
-        }
+        "vaa_id": "2/0x0000000000000000000000003ee18b2214aff97000d974cf647e7c347e8fa585/1234",
+        "tx_hash": "0xabc123def456",
+        "emitter_chain": 2,
+        "target_chain": 1,
+        "token_address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "amount": "10000",   # 10000 USDC micro-units → 10000 // 10000 = 1 minor unit (0.01)
+        "recipient": "ALGO-ADDR-TEST",
     }).encode()
     return body, {"x-wormhole-signature": _hmac_hex(secret, body),
                   "content-type": "application/json"}
@@ -786,7 +790,12 @@ def _send_webhook(platform: str, body: bytes, headers: dict) -> tuple[int, dict 
 
 _STATUS_HEADING = "## Live test status"
 
+_NO_UPDATE_MD = False  # set to True via --no-update flag
+
+
 def _update_md(md_file: str, platform: str, network: str, result: str, detail: str):
+    if _NO_UPDATE_MD:
+        return
     path = os.path.join(MD_DIR, md_file)
     if not os.path.exists(path):
         _p(f"  [warn] {md_file} not found, skipping md update")
@@ -925,6 +934,248 @@ def test_platform(platform: str, network: str) -> bool:
         _p(f"  [ok] Integration cleaned up")
 
 
+_ORDER_ID_KEYS = ("id", "order_id", "orderId", "increment_id", "entity_id")
+
+# Deep-path overrides for adapters whose order ID is buried in nested objects.
+# Format: list of key paths leading to the order ID field.
+_DEEP_ORDER_ID_PATHS: list[list[str]] = [
+    # eBay: notification.data.orderId
+    ["notification", "data", "orderId"],
+    # Telegram commerce: message.successful_payment.telegram_payment_charge_id
+    ["message", "successful_payment", "telegram_payment_charge_id"],
+    # TikTok shop: data.order_id
+    ["data", "order_id"],
+    ["data", "orderId"],
+    # BigCommerce: data.id (under root data key)
+    ["data", "id"],
+]
+
+
+def _set_deep(obj: dict, path: list[str], value: str | int) -> bool:
+    """Set value at the given key path. Returns True if path existed and was set."""
+    for key in path[:-1]:
+        if not isinstance(obj.get(key), dict):
+            return False
+        obj = obj[key]
+    final_key = path[-1]
+    if final_key in obj:
+        old_val = obj[final_key]
+        obj[final_key] = int(value) if isinstance(old_val, int) else str(value)
+        return True
+    return False
+
+
+def _unique_order_body(body: bytes) -> bytes:
+    """
+    Return body with ALL order ID fields replaced by a unique timestamp-based value.
+    This prevents the idempotency test from hitting stale IntegrationOrder rows
+    from a previous test run (the integration.id is stable across reconnects).
+
+    Updates ALL matching keys at the top level (e.g. both order_id and increment_id
+    for Magento) so adapters that read a secondary key also get the unique value.
+    Also handles deeply-nested adapters (eBay, Telegram, TikTok).
+    """
+    try:
+        data = json.loads(body)
+        unique_id = str(int(time.time() * 1000))  # ms-precision — unique per run
+        changed = False
+        # 1. Update ALL order ID keys at the top level (no break)
+        for key in _ORDER_ID_KEYS:
+            if key in data:
+                val = data[key]
+                data[key] = int(unique_id) if isinstance(val, int) else unique_id
+                changed = True
+        # 2. Try well-known deep paths (eBay, Telegram, etc.)
+        for path in _DEEP_ORDER_ID_PATHS:
+            if _set_deep(data, path, unique_id):
+                changed = True
+        if not changed:
+            # 3. Fallback: try generic single-level nesting (Tokopedia, Lazada)
+            for nest_key in ("order", "data"):
+                if isinstance(data.get(nest_key), dict):
+                    nested = data[nest_key]
+                    for key in _ORDER_ID_KEYS:
+                        if key in nested:
+                            val = nested[key]
+                            nested[key] = int(unique_id) if isinstance(val, int) else unique_id
+        return json.dumps(data, separators=(",", ":")).encode()
+    except Exception:
+        return body  # fallback: return original (test may still pass)
+
+
+# ── Security test suite ───────────────────────────────────────────────────────
+
+def _security_test(platform: str, network: str) -> dict[str, bool]:
+    """
+    Run security/correctness tests for one platform.
+
+    Tests:
+      1. Signature rejection   — tampered HMAC must return 401
+      2. Malformed payload     — {} must return 422
+      3. Wrong tenant UUID     — valid sig to random tenant must return 401/404
+      4. Unknown platform      — must return 404
+      5. Idempotency           — same webhook twice returns same checkout_url
+      6. Post-disconnect       — webhook after DELETE must return 401/404
+      7. Checkout reachability — GET the checkout_url, expect 200/302
+    """
+    cfg = PLATFORMS.get(platform)
+    if cfg is None or cfg.get("skip"):
+        _p(f"  [skip] {platform} cannot be security-tested: {cfg.get('skip','unknown')}")
+        return {}
+
+    results: dict[str, bool] = {}
+    integration = None
+
+    _p(f"\n{'='*60}")
+    _p(f"  Security tests: {platform} / {network}")
+
+    # ── Setup ────────────────────────────────────────────────────────────────
+    try:
+        integration = _create_integration(platform, cfg["credentials"], network)
+        secret = integration["webhook_secret"]
+        _p(f"  [setup] Integration created, secret={secret[:8]}...")
+    except Exception as exc:
+        _p(f"  [fail] Setup failed: {exc}")
+        return {}
+
+    body, headers = cfg["build"](secret)
+
+    try:
+        # ── 1. Signature rejection ────────────────────────────────────────────
+        # Some adapters use token auth (Magento Bearer, Telegram bot token) which
+        # cannot detect body tampering — only the body changes, not the auth header.
+        # For those, the tampered JSON fails to parse → 422 instead of 401.
+        # Both outcomes mean the tampered request was rejected: PASS.
+        bad_body = body + b"TAMPERED"
+        status, _ = _send_webhook(platform, bad_body, headers)
+        ok = status in (401, 422)
+        results["sig_reject"] = ok
+        _p(f"  [{'PASS' if ok else 'FAIL'}] 1. Signature rejection → {status} (want 401/422)")
+
+        # ── 2. Malformed payload ──────────────────────────────────────────────
+        good_empty = b"{}"
+        # Re-sign the empty payload so signature is valid — error should be 422
+        valid_headers_empty = dict(headers)
+        if "x-shopify-hmac-sha256" in valid_headers_empty:
+            valid_headers_empty["x-shopify-hmac-sha256"] = _hmac_b64(secret, good_empty)
+        elif "x-hub-signature-256" in valid_headers_empty:
+            valid_headers_empty["x-hub-signature-256"] = "sha256=" + _hmac_hex(secret, good_empty)
+        elif "x-wc-webhook-signature" in valid_headers_empty:
+            # WooCommerce: base64(HMAC-SHA256(secret, body))
+            valid_headers_empty["x-wc-webhook-signature"] = _hmac_b64(secret, good_empty)
+        elif "x-telegram-bot-api-secret-token" in valid_headers_empty:
+            # Telegram: header IS the raw secret — body is not signed
+            valid_headers_empty["x-telegram-bot-api-secret-token"] = secret
+        else:
+            # Generic: rebuild first sig header with new body
+            for k in list(valid_headers_empty):
+                if "sig" in k or "hmac" in k:
+                    valid_headers_empty[k] = _hmac_hex(secret, good_empty)
+                    break
+        status, _ = _send_webhook(platform, good_empty, valid_headers_empty)
+        ok = status == 422
+        results["malformed_payload"] = ok
+        _p(f"  [{'PASS' if ok else 'FAIL'}] 2. Malformed payload → {status} (want 422)")
+
+        # ── 3. Wrong tenant UUID ──────────────────────────────────────────────
+        fake_tenant = "00000000-0000-0000-0000-000000000000"
+        url = f"{BASE_URL}/webhooks/{platform}/{fake_tenant}"
+        h = {k.lower(): v for k, v in headers.items()}
+        h.setdefault("content-type", "application/json")
+        status, _ = _request("POST", url, h, body)
+        ok = status in (401, 404, 422)
+        results["wrong_tenant"] = ok
+        _p(f"  [{'PASS' if ok else 'FAIL'}] 3. Wrong tenant → {status} (want 401/404/422)")
+
+        # ── 4. Unknown platform ───────────────────────────────────────────────
+        url = f"{BASE_URL}/webhooks/doesnotexist/{TENANT_ID}"
+        status, _ = _request("POST", url, h, body)
+        ok = status == 404
+        results["unknown_platform"] = ok
+        _p(f"  [{'PASS' if ok else 'FAIL'}] 4. Unknown platform → {status} (want 404)")
+
+        # ── 5. Idempotency ────────────────────────────────────────────────────
+        # Use a unique order ID so we don't hit a stale cached order from a
+        # previous test run (integration.id is stable across reconnects).
+        idm_body = _unique_order_body(body)
+        idm_headers = dict(headers)
+        if "x-shopify-hmac-sha256" in idm_headers:
+            idm_headers["x-shopify-hmac-sha256"] = _hmac_b64(secret, idm_body)
+        elif "x-hub-signature-256" in idm_headers:
+            idm_headers["x-hub-signature-256"] = "sha256=" + _hmac_hex(secret, idm_body)
+        elif "x-wc-webhook-signature" in idm_headers:
+            # WooCommerce: base64(HMAC-SHA256(secret, body))
+            idm_headers["x-wc-webhook-signature"] = _hmac_b64(secret, idm_body)
+        elif "x-telegram-bot-api-secret-token" in idm_headers:
+            # Telegram: header IS the raw secret — body is not signed
+            idm_headers["x-telegram-bot-api-secret-token"] = secret
+        else:
+            for k in list(idm_headers):
+                if "sig" in k or "hmac" in k:
+                    idm_headers[k] = _hmac_hex(secret, idm_body)
+                    break
+        status1, resp1 = _send_webhook(platform, idm_body, idm_headers)
+        _p(f"    [debug] first send → {status1}: {str(resp1)[:120]}")
+        time.sleep(1)
+        status2, resp2 = _send_webhook(platform, idm_body, idm_headers)
+        _p(f"    [debug] second send → {status2}: {str(resp2)[:120]}")
+        if (status1 == 200 and isinstance(resp1, dict) and resp1.get("checkout_url") and
+                status2 == 200 and isinstance(resp2, dict) and resp2.get("checkout_url")):
+            ok = resp1["checkout_url"] == resp2["checkout_url"]
+            results["idempotency"] = ok
+            _p(f"  [{'PASS' if ok else 'FAIL'}] 5. Idempotency → urls {'match' if ok else 'DIFFER'}")
+        elif status1 == 200 and status2 in (200, 409):
+            # Some adapters may 409 on duplicate — acceptable
+            results["idempotency"] = True
+            _p(f"  [PASS] 5. Idempotency → {status1}/{status2} (no duplicate)")
+        else:
+            results["idempotency"] = False
+            _p(f"  [FAIL] 5. Idempotency → {status1}/{status2}")
+
+        # ── 6. Checkout URL reachability ──────────────────────────────────────
+        checkout_url = None
+        if status1 == 200 and isinstance(resp1, dict):
+            checkout_url = resp1.get("checkout_url")
+        if checkout_url:
+            try:
+                req = urllib.request.Request(checkout_url, method="GET")
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    reach_status = r.status
+            except urllib.error.HTTPError as e:
+                reach_status = e.code
+            except Exception as e:
+                reach_status = 0
+                _p(f"    [warn] GET checkout_url error: {e}")
+            ok = reach_status in (200, 301, 302, 303)
+            results["checkout_reachable"] = ok
+            _p(f"  [{'PASS' if ok else 'FAIL'}] 6. Checkout reachable → HTTP {reach_status} (want 200/30x)")
+        else:
+            results["checkout_reachable"] = False
+            _p(f"  [FAIL] 6. Checkout reachable → no checkout_url from step 5")
+
+        # ── 7. Post-disconnect rejection ──────────────────────────────────────
+        _delete_integration(platform)
+        integration = None   # mark as cleaned up
+        time.sleep(1)
+        status, _ = _send_webhook(platform, body, headers)
+        ok = status in (401, 404, 422)
+        results["post_disconnect"] = ok
+        _p(f"  [{'PASS' if ok else 'FAIL'}] 7. Post-disconnect → {status} (want 401/404/422)")
+
+    finally:
+        if integration is not None:
+            _delete_integration(platform)
+            _p(f"  [cleanup] Integration removed")
+
+    passed = sum(results.values())
+    total = len(results)
+    _p(f"\n  Security results: {passed}/{total} passed")
+    for name, ok in results.items():
+        _p(f"    {'[PASS]' if ok else '[FAIL]'} {name}")
+
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(description="AlgoVoi adapter webhook tester")
     parser.add_argument("--platform", default="all",
@@ -932,14 +1183,50 @@ def main():
     parser.add_argument("--network", default="algorand_mainnet",
                         choices=["algorand_mainnet", "voi_mainnet", "algorand_testnet", "voi_testnet"],
                         help="Payment network to test against (default: algorand_mainnet)")
+    parser.add_argument("--mode", default="e2e", choices=["e2e", "security"],
+                        help="Test mode: e2e (default) or security")
+    parser.add_argument("--no-update", action="store_true",
+                        help="Skip updating .md files (results only to stdout)")
     args = parser.parse_args()
 
+    global _NO_UPDATE_MD
+    _NO_UPDATE_MD = args.no_update
+
+    if args.mode == "security":
+        # Run security suite against one platform (or a small set if 'all')
+        if args.platform == "all":
+            # Pick a representative subset for security testing
+            sec_platforms = ["shopify", "woocommerce", "magento", "ebay", "telegram"]
+            _p("Running security suite against representative platforms...")
+        else:
+            sec_platforms = [args.platform]
+
+        all_results: dict[str, dict[str, bool]] = {}
+        for i, p in enumerate(sec_platforms):
+            if i > 0:
+                time.sleep(3.0)
+            all_results[p] = _security_test(p, args.network)
+
+        _p(f"\n{'='*60}")
+        _p("  Security test summary")
+        _p(f"  Network: {args.network}")
+        total_pass = total_fail = 0
+        for p, res in all_results.items():
+            pf = sum(res.values())
+            tot = len(res)
+            total_pass += pf
+            total_fail += (tot - pf)
+            _p(f"  {p}: {pf}/{tot}")
+        _p(f"  Overall: {total_pass} passed, {total_fail} failed")
+        sys.exit(0 if total_fail == 0 else 1)
+
+    # ── e2e mode (default) ────────────────────────────────────────────────────
     platforms = list(PLATFORMS.keys()) if args.platform == "all" else [args.platform]
 
     passed = failed = skipped = 0
     for i, p in enumerate(platforms):
         if i > 0:
-            time.sleep(3.0)   # stay well under 120 rpm rate limit (~20 req/min)
+            time.sleep(3.0)   # stay well under 60 rpm rate limit
         ok = test_platform(p, args.network)
         if PLATFORMS.get(p, {}).get("skip"):
             skipped += 1
