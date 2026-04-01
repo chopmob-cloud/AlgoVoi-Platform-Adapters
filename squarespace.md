@@ -155,3 +155,15 @@ Once connected, every new Squarespace order triggers AlgoVoi to:
 | `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
+
+---
+
+## Live test status
+
+Confirmed end-to-end on **2026-03-31** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| `order.create` webhook -> checkout link | `algorand_mainnet` (USDC ASA 31566704) | Pass |
+
+Signature: `HMAC-SHA256` hex digest in `Squarespace-Signature`. Squarespace production provides a hex-encoded signing key; AlgoVoi accepts both hex-encoded and raw string secrets.

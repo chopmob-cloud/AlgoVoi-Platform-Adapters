@@ -115,7 +115,7 @@ Content-Type: application/json
     "order_id": "CEX-123456",
     "created_at": "2026-03-01T12:00:00Z",
     "currency": "GBP",
-    "total_amount": "49.99",
+    "totalPrice": 49.99,
     "items": [
       {
         "box_id": "BX123456",
@@ -159,3 +159,15 @@ Once connected:
 | `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
+
+---
+
+## Live test status
+
+Confirmed end-to-end on **2026-03-31** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| Order webhook -> checkout link | `algorand_mainnet` (USDC ASA 31566704) | Pass |
+
+Signature: `HMAC-SHA256` hex digest in `X-Cex-Signature`. Order amount must be in the `order.totalPrice` field.

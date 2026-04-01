@@ -145,3 +145,9 @@ Once connected, every new Wix order triggers AlgoVoi to:
 | `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
+
+---
+
+## Live test status
+
+Not yet live-tested -- Wix webhooks are RS256-signed JWTs requiring a real RSA keypair. Signature verification logic is implemented; functional test pending real Wix app credentials.

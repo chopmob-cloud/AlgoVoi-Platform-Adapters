@@ -157,3 +157,16 @@ Once connected, every new BigCommerce order triggers AlgoVoi to:
 | `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
+
+---
+
+## Live test status
+
+Partially confirmed on **2026-03-31** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| Webhook signature verification | n/a | Pass |
+| Full order flow | `algorand_mainnet` | Requires real credentials |
+
+BigCommerce webhooks carry the order ID only -- AlgoVoi makes a follow-up `GET /v2/orders/{id}` call to fetch the amount. Full end-to-end flow requires a valid `store_hash` and `access_token`. Signature: `HMAC-SHA256` base64 in `X-Bc-Signature`.

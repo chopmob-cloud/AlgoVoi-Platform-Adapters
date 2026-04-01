@@ -183,3 +183,15 @@ Once connected:
 | `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
+
+---
+
+## Live test status
+
+Confirmed end-to-end on **2026-03-31** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| `invoice_created` webhook -> checkout link | `algorand_mainnet` (USDC ASA 31566704) | Pass |
+
+Verification: token comparison (no HMAC). The `webhook_secret` is sent verbatim in `X-Zoho-Webhook-Token`. Amount field: `data.invoice.total` (float, major units).

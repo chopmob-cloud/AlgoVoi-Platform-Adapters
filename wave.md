@@ -252,3 +252,15 @@ mutation {
 | `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
+
+---
+
+## Live test status
+
+Confirmed end-to-end on **2026-03-31** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| `INVOICE_CREATED` webhook -> checkout link | `algorand_mainnet` (USDC ASA 31566704) | Pass |
+
+Verification: token comparison (no HMAC). The `webhook_secret` is sent verbatim in `X-Wave-Webhook-Token`. Amount field: `data.invoice.amountDue.value` (string, major units).

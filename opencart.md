@@ -162,3 +162,15 @@ Once connected:
 | `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
+
+---
+
+## Live test status
+
+Confirmed end-to-end on **2026-03-31** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| Order webhook -> checkout link | `algorand_mainnet` (USDC ASA 31566704) | Pass |
+
+Signature: `HMAC-SHA256` hex digest in `X-Algovoi-Signature`. Bearer token fallback (`Authorization: Bearer <webhook_secret>`) also supported.

@@ -153,3 +153,15 @@ Once connected, every new PrestaShop order triggers AlgoVoi to:
 | `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
+
+---
+
+## Live test status
+
+Confirmed end-to-end on **2026-03-31** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| Order webhook -> checkout link | `algorand_mainnet` (USDC ASA 31566704) | Pass |
+
+Authentication uses a Bearer token (`Authorization: Bearer <webhook_secret>`) -- PrestaShop modules do not sign payloads. Amount field: `order.total_paid` (float, major units).
