@@ -162,8 +162,8 @@ Once connected, every new Shopware order triggers AlgoVoi to:
 
 | Network | Asset | Notes |
 |---------|-------|-------|
-| Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass | Requires ASA opt-in on payout wallet |
-| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass | |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass | Requires ASA opt-in on payout wallet |
+| Webhook → checkout link | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
 
@@ -175,6 +175,6 @@ Confirmed end-to-end on **2026-03-31** against `api1.ilovechicken.co.uk`:
 
 | Test | Network | Result |
 |------|---------|--------|
-| `checkout.order.placed` webhook -> checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
+| `checkout.order.placed` webhook -> checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
 
 Signature: `HMAC-SHA256` hex digest in `Shopware-Shop-Signature`. Amount field: `data.payload.amountTotal` (float, major units). Currency from `data.payload.currency.isoCode`.

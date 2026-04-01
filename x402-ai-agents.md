@@ -152,7 +152,7 @@ Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`:
 
 | Test | Network | Result |
 |------|---------|--------|
-| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
 
 Cannot auto-test: Protocol documentation — not a platform webhook adapter.
 
@@ -228,7 +228,7 @@ AlgoVoi serves two distinct payment flows from the same infrastructure:
 |------|----------|---------|-----------|
 | **x402** | AI agent (autonomous) | HTTP 402 response | Per-call, real-time, on-chain |
 | **E-commerce adapters** | Human customer | Shopify/WooCommerce/etc. order webhook | Per-order, hosted checkout |
-| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip |
+| Webhook → checkout link | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip |
 
 Both flows use the same tenant network configs, payout addresses, and on-chain verification via the Facilitator. Only the entry point differs.
 

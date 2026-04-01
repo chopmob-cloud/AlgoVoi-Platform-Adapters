@@ -154,8 +154,8 @@ Once connected:
 
 | Network | Asset | Notes |
 |---------|-------|-------|
-| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip | Requires ASA opt-in on payout wallet |
-| Webhook → checkout link | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip | |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip | Requires ASA opt-in on payout wallet |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
 
@@ -168,6 +168,6 @@ Partially confirmed on **2026-03-31** against `api1.ilovechicken.co.uk`:
 | Test | Network | Result |
 |------|---------|--------|
 | Webhook signature verification | n/a | Pass |
-| Full order flow | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
+| Full order flow | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
 
 QBO webhooks carry only event notification metadata (entity name, ID, operation) -- no invoice amount. AlgoVoi makes a follow-up API call to fetch the invoice. Full flow requires valid OAuth credentials. Signature: `HMAC-SHA256` base64 in `Intuit-Signature`.

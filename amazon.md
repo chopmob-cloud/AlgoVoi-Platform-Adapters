@@ -162,7 +162,7 @@ Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`:
 
 | Test | Network | Result |
 |------|---------|--------|
-| Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
 
 Response 503: {'detail': 'Stablecoin FX conversion failed for GBP → ASA 31566704: Stablecoin conversion produced non-positive result: 0 GBP → 0 µ(ASA 31566704)'}
 
@@ -170,7 +170,7 @@ Response 503: {'detail': 'Stablecoin FX conversion failed for GBP → ASA 315667
 
 | Network | Asset | Notes |
 |---------|-------|-------|
-| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass | Requires ASA opt-in on payout wallet |
-| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass | |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass | Requires ASA opt-in on payout wallet |
+| Webhook → checkout link | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |

@@ -221,7 +221,7 @@ Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`:
 
 | Test | Network | Result |
 |------|---------|--------|
-| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
 
 Webhook signature verified on `algorand_mainnet`; full order-amount fetch requires real platform API credentials.
 
@@ -229,7 +229,7 @@ Webhook signature verified on `algorand_mainnet`; full order-amount fetch requir
 
 | Network | Asset | Notes |
 |---------|-------|-------|
-| `algorand_mainnet` | USDC (ASA 31566704) | Requires ASA opt-in on payout wallet |
-| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip | |
+| Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip | Requires ASA opt-in on payout wallet |
+| Webhook → checkout link | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip | |
 | `algorand_testnet` | Test USDC | For development and testing |
 | `voi_testnet` | Test aUSDC | For development and testing |

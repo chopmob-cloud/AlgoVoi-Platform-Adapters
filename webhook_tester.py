@@ -869,9 +869,19 @@ def test_platform(platform: str, network: str) -> bool:
                    f"Cannot auto-test: {skip_reason}.")
         return False
 
-    # 1. Create integration
+    # 1. Create integration (retry up to 3x on 429)
     try:
-        integration = _create_integration(platform, cfg["credentials"], network)
+        for attempt in range(3):
+            try:
+                integration = _create_integration(platform, cfg["credentials"], network)
+                break
+            except RuntimeError as e:
+                if "429" in str(e) and attempt < 2:
+                    wait = 30 * (attempt + 1)
+                    _p(f"  [429] rate limited, waiting {wait}s...")
+                    time.sleep(wait)
+                else:
+                    raise
         secret = integration["webhook_secret"]
         _p(f"  [ok] Integration created, secret={secret[:8]}...")
     except Exception as exc:
@@ -929,7 +939,7 @@ def main():
     passed = failed = skipped = 0
     for i, p in enumerate(platforms):
         if i > 0:
-            time.sleep(1.5)   # stay well under 120 rpm rate limit
+            time.sleep(3.0)   # stay well under 120 rpm rate limit (~20 req/min)
         ok = test_platform(p, args.network)
         if PLATFORMS.get(p, {}).get("skip"):
             skipped += 1

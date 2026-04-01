@@ -248,8 +248,8 @@ mutation {
 
 | Network | Asset | Notes |
 |---------|-------|-------|
-| Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass | Requires ASA opt-in on payout wallet |
-| `voi_mainnet` | aUSDC (ARC200 app ID 302190) | |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass | Requires ASA opt-in on payout wallet |
+| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
 
@@ -261,6 +261,6 @@ Confirmed end-to-end on **2026-03-31** against `api1.ilovechicken.co.uk`:
 
 | Test | Network | Result |
 |------|---------|--------|
-| `INVOICE_CREATED` webhook -> checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
+| `INVOICE_CREATED` webhook -> checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
 
 Verification: token comparison (no HMAC). The `webhook_secret` is sent verbatim in `X-Wave-Webhook-Token`. Amount field: `data.invoice.amountDue.value` (string, major units).

@@ -112,8 +112,8 @@ Content-Type: application/json
 
 | Value | Settles in |
 |-------|-----------|
-| `algorand_mainnet` | USDC on Algorand |
-| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
+| Webhook → checkout link | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip |
 
 ---
 
@@ -159,7 +159,7 @@ Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`:
 
 | Test | Network | Result |
 |------|---------|--------|
-| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
 
 Cannot auto-test: Documentation only — Faire API approval required.
 
@@ -167,7 +167,7 @@ Cannot auto-test: Documentation only — Faire API approval required.
 
 | Network | Asset | Notes |
 |---------|-------|-------|
-| `algorand_mainnet` | USDC (ASA 31566704) | Requires ASA opt-in on payout wallet |
-| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip | |
+| Webhook → checkout link | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip | Requires ASA opt-in on payout wallet |
+| Webhook → checkout link | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
