@@ -55,7 +55,7 @@ Content-Type: application/json
 | Field | Description |
 |-------|-------------|
 | `amount_microunits` | Price per call in USDC microunits (1 USDC = 1,000,000) |
-| `asset_id` | `31566704` = USDC on Algorand, `311051` = aUSDC on VOI |
+| `asset_id` | `31566704` = USDC on Algorand, `302190` = aUSDC on VOI |
 | `access_ttl_secs` | How long the JWT receipt grants access (e.g. 3600 = 1 hour) |
 | `note_binding_required` | Require payment tx note to include tenant/resource ID |
 
@@ -144,12 +144,24 @@ The JWT receipt can be cached and replayed within `access_ttl_secs` — no need 
 
 ---
 
+---
+
+## Live test status
+
+Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
+
+Cannot auto-test: Protocol documentation — not a platform webhook adapter.
+
 ## Supported networks and assets
 
 | Network | Asset | Asset ID | Notes |
 |---------|-------|----------|-------|
 | `algorand-mainnet` | USDC | ASA 31566704 | Native Circle USDC |
-| `voi-mainnet` | aUSDC | ARC200 311051 | AlgoVoi network stablecoin |
+| `voi-mainnet` | aUSDC | ARC200 302190 | AlgoVoi network stablecoin |
 | `algorand-testnet` | Test USDC | — | For development and testing |
 | `voi-testnet` | Test aUSDC | — | For development and testing |
 
@@ -216,6 +228,7 @@ AlgoVoi serves two distinct payment flows from the same infrastructure:
 |------|----------|---------|-----------|
 | **x402** | AI agent (autonomous) | HTTP 402 response | Per-call, real-time, on-chain |
 | **E-commerce adapters** | Human customer | Shopify/WooCommerce/etc. order webhook | Per-order, hosted checkout |
+| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip |
 
 Both flows use the same tenant network configs, payout addresses, and on-chain verification via the Facilitator. Only the entry point differs.
 

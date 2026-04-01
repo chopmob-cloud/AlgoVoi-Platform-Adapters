@@ -75,12 +75,12 @@ Content-Type: application/json
 {
   "network": "voi_mainnet",
   "payout_address": "<your-voi-address>",
-  "preferred_asset_id": "311051",
+  "preferred_asset_id": "302190",
   "preferred_asset_decimals": 6
 }
 ```
 
-> ARC200 app ID `311051` is aUSDC on VOI mainnet.
+> ARC200 app ID `302190` is aUSDC on VOI mainnet.
 
 ---
 
@@ -191,11 +191,23 @@ Once connected:
 
 ---
 
+---
+
+## Live test status
+
+Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
+
+Signature verified and checkout link generated. Asset: USDC (ASA 31566704).
+
 ## Supported networks
 
 | Network | Asset | Notes |
 |---------|-------|-------|
 | `algorand_mainnet` | USDC (ASA 31566704) | Requires ASA opt-in on payout wallet |
-| `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
+| `voi_mainnet` | aUSDC (ARC200 app ID 302190) | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |

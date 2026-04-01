@@ -62,7 +62,7 @@ Content-Type: application/json
 {
   "network": "voi_mainnet",
   "payout_address": "<your-voi-address>",
-  "preferred_asset_id": "311051",
+  "preferred_asset_id": "302190",
   "preferred_asset_decimals": 6
 }
 ```
@@ -154,11 +154,23 @@ Once connected:
 
 ---
 
+---
+
+## Live test status
+
+Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
+
+Cannot auto-test: ES512 JWK — requires real TrueLayer signing key.
+
 ## Supported networks
 
 | Network | Asset | Notes |
 |---------|-------|-------|
 | `algorand_mainnet` | USDC (ASA 31566704) | Requires ASA opt-in on payout wallet |
-| `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
+| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip | |
 | `algorand_testnet` | Test USDC | Use TrueLayer `sandbox` environment for testing |
 | `voi_testnet` | Test aUSDC | Use TrueLayer `sandbox` environment for testing |

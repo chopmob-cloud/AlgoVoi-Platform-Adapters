@@ -13,7 +13,7 @@ Supported settlement assets:
 | Asset | Network | Details |
 |-------|---------|---------|
 | USDC | Algorand mainnet | Native ASA (ASA ID 31566704), issued by Circle |
-| aUSDC | VOI mainnet | ARC200 token (app ID 311051) |
+| aUSDC | VOI mainnet | ARC200 token (app ID 302190) |
 
 ---
 

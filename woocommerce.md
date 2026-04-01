@@ -62,12 +62,12 @@ Content-Type: application/json
 {
   "network": "voi_mainnet",
   "payout_address": "<your-voi-address>",
-  "preferred_asset_id": "311051",
+  "preferred_asset_id": "302190",
   "preferred_asset_decimals": 6
 }
 ```
 
-> ARC200 app ID `311051` is aUSDC on VOI mainnet.
+> ARC200 app ID `302190` is aUSDC on VOI mainnet.
 
 ---
 
@@ -106,8 +106,8 @@ Content-Type: application/json
 
 | Value | Settles in |
 |-------|-----------|
-| `algorand_mainnet` | USDC on Algorand |
-| `voi_mainnet` | aUSDC on VOI |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
+| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass |
 
 The response includes a `webhook_secret` and a `webhook_url`. Save both — the secret is shown once.
 
@@ -184,8 +184,8 @@ Content-Type: application/json
 
 | Network | Asset | Notes |
 |---------|-------|-------|
-| `algorand_mainnet` | USDC (ASA 31566704) | Requires ASA opt-in on payout wallet |
-| `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass | Requires ASA opt-in on payout wallet |
+| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
 
@@ -197,6 +197,6 @@ Confirmed end-to-end on **2026-03-31** against `api1.ilovechicken.co.uk`:
 
 | Test | Network | Result |
 |------|---------|--------|
-| `order.created` webhook → checkout link | `algorand_mainnet` (USDC ASA 31566704) | ✅ Pass |
+| `order.created` webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
 
 Signature verification uses `HMAC-SHA256` over the raw request body, base64-encoded, in the `X-Wc-Webhook-Signature` header.

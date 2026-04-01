@@ -62,7 +62,7 @@ Content-Type: application/json
 {
   "network": "voi_mainnet",
   "payout_address": "<your-voi-address>",
-  "preferred_asset_id": "311051",
+  "preferred_asset_id": "302190",
   "preferred_asset_decimals": 6
 }
 ```
@@ -141,8 +141,8 @@ Once connected, every new Wix order triggers AlgoVoi to:
 
 | Network | Asset | Notes |
 |---------|-------|-------|
-| `algorand_mainnet` | USDC (ASA 31566704) | Requires ASA opt-in on payout wallet |
-| `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip | Requires ASA opt-in on payout wallet |
+| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
 

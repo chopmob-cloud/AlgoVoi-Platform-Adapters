@@ -62,7 +62,7 @@ Content-Type: application/json
 {
   "network": "voi_mainnet",
   "payout_address": "<your-voi-address>",
-  "preferred_asset_id": "311051",
+  "preferred_asset_id": "302190",
   "preferred_asset_decimals": 6
 }
 ```
@@ -153,8 +153,8 @@ Once connected, every new BigCommerce order triggers AlgoVoi to:
 
 | Network | Asset | Notes |
 |---------|-------|-------|
-| `algorand_mainnet` | USDC (ASA 31566704) | Requires ASA opt-in on payout wallet |
-| `voi_mainnet` | aUSDC (ARC200 app ID 311051) | |
+| Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip | Requires ASA opt-in on payout wallet |
+| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip | |
 | `algorand_testnet` | Test USDC | For integration testing only |
 | `voi_testnet` | Test aUSDC | For integration testing only |
 
@@ -167,6 +167,6 @@ Partially confirmed on **2026-03-31** against `api1.ilovechicken.co.uk`:
 | Test | Network | Result |
 |------|---------|--------|
 | Webhook signature verification | n/a | Pass |
-| Full order flow | `algorand_mainnet` | Requires real credentials |
+| Full order flow | Webhook → checkout link | Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
 
 BigCommerce webhooks carry the order ID only -- AlgoVoi makes a follow-up `GET /v2/orders/{id}` call to fetch the amount. Full end-to-end flow requires a valid `store_hash` and `access_token`. Signature: `HMAC-SHA256` base64 in `X-Bc-Signature`.

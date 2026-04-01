@@ -173,9 +173,22 @@ All transfers settle as native USDC (ASA `31566704`) on Algorand mainnet.
 
 ---
 
+---
+
+## Live test status
+
+Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`:
+
+| Test | Network | Result |
+|------|---------|--------|
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Skip |
+
+Webhook signature verified on `algorand_mainnet`; full order-amount fetch requires real platform API credentials.
+
 ## Supported networks
 
 | Network | Asset | Notes |
 |---------|-------|-------|
 | `algorand_mainnet` | USDC (ASA 31566704) | Destination for all Wormhole transfers |
 | `algorand_testnet` | Test USDC | Use Wormhole testnet environment for testing |
+| Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Skip |
