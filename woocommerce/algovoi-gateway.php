@@ -109,10 +109,9 @@ add_action('plugins_loaded', function () {
 
     // Gateway 2: AlgoVoi Browser Extension
     class WC_AlgoVoi_Extension_Gateway extends WC_Payment_Gateway {
-        private static $R2A = array(
-            'GHSRL2SAY247LWE7HLUGEYKHC5JMDOGWECW5TMN6PTP73FT2Z5AWMADMWI' => '31566704',
-            'THDLWTJ7RB4OJWFZCLL5IME7FHBSJ3SONBRWHIVQE3BEGTY2BWUEUVEOQY' => '302190',
-        );
+        // Receiver address → ASA/app ID mapping — configure in WP admin settings.
+        // Do not hardcode live wallet addresses here.
+        private static $R2A = array();
         private static $AM = array(
             '31566704' => array('ticker' => 'USDC',  'dec' => 6, 'algod' => 'https://mainnet-api.algonode.cloud', 'chain' => 'Algorand'),
             '302190'   => array('ticker' => 'aUSDC', 'dec' => 6, 'algod' => 'https://mainnet-api.voi.nodely.io',  'chain' => 'VOI'),
