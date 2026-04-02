@@ -1,0 +1,52 @@
+<div class="algovoi-payment-panel" style="
+  background:#0d0d0d;
+  border:1px solid #2a2d3a;
+  border-radius:8px;
+  padding:20px 24px;
+  color:#e0e0e0;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  margin-bottom:16px;
+">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+    <strong style="color:#fff;font-size:16px;">AlgoVoi</strong>
+    <span style="color:#666;font-size:13px;">Pay via Browser Extension</span>
+  </div>
+  <p style="margin:0 0 14px;font-size:13px;color:#aaa;line-height:1.5;">
+    Pay instantly with <strong style="color:#fff;">USDC</strong> or <strong style="color:#fff;">aUSDC</strong>
+    directly from your AlgoVoi browser extension. No redirect required.
+  </p>
+  <div style="display:flex;gap:8px;font-size:12px;margin-bottom:20px;">
+    <span style="background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:3px 8px;color:#3b82f6;">In-page payment</span>
+    <span style="background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:3px 8px;color:#3b82f6;">No redirect</span>
+    <span style="background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:3px 8px;color:#666;">On-chain verified</span>
+  </div>
+  <div class="text-end">
+    <button type="button" id="button-algovoi-ext-confirm" class="btn btn-primary">Confirm Order</button>
+  </div>
+</div>
+
+<script type="text/javascript">
+$('#button-algovoi-ext-confirm').on('click', function() {
+    var element = this;
+    $(element).prop('disabled', true).text('Processing...');
+
+    $.ajax({
+        url: 'index.php?route=extension/algovoi_ext/payment/algovoi_ext.confirm&language={{ language }}',
+        type: 'POST',
+        dataType: 'json',
+        success: function(json) {
+            if (json['error']) {
+                $('#alert').prepend('<div class="alert alert-danger alert-dismissible"><i class="fa-solid fa-circle-exclamation"></i> ' + json['error'] + ' <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
+                $(element).prop('disabled', false).text('Confirm Order');
+            }
+            if (json['redirect']) {
+                location = json['redirect'];
+            }
+        },
+        error: function(xhr) {
+            console.log(xhr.responseText);
+            $(element).prop('disabled', false).text('Confirm Order');
+        }
+    });
+});
+</script>

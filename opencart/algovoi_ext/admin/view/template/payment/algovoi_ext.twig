@@ -1,0 +1,36 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header"><div class="container-fluid"><h1>AlgoVoi Extension Payment</h1></div></div>
+  <div class="container-fluid">
+    <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-payment">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Settings</h3></div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">Status</label>
+            <div class="col-sm-10">
+              <select name="payment_algovoi_ext_status" class="form-select">
+                <option value="1" {% if payment_algovoi_ext_status %}selected{% endif %}>Enabled</option>
+                <option value="0" {% if not payment_algovoi_ext_status %}selected{% endif %}>Disabled</option>
+              </select>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">Sort Order</label>
+            <div class="col-sm-10">
+              <input type="text" name="payment_algovoi_ext_sort_order" value="{{ payment_algovoi_ext_sort_order }}" class="form-control"/>
+            </div>
+          </div>
+          <p class="text-muted" style="font-size:13px;">This extension shares API credentials with the AlgoVoi Hosted Checkout extension. Configure them there.</p>
+        </div>
+      </div>
+      <div class="row mt-3">
+        <div class="col text-end">
+          <a href="{{ cancel }}" class="btn btn-light">Cancel</a>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{{ footer }}

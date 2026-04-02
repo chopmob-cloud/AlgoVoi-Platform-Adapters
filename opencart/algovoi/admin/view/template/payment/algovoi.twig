@@ -1,0 +1,112 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="float-end">
+        <button type="button" data-bs-toggle="tooltip" title="{{ button_save }}" id="button-save" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i></button>
+        <a href="{{ back }}" data-bs-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-light"><i class="fa-solid fa-reply"></i></a>
+      </div>
+      <h1>{{ heading_title }}</h1>
+      <ol class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+          <li class="breadcrumb-item"><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+  <div class="container-fluid">
+    <div id="error" class="alert alert-danger d-none"><i class="fa-solid fa-circle-exclamation"></i></div>
+    <div class="card">
+      <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-pencil"></i> {{ text_edit }}</h3></div>
+      <div class="card-body">
+        <form id="form-algovoi" action="{{ save }}" method="post" data-oc-toggle="ajax">
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">{{ entry_status }}</label>
+            <div class="col-sm-10">
+              <div class="form-check form-switch">
+                <input type="hidden" name="payment_algovoi_status" value="0"/>
+                <input type="checkbox" name="payment_algovoi_status" value="1" id="input-status" class="form-check-input"{% if payment_algovoi_status %} checked{% endif %}/>
+              </div>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">{{ entry_api_base_url }}</label>
+            <div class="col-sm-10">
+              <input type="text" name="payment_algovoi_api_base_url" value="{{ payment_algovoi_api_base_url }}" class="form-control" placeholder="https://api1.ilovechicken.co.uk"/>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">{{ entry_tenant_id }}</label>
+            <div class="col-sm-10">
+              <input type="text" name="payment_algovoi_tenant_id" value="{{ payment_algovoi_tenant_id }}" class="form-control"/>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">{{ entry_admin_api_key }}</label>
+            <div class="col-sm-10">
+              <input type="text" name="payment_algovoi_admin_api_key" value="{{ payment_algovoi_admin_api_key }}" class="form-control"/>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">{{ entry_preferred_network }}</label>
+            <div class="col-sm-10">
+              <select name="payment_algovoi_preferred_network" class="form-select">
+                <option value="algorand_mainnet"{% if payment_algovoi_preferred_network == 'algorand_mainnet' %} selected{% endif %}>Algorand Mainnet (USDC)</option>
+                <option value="voi_mainnet"{% if payment_algovoi_preferred_network == 'voi_mainnet' %} selected{% endif %}>VOI Mainnet (aUSDC)</option>
+              </select>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">{{ entry_webhook_secret }}</label>
+            <div class="col-sm-10">
+              <input type="text" name="payment_algovoi_webhook_secret" value="{{ payment_algovoi_webhook_secret }}" class="form-control"/>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">{{ entry_pending_status }}</label>
+            <div class="col-sm-10">
+              <select name="payment_algovoi_pending_status_id" class="form-select">
+                {% for order_status in order_statuses %}
+                  <option value="{{ order_status.order_status_id }}"{% if payment_algovoi_pending_status_id == order_status.order_status_id %} selected{% endif %}>{{ order_status.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">{{ entry_complete_status }}</label>
+            <div class="col-sm-10">
+              <select name="payment_algovoi_complete_status_id" class="form-select">
+                {% for order_status in order_statuses %}
+                  <option value="{{ order_status.order_status_id }}"{% if payment_algovoi_complete_status_id == order_status.order_status_id %} selected{% endif %}>{{ order_status.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">{{ entry_geo_zone }}</label>
+            <div class="col-sm-10">
+              <select name="payment_algovoi_geo_zone_id" class="form-select">
+                <option value="0">{{ text_all_zones }}</option>
+                {% for geo_zone in geo_zones %}
+                  <option value="{{ geo_zone.geo_zone_id }}"{% if payment_algovoi_geo_zone_id == geo_zone.geo_zone_id %} selected{% endif %}>{{ geo_zone.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">{{ entry_sort_order }}</label>
+            <div class="col-sm-10">
+              <input type="text" name="payment_algovoi_sort_order" value="{{ payment_algovoi_sort_order }}" class="form-control" style="width:80px"/>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="text/javascript">
+$('#button-save').on('click', function() {
+  $('#form-algovoi').trigger('submit');
+});
+</script>
+{{ footer }}

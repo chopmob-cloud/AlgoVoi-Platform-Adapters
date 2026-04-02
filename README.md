@@ -65,7 +65,7 @@ Integration guides (`.md`) are always at the root. Supporting files — plugins,
 | Amazon | [amazon.md](./amazon.md) | — | Available |
 | CeX | [cex.md](./cex.md) | — | Available |
 | Ecwid | [ecwid.md](./ecwid.md) | — | Available |
-| OpenCart | [opencart.md](./opencart.md) | — | Available |
+| OpenCart | [opencart.md](./opencart.md) | [opencart/](./opencart/) | Available |
 | Shopware | [shopware.md](./shopware.md) | — | Available |
 | TikTok Shop | [tiktok-shop.md](./tiktok-shop.md) | — | Available |
 
