@@ -1,0 +1,23 @@
+{
+    "name": "algovoi/payment",
+    "description": "AlgoVoi payment extension for Shopware 6",
+    "type": "shopware-platform-plugin",
+    "license": "MIT",
+    "version": "1.0.0",
+    "autoload": {
+        "psr-4": {
+            "AlgovoiPayment\\": "src/"
+        }
+    },
+    "extra": {
+        "shopware-plugin-class": "AlgovoiPayment\\AlgovoiPayment",
+        "label": {
+            "de-DE": "AlgoVoi Zahlung",
+            "en-GB": "AlgoVoi Payment"
+        },
+        "description": {
+            "de-DE": "Stablecoin-Zahlungen via AlgoVoi (USDC/aUSDC)",
+            "en-GB": "Stablecoin payments via AlgoVoi (USDC/aUSDC)"
+        }
+    }
+}

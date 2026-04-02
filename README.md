@@ -56,6 +56,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 |----------|-----------|-----------------|
 | OpenCart 4 | opencart.ilovechicken.co.uk | Hosted checkout + wallet extension |
 | PrestaShop 8.2.5 | prestashop.ilovechicken.co.uk | Hosted checkout + wallet extension |
+| Shopware 6.7.8.2 | shopware.ilovechicken.co.uk | Hosted checkout + wallet extension |
 
 ---
 
@@ -76,7 +77,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | CeX | [cex.md](./cex.md) | — | Available |
 | Ecwid | [ecwid.md](./ecwid.md) | — | Available |
 | OpenCart | [opencart.md](./opencart.md) | [opencart/](./opencart/) | Available |
-| Shopware | [shopware.md](./shopware.md) | — | Available |
+| Shopware | [shopware.md](./shopware.md) | [shopware/](./shopware/) | Available |
 | TikTok Shop | [tiktok-shop.md](./tiktok-shop.md) | — | Available |
 
 ## Regional & international marketplace integrations
