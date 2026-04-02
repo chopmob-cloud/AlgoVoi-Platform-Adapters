@@ -58,6 +58,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | PrestaShop 8.2.5 | prestashop.ilovechicken.co.uk | Hosted checkout + wallet extension |
 | Shopware 6.7.8.2 | shopware.ilovechicken.co.uk | Hosted checkout + wallet extension |
 | WooCommerce 10.6.2 / WordPress 6.9.4 | woocommerce.ilovechicken.co.uk | Hosted checkout + wallet extension |
+| AlgoVoi 1.0 | api1.ilovechicken.co.uk/shop-demo | Hosted checkout + wallet extension |
 
 ---
 
