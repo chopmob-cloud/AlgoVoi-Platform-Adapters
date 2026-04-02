@@ -453,6 +453,75 @@ See Step 3 above. This is the most common cause of `Could not load model extensi
 
 ---
 
+## Server hardening (nginx + fail2ban)
+
+OpenCart is served by nginx. There is no `.htaccess` on nginx — all access control lives in the nginx site config.
+
+### Rate limiting
+
+Three limit zones are defined at the `http` level (outside `server {}`):
+
+```nginx
+limit_req_zone $binary_remote_addr zone=oc_admin:10m    rate=30r/m;
+limit_req_zone $binary_remote_addr zone=oc_checkout:10m rate=20r/m;
+limit_req_zone $binary_remote_addr zone=oc_login:10m    rate=5r/m;
+```
+
+Applied to:
+
+| Location | Zone | Burst |
+|----------|------|-------|
+| `/admin` (all admin requests) | `oc_admin` | 10 |
+| `/admin/index.php` (admin login) | `oc_login` | 3 |
+| `index.php?route=checkout/*` | `oc_checkout` | 5 |
+| `index.php?route=account/login` | `oc_login` | 3 |
+
+All rate-limited locations return HTTP 429 on breach.
+
+### Blocked paths
+
+| Pattern | Reason |
+|---------|--------|
+| `/config.php`, `/admin/config.php` | Contains DB credentials |
+| `/system/storage/` | Never publicly accessible |
+| `/image/**.(php\|phtml\|...)` | Webshell prevention |
+| `/download/**.(php\|...)` | Webshell prevention |
+| `*.(engine\|inc\|sql\|bak\|log\|tpl)` | Sensitive file extensions |
+| `readme.txt`, `CHANGELOG.md` etc. | Version disclosure |
+| `/system/engine/`, `/system/library/` | Core PHP files |
+| `/\.` (hidden files) | `.git`, `.env`, `.htaccess` etc. |
+
+### Security headers
+
+```
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+```
+
+PHP version is hidden via `fastcgi_hide_header X-Powered-By`.
+
+### fail2ban
+
+The `opencart-admin` jail watches `/var/log/nginx/error.log` using the built-in `nginx-limit-req` filter. An IP that triggers 10 rate-limit rejections within 60 seconds is banned for 10 minutes.
+
+```ini
+[opencart-admin]
+enabled   = true
+filter    = nginx-limit-req
+logpath   = /var/log/nginx/error.log
+maxretry  = 10
+findtime  = 60
+bantime   = 600
+```
+
+Check banned IPs: `fail2ban-client status opencart-admin`
+
+---
+
 ## Live test status
 
 Confirmed end-to-end on **2026-04-02** against `api1.ilovechicken.co.uk`, OpenCart 4.1.0.3 at `opencart.ilovechicken.co.uk`:
