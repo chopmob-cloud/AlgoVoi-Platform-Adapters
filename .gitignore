@@ -16,3 +16,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .claude/
+
+# Nginx server configs (contain server-specific IPs and paths)
+nginx/

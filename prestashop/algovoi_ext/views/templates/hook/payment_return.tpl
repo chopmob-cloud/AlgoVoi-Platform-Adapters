@@ -1,0 +1,1 @@
+{extends file="page.tpl"}{block name="page_content"}<div class="box"><h3>AlgoVoi Wallet Payment Processing</h3><p>Your order has been placed and is awaiting on-chain confirmation. You will receive an email once the transaction is confirmed.</p></div>{/block}
