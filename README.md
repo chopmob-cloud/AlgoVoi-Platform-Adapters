@@ -40,12 +40,22 @@ Where a platform requires installable files (WordPress plugins, config templates
 platform-adapters/
 ├── {adapter}.md          # Integration guide (one per platform)
 └── {adapter}/            # Adapter-specific files where applicable
-    ├── *.php             # WordPress/WooCommerce plugins
+    ├── *.php             # PHP modules / plugins
+    ├── theme/            # Theme CSS and templates (PrestaShop)
     ├── *.json            # Config templates
     └── ...
 ```
 
 Integration guides (`.md`) are always at the root. Supporting files — plugins, config templates, deployment scripts — live in a matching subfolder named after the adapter.
+
+### Live-tested adapters
+
+The following adapters have been end-to-end tested against a live AlgoVoi tenant on both `algorand_mainnet` and `voi_mainnet`:
+
+| Platform | Demo store | Modules included |
+|----------|-----------|-----------------|
+| OpenCart 4 | opencart.ilovechicken.co.uk | Hosted checkout + wallet extension |
+| PrestaShop 8.2.5 | prestashop.ilovechicken.co.uk | Hosted checkout + wallet extension |
 
 ---
 
@@ -58,7 +68,7 @@ Integration guides (`.md`) are always at the root. Supporting files — plugins,
 | Magento 1 & 2 | [magento.md](./magento.md) | — | Available |
 | BigCommerce | [bigcommerce.md](./bigcommerce.md) | — | Available |
 | Wix eCommerce | [wix.md](./wix.md) | — | Available |
-| PrestaShop | [prestashop.md](./prestashop.md) | — | Available |
+| PrestaShop | [prestashop.md](./prestashop.md) | [prestashop/](./prestashop/) | Available |
 | Squarespace Commerce | [squarespace.md](./squarespace.md) | — | Available |
 | eBay | [ebay.md](./ebay.md) | — | Available |
 | Walmart | [walmart.md](./walmart.md) | — | Available |
