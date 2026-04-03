@@ -60,6 +60,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Shopware 6.7.8.2 | shopware.ilovechicken.co.uk | Algorand, VOI, Hedera | Algorand, VOI |
 | WooCommerce 10.6.2 / WordPress 6.9.4 | woocommerce.ilovechicken.co.uk | Algorand, VOI, Hedera | Algorand, VOI |
 | Native PHP | — | Algorand, VOI, Hedera | Algorand, VOI |
+| Native Python | — | Algorand, VOI, Hedera | Algorand, VOI |
 | AlgoVoi 1.0 | api1.ilovechicken.co.uk/shop-demo | Algorand, VOI, Hedera | Algorand, VOI |
 
 ### Two payment flows
@@ -75,6 +76,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Platform | Guide | Files | Status |
 |----------|-------|-------|--------|
 | **Native PHP** | — | [native-php/](./native-php/) | **Available — drop-in, zero dependencies** |
+| **Native Python** | — | [native-python/](./native-python/) | **Available — stdlib only, no pip install** |
 | Shopify | [shopify.md](./shopify.md) | — | Available |
 | WooCommerce | [woocommerce.md](./woocommerce.md) | [woocommerce/](./woocommerce/) | Available |
 | Magento 1 & 2 | [magento.md](./magento.md) | — | Available |
