@@ -146,11 +146,13 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Yapily | [yapily.md](./yapily.md) | Available |
 | Wormhole | [wormhole.md](./wormhole.md) | Available |
 
-## AI agent payments (x402)
+## AI agent & machine payment adapters
 
-| Guide | Description |
-|-------|-------------|
-| [x402-ai-agents.md](./x402-ai-agents.md) | Autonomous AI agent payments via the x402 protocol |
+| Adapter | Files | Description |
+|---------|-------|-------------|
+| **x402** | [x402-ai-agents.md](./x402-ai-agents.md) | Autonomous AI agent payments via the x402 protocol |
+| **MPP** | [mpp-adapter/](./mpp-adapter/) | Machine Payments Protocol server middleware — gate APIs behind `WWW-Authenticate: Payment` challenges |
+| **AP2** | [ap2-adapter/](./ap2-adapter/) | Google Agent Payments Protocol (AP2) server middleware — accept ed25519 signed mandates from AI agents |
 
 ---
 
