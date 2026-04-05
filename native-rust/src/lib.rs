@@ -77,7 +77,12 @@ static ALGOD_VOI: AlgodConfig = AlgodConfig {
 // ── Network validation ──────────────────────────────────────────────────
 
 /// Valid networks for hosted checkout.
-pub const HOSTED_NETWORKS: &[&str] = &["algorand_mainnet", "voi_mainnet", "hedera_mainnet"];
+pub const HOSTED_NETWORKS: &[&str] = &[
+    "algorand_mainnet",
+    "voi_mainnet",
+    "hedera_mainnet",
+    "stellar_mainnet",
+];
 
 /// Valid networks for extension payment.
 pub const EXT_NETWORKS: &[&str] = &["algorand_mainnet", "voi_mainnet"];
@@ -382,7 +387,11 @@ impl Client {
 // ── HTML Helpers ────────────────────────────────────────────────────────
 
 /// Render chain selector radio buttons as HTML.
-/// `mode` should be `"hosted"` (3 chains) or `"extension"` (2 chains).
+///
+/// `mode` should be `"hosted"` (4 chains: Algorand, VOI, Hedera, Stellar) or
+/// `"extension"` (2 chains: Algorand, VOI — the AlgoVoi browser extension signs
+/// those two, while Hedera/Stellar buyers use hosted checkout with their own
+/// wallet such as HashPack, Freighter, or LOBSTR).
 pub fn render_chain_selector(field_name: &str, mode: &str) -> String {
     let mut chains = vec![
         ("algorand_mainnet", "Algorand", "USDC", "#3b82f6"),
@@ -390,6 +399,7 @@ pub fn render_chain_selector(field_name: &str, mode: &str) -> String {
     ];
     if mode == "hosted" {
         chains.push(("hedera_mainnet", "Hedera", "USDC", "#00a9a5"));
+        chains.push(("stellar_mainnet", "Stellar", "USDC", "#7C63D0"));
     }
 
     let mut html = String::from(
@@ -711,9 +721,11 @@ mod tests {
     fn test_network_validation() {
         assert!(is_valid_hosted_network("algorand_mainnet"));
         assert!(is_valid_hosted_network("hedera_mainnet"));
+        assert!(is_valid_hosted_network("stellar_mainnet"));
         assert!(!is_valid_hosted_network("invalid"));
         assert!(is_valid_ext_network("voi_mainnet"));
         assert!(!is_valid_ext_network("hedera_mainnet"));
+        assert!(!is_valid_ext_network("stellar_mainnet"));
     }
 
     #[test]
@@ -740,10 +752,12 @@ mod tests {
         assert!(html.contains("algorand_mainnet"));
         assert!(html.contains("voi_mainnet"));
         assert!(html.contains("hedera_mainnet"));
+        assert!(html.contains("stellar_mainnet"));
 
         let html2 = render_chain_selector("network", "extension");
         assert!(html2.contains("algorand_mainnet"));
         assert!(html2.contains("voi_mainnet"));
         assert!(!html2.contains("hedera_mainnet"));
+        assert!(!html2.contains("stellar_mainnet"));
     }
 }

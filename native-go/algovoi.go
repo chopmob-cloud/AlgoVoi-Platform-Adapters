@@ -41,7 +41,12 @@ var algodConfigs = map[string]AlgodConfig{
 	"voi-mainnet":      {URL: "https://mainnet-api.voi.nodely.io", AssetID: 302190, Ticker: "aUSDC", Dec: 6},
 }
 
-var hostedNetworks = map[string]bool{"algorand_mainnet": true, "voi_mainnet": true, "hedera_mainnet": true}
+var hostedNetworks = map[string]bool{
+	"algorand_mainnet": true,
+	"voi_mainnet":      true,
+	"hedera_mainnet":   true,
+	"stellar_mainnet":  true,
+}
 var extNetworks = map[string]bool{"algorand_mainnet": true, "voi_mainnet": true}
 
 var tokenRegex = regexp.MustCompile(`/checkout/([A-Za-z0-9_-]+)$`)
@@ -74,11 +79,11 @@ func New(apiBase, apiKey, tenantID, webhookSecret string) *Client {
 
 // PaymentLinkResponse is the API response from creating a payment link.
 type PaymentLinkResponse struct {
-	CheckoutURL     string `json:"checkout_url"`
-	ID              string `json:"id"`
-	Chain           string `json:"chain"`
-	AmountMicrounits int   `json:"amount_microunits"`
-	AssetID         int    `json:"asset_id"`
+	CheckoutURL      string `json:"checkout_url"`
+	ID               string `json:"id"`
+	Chain            string `json:"chain"`
+	AmountMicrounits int    `json:"amount_microunits"`
+	AssetID          int    `json:"asset_id"`
 }
 
 // CreatePaymentLink creates a payment link via the AlgoVoi API.
@@ -122,9 +127,9 @@ func ExtractToken(checkoutURL string) string {
 
 // HostedResult contains the data from a hosted checkout initiation.
 type HostedResult struct {
-	CheckoutURL     string
-	Token           string
-	Chain           string
+	CheckoutURL      string
+	Token            string
+	Chain            string
 	AmountMicrounits int
 }
 
@@ -338,7 +343,9 @@ type ChainInfo struct {
 }
 
 // RenderChainSelector renders chain selector radio buttons as HTML.
-// mode should be "hosted" (3 chains) or "extension" (2 chains).
+// mode should be "hosted" (4 chains: Algorand, VOI, Hedera, Stellar) or
+// "extension" (2 chains: Algorand, VOI — the AlgoVoi browser extension signs
+// those two; Hedera/Stellar buyers use hosted checkout with their own wallet).
 func RenderChainSelector(fieldName, mode string) string {
 	chains := []ChainInfo{
 		{Value: "algorand_mainnet", Label: "Algorand", Ticker: "USDC", Colour: "#3b82f6"},
@@ -346,6 +353,7 @@ func RenderChainSelector(fieldName, mode string) string {
 	}
 	if mode == "hosted" {
 		chains = append(chains, ChainInfo{Value: "hedera_mainnet", Label: "Hedera", Ticker: "USDC", Colour: "#00a9a5"})
+		chains = append(chains, ChainInfo{Value: "stellar_mainnet", Label: "Stellar", Ticker: "USDC", Colour: "#7C63D0"})
 	}
 
 	var sb strings.Builder

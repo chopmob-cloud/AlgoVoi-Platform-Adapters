@@ -45,7 +45,10 @@ ALGOD = {
     "voi-mainnet":      {"url": "https://mainnet-api.voi.nodely.io",  "asset_id": 302190,   "ticker": "aUSDC", "dec": 6},
 }
 
-HOSTED_NETWORKS = {"algorand_mainnet", "voi_mainnet", "hedera_mainnet"}
+HOSTED_NETWORKS = {
+    "algorand_mainnet", "voi_mainnet", "hedera_mainnet",
+    "stellar_mainnet",
+}
 EXT_NETWORKS = {"algorand_mainnet", "voi_mainnet"}
 
 
@@ -84,7 +87,7 @@ class AlgoVoi:
             amount:       Order total
             currency:     ISO currency code (e.g. USD, GBP)
             label:        Order label (e.g. "Order #123")
-            network:      Preferred network (algorand_mainnet, voi_mainnet, hedera_mainnet)
+            network:      Preferred network (algorand_mainnet, voi_mainnet, hedera_mainnet, stellar_mainnet)
             redirect_url: Return URL after hosted checkout (optional)
 
         Returns:
@@ -301,6 +304,7 @@ class AlgoVoi:
         ]
         if mode == "hosted":
             chains.append(("hedera_mainnet", "Hedera", "USDC", "#00a9a5"))
+            chains.append(("stellar_mainnet", "Stellar", "USDC", "#7C63D0"))
 
         name = escape(field_name)
         html = (

@@ -155,6 +155,7 @@ class Ap2Gate:
         "algorand_mainnet": "algorand-mainnet",
         "voi_mainnet": "voi-mainnet",
         "hedera_mainnet": "hedera-mainnet",
+        "stellar_mainnet": "stellar-mainnet",
     }
 
     def __init__(

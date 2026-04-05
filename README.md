@@ -1,20 +1,22 @@
 # AlgoVoi Platform Adapters
 
-Integration guides and drop-in payment plugins for connecting e-commerce platforms to **AlgoVoi Tenant Services** — enabling merchants to accept stablecoin payments settled on the Algorand, VOI, and Hedera blockchains.
+Integration guides and drop-in payment plugins for connecting e-commerce platforms to **AlgoVoi Tenant Services** — enabling merchants to accept stablecoin payments settled on the Algorand, VOI, Hedera, and Stellar blockchains.
 
 ---
 
 ## What is AlgoVoi?
 
-AlgoVoi is a multi-tenant payment infrastructure layer built on the Algorand Virtual Machine (AVM) with Hedera support. It allows merchants and developers to accept on-chain stablecoin payments through hosted checkout or browser extension flows, without managing wallets or blockchain integrations directly.
+AlgoVoi is a multi-tenant payment infrastructure layer built on the Algorand Virtual Machine (AVM) with Hedera and Stellar support. It allows merchants and developers to accept on-chain stablecoin payments through hosted checkout or browser extension flows, without managing wallets or blockchain integrations directly.
 
 Supported settlement assets:
 
 | Asset | Network | Details |
 |-------|---------|---------|
-| USDC | Algorand mainnet | Native ASA (ASA ID 31566704), issued by Circle |
-| aUSDC | VOI mainnet | Native ASA (ASA ID 302190), Aramid-bridged USDC |
-| USDC | Hedera mainnet | Via AlgoVoi hosted checkout |
+| USDC  | Algorand mainnet | Native ASA (ASA ID 31566704), issued by Circle |
+| aUSDC | VOI mainnet      | ARC200 (app 302190), Aramid-bridged USDC |
+| USDC  | Hedera mainnet   | HTS token 0.0.456858, issued by Circle |
+| USDC  | Stellar mainnet  | Credit asset issued by Circle (`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`); receiver must have a trust line before accepting |
+| ALGO / VOI / HBAR / XLM | Any mainnet | Native coin payments also supported on every chain (6/6/8/7 decimals respectively) |
 
 ---
 
@@ -51,25 +53,25 @@ Integration guides (`.md`) are always at the root. Supporting files — plugins,
 
 ### Live-tested adapters
 
-The following adapters have been end-to-end tested against a live AlgoVoi tenant on `algorand_mainnet`, `voi_mainnet`, and `hedera_mainnet`:
+The following adapters have been end-to-end tested against a live AlgoVoi tenant on `algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, and `stellar_mainnet`:
 
 | Platform | Demo store | Hosted chains | Extension chains |
 |----------|-----------|---------------|-----------------|
-| OpenCart 4 | opencart.ilovechicken.co.uk | Algorand, VOI, Hedera | Algorand, VOI |
-| PrestaShop 8.2.5 | prestashop.ilovechicken.co.uk | Algorand, VOI, Hedera | Algorand, VOI |
-| Shopware 6.7.8.2 | shopware.ilovechicken.co.uk | Algorand, VOI, Hedera | Algorand, VOI |
-| WooCommerce 10.6.2 / WordPress 6.9.4 | woocommerce.ilovechicken.co.uk | Algorand, VOI, Hedera | Algorand, VOI |
-| Native PHP | — | Algorand, VOI, Hedera | Algorand, VOI |
-| Native Python | — | Algorand, VOI, Hedera | Algorand, VOI |
-| Native Go | — | Algorand, VOI, Hedera | Algorand, VOI |
-| Native Rust | — | Algorand, VOI, Hedera | Algorand, VOI |
-| AlgoVoi 1.0 | api1.ilovechicken.co.uk/shop-demo | Algorand, VOI, Hedera | Algorand, VOI |
+| OpenCart 4 | opencart.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
+| PrestaShop 8.2.5 | prestashop.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
+| Shopware 6.7.8.2 | shopware.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
+| WooCommerce 10.6.2 / WordPress 6.9.4 | woo.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
+| Native PHP | — | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
+| Native Python | — | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
+| Native Go | — | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
+| Native Rust | — | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
+| AlgoVoi 1.0 | api1.ilovechicken.co.uk/shop-demo | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
 
 ### Two payment flows
 
-**Hosted checkout** — Customer is redirected to a secure AlgoVoi-hosted payment page. Supports Algorand, VOI, and Hedera. Works with any wallet. Payment confirmed via webhook or API status check.
+**Hosted checkout** — Customer is redirected to a secure AlgoVoi-hosted payment page. Supports Algorand, VOI, Hedera, and Stellar. Works with any wallet (Pera, Defly, Lute, HashPack, Freighter, LOBSTR, …). Payment confirmed via webhook or API status check.
 
-**Extension payment** — Customer pays directly on the store page using the AlgoVoi browser extension and algosdk. Supports Algorand and VOI only (AVM chains). No redirect required.
+**Extension payment** — Customer pays directly on the store page using the AlgoVoi browser extension and algosdk. Supports Algorand and VOI only (AVM chains). Buyers paying on Hedera or Stellar use hosted checkout with their chain-native wallet. No redirect required for extension flow.
 
 ---
 
@@ -159,7 +161,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 ## How payments work
 
 ```
-Customer places order and selects chain (Algorand / VOI / Hedera)
+Customer places order and selects chain (Algorand / VOI / Hedera / Stellar)
             ↓
 Plugin creates payment link via POST /v1/payment-links
             ↓

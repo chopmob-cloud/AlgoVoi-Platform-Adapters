@@ -35,7 +35,7 @@ class AlgoVoi
         'voi-mainnet'      => ['url' => 'https://mainnet-api.voi.nodely.io',  'asset_id' => 302190,   'ticker' => 'aUSDC', 'dec' => 6],
     ];
 
-    private const HOSTED_NETWORKS = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet'];
+    private const HOSTED_NETWORKS = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet'];
     private const EXT_NETWORKS    = ['algorand_mainnet', 'voi_mainnet'];
 
     public function __construct(array $config)
@@ -56,7 +56,7 @@ class AlgoVoi
      * @param float  $amount      Order total
      * @param string $currency    ISO currency code (e.g. USD, GBP)
      * @param string $label       Order label (e.g. "Order #123")
-     * @param string $network     Preferred network (algorand_mainnet, voi_mainnet, hedera_mainnet)
+     * @param string $network     Preferred network (algorand_mainnet, voi_mainnet, hedera_mainnet, stellar_mainnet)
      * @param string $redirectUrl Return URL after hosted checkout (optional)
      * @return array|null         API response or null on failure
      */
@@ -276,7 +276,8 @@ class AlgoVoi
             ['value' => 'voi_mainnet',      'label' => 'VOI',      'ticker' => 'aUSDC', 'colour' => '#8b5cf6'],
         ];
         if ($type === 'hosted') {
-            $chains[] = ['value' => 'hedera_mainnet', 'label' => 'Hedera', 'ticker' => 'USDC', 'colour' => '#00a9a5'];
+            $chains[] = ['value' => 'hedera_mainnet',  'label' => 'Hedera',  'ticker' => 'USDC', 'colour' => '#00a9a5'];
+            $chains[] = ['value' => 'stellar_mainnet', 'label' => 'Stellar', 'ticker' => 'USDC', 'colour' => '#7C63D0'];
         }
 
         $html = '<div style="margin:.5rem 0;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Select network</div>';
