@@ -46,7 +46,7 @@ class AlgovoiPayment extends AbstractMethod
      * Initialize payment — create AlgoVoi payment link and set redirect URL.
     
  * AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
- * Copyright (c) 2026 Christopher Hopley (ilovechicken.co.uk). BSL 1.1.
+ * Licensed under the Business Source License 1.1 — see LICENSE for details.
  */
     public function initialize(string $paymentAction, object $stateObject): static
     {

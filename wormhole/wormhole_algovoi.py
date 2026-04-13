@@ -22,7 +22,7 @@ Portal Bridge:  https://portalbridge.com/
 Version: 1.0.0
 
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
-Copyright (c) 2026 Christopher Hopley (ilovechicken.co.uk). BSL 1.1.
+Licensed under the Business Source License 1.1 — see LICENSE for details.
 """
 
 # PROVISIONAL: This adapter has not been end-to-end tested against a live

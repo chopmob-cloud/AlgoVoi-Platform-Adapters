@@ -357,8 +357,6 @@ Every adapter is hardened against real-world payment attack vectors. The full au
 
 This repository is licensed under the [Business Source License 1.1](./LICENSE).
 
-Copyright (c) 2026 Christopher Hopley (ilovechicken.co.uk). All rights reserved.
-
 ### Permitted
 
 - Install plugins on your own store (WooCommerce, OpenCart, PrestaShop, Shopware)

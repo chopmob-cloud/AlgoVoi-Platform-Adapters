@@ -26,7 +26,7 @@ $context   = Context::createDefaultContext();
 
 /** @var \Shopware\Core\Framework\DataAbstractionLayer\EntityRepository $productRepo
  * AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
- * Copyright (c) 2026 Christopher Hopley (ilovechicken.co.uk). BSL 1.1.
+ * Licensed under the Business Source License 1.1 — see LICENSE for details.
  */
 $productRepo    = $container->get('product.repository');
 $currencyId     = 'b7d2554b0ce847cd82f3ac9bd1c0dfca';

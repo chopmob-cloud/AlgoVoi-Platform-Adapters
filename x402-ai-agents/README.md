@@ -138,4 +138,4 @@ if result.requires_payment:
 
 ---
 
-Copyright (c) 2026 Christopher Hopley (ilovechicken.co.uk). BSL 1.1.
+Licensed under the Business Source License 1.1 — see LICENSE for details.

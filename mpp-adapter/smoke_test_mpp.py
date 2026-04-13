@@ -5,7 +5,7 @@ Run:   python smoke_test_mpp.py
 Then:  python smoke_test_mpp.py verify <algorand_tx> <voi_tx> <hedera_tx> <stellar_tx>
 
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
-Copyright (c) 2026 Christopher Hopley (ilovechicken.co.uk). BSL 1.1.
+Licensed under the Business Source License 1.1 — see LICENSE for details.
 """
 
 import base64
