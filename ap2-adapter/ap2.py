@@ -51,18 +51,35 @@ EXTENSION_URI  = "https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1"
 EXTENSION_SCHEMA = f"{EXTENSION_URI}/schema.json"
 
 
-# ── Network config (AlgoVoi crypto-algo extension — AVM chains only) ──────────
+# ── Network config ────────────────────────────────────────────────────────────
+# AVM chains (algorand-mainnet, voi-mainnet) are covered by the crypto-algo
+# extension schema. Hedera and Stellar on-chain verification uses the same
+# indexers as the MPP adapter.
 
 NETWORKS: dict[str, dict] = {
     "algorand-mainnet": {
         "asset_id": 31566704,
         "ticker":   "USDC",
+        "chain":    "avm",
         "indexer":  "https://mainnet-idx.algonode.cloud/v2",
     },
     "voi-mainnet": {
         "asset_id": 302190,
         "ticker":   "aUSDC",
+        "chain":    "avm",
         "indexer":  "https://mainnet-idx.voi.nodely.dev/v2",
+    },
+    "hedera-mainnet": {
+        "asset_id": "0.0.456858",
+        "ticker":   "USDC",
+        "chain":    "hedera",
+        "indexer":  "https://mainnet-public.mirrornode.hedera.com/api/v1",
+    },
+    "stellar-mainnet": {
+        "asset_id": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        "ticker":   "USDC",
+        "chain":    "stellar",
+        "indexer":  "https://horizon.stellar.org",
     },
 }
 
@@ -434,23 +451,29 @@ class Ap2Gate:
 
         return False
 
-    # ── On-chain verification (AVM) ───────────────────────────────────────────
+    # ── On-chain verification ─────────────────────────────────────────────────
 
     def _verify_on_chain(self, tx_id: str, network: str) -> bool:
-        """
-        Verify an on-chain AVM (Algorand / VOI) payment via the chain indexer.
-
-        Checks:
-          - receiver == payout_address
-          - amount >= amount_microunits
-          - asset-id matches network's USDC/aUSDC asset
-          - confirmed-round is present (tx is finalised)
-        """
-        cfg     = NETWORKS.get(network)
+        """Dispatch to chain-specific verification."""
+        cfg = NETWORKS.get(network)
         if not cfg:
             return False
-        indexer = cfg["indexer"]
+        chain = cfg.get("chain", "avm")
+        if chain == "avm":
+            return self._verify_avm(tx_id, network)
+        if chain == "hedera":
+            return self._verify_hedera(tx_id, network)
+        if chain == "stellar":
+            return self._verify_stellar(tx_id, network)
+        return False
 
+    def _verify_avm(self, tx_id: str, network: str) -> bool:
+        """
+        Verify an Algorand or VOI USDC payment via Algonode / Nodely indexer.
+        Checks: receiver, amount, asset-id, confirmed-round.
+        """
+        cfg     = NETWORKS[network]
+        indexer = cfg["indexer"]
         try:
             url = f"{indexer}/transactions/{tx_id}"
             req = Request(url, headers={"User-Agent": "AlgoVoi-AP2/2.0"})
@@ -462,7 +485,6 @@ class Ap2Gate:
         tx  = data.get("transaction", {})
         if not tx.get("confirmed-round"):
             return False
-
         atx = tx.get("asset-transfer-transaction", {})
         if atx.get("receiver") != self.payout_address:
             return False
@@ -470,8 +492,79 @@ class Ap2Gate:
             return False
         if atx.get("asset-id") != cfg["asset_id"]:
             return False
-
         return True
+
+    def _verify_hedera(self, tx_id: str, network: str) -> bool:
+        """
+        Verify a Hedera USDC payment via the Hedera Mirror Node.
+        Normalises wallet TX ID format: 0.0.account@seconds.nanos
+          -> 0.0.account-seconds-nanos
+        """
+        cfg  = NETWORKS[network]
+        base = cfg["indexer"]
+
+        # Normalise TX ID format
+        norm = tx_id
+        if "@" in tx_id:
+            account, ts = tx_id.split("@", 1)
+            norm = f"{account}-{ts.replace('.', '-', 1)}"
+
+        try:
+            url = f"{base}/transactions/{norm}"
+            req = Request(url, headers={"User-Agent": "AlgoVoi-AP2/2.0"})
+            with urlopen(req, context=self._ssl_ctx, timeout=10) as r:  # nosec B310
+                data = json.loads(r.read())
+        except Exception:
+            return False
+
+        txs = data.get("transactions", [])
+        if not txs or txs[0].get("result") != "SUCCESS":
+            return False
+
+        payer = ""
+        for transfer in txs[0].get("token_transfers", []):
+            amt = transfer.get("amount", 0)
+            if amt < 0:
+                payer = transfer.get("account", "")
+            if (transfer.get("account") == self.payout_address
+                    and transfer.get("token_id") == cfg["asset_id"]
+                    and amt >= self.amount_microunits):
+                return True
+        return False
+
+    def _verify_stellar(self, tx_id: str, network: str) -> bool:
+        """
+        Verify a Stellar USDC payment via Horizon.
+        Checks: payment op to payout_address, correct asset, amount >= required.
+        Horizon returns decimal amounts; convert: int(float(amount) * 1_000_000).
+        """
+        cfg  = NETWORKS[network]
+        base = cfg["indexer"]
+        asset_parts    = cfg["asset_id"].split(":")
+        expected_code  = asset_parts[0]
+        expected_issuer = asset_parts[1] if len(asset_parts) > 1 else ""
+
+        try:
+            url = f"{base}/transactions/{tx_id}/operations"
+            req = Request(url, headers={"User-Agent": "AlgoVoi-AP2/2.0"})
+            with urlopen(req, context=self._ssl_ctx, timeout=10) as r:  # nosec B310
+                data = json.loads(r.read())
+        except Exception:
+            return False
+
+        for op in data.get("_embedded", {}).get("records", []):
+            if op.get("type") != "payment":
+                continue
+            if op.get("to") != self.payout_address:
+                continue
+            if op.get("asset_code") != expected_code:
+                continue
+            if expected_issuer and op.get("asset_issuer") != expected_issuer:
+                continue
+            amount_micro = int(float(op.get("amount", "0")) * 1_000_000)
+            if amount_micro >= self.amount_microunits:
+                return True
+        return False
 
     # ── Framework helpers ──────────────────────────────────────────────────────
 
