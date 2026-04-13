@@ -1,8 +1,10 @@
 # MPP — Machine Payments Protocol Adapter for AlgoVoi
 
-Drop-in server middleware that gates APIs behind MPP payment challenges. Implements the HTTP Payment Authentication scheme per the IETF draft (`draft-ryan-httpauth-payment`) with the `"charge"` intent. Responds with `WWW-Authenticate: Payment` when a request lacks valid payment credentials, and verifies on-chain transactions directly via the Algorand or VOI indexer.
+Drop-in server middleware that gates APIs behind MPP payment challenges. Implements the HTTP Payment Authentication scheme per the IETF draft (`draft-ryan-httpauth-payment`) with the `"charge"` intent. Responds with `WWW-Authenticate: Payment` when a request lacks valid payment credentials, and verifies on-chain transactions directly via the chain indexer — no central verification API.
 
-> MPP (Machine Payments Protocol) is an open standard for autonomous machine-to-machine payments using HTTP 402. Spec: https://paymentauth.org
+100% IETF `draft-ryan-httpauth-payment` compliant as of v2.1.0 (2026-04-13), verified live across all 4 chains (Algorand, VOI, Hedera, Stellar).
+
+> MPP (Machine Payments Protocol) is an open standard for autonomous machine-to-machine payments using HTTP 401/Payment authentication. Spec: https://paymentauth.org
 
 ---
 
@@ -13,16 +15,19 @@ AI Agent (or any HTTP client) makes request to protected endpoint
             ↓
 MppGate.check() — no Authorization: Payment header found
             ↓
-HTTP 402 Payment Required
+HTTP 401 Payment Required
   WWW-Authenticate: Payment realm="..." id="<hmac-id>" method="algorand"
                     intent="charge" request="<b64>" expires="<RFC3339>"
   X-Payment-Required: <base64 JSON with accepts array>
             ↓
-Agent submits on-chain payment (USDC on Algorand or aUSDC on VOI)
+Agent submits on-chain payment (USDC on Algorand, VOI, Hedera, or Stellar)
             ↓
 Agent retries with Authorization: Payment <base64 proof>
+  — includes challenge echo: {"challenge": {id, realm, method, intent}, "payload": {"txId": "..."}}
             ↓
-MppGate verifies tx directly on-chain via indexer
+MppGate validates challenge echo (id must match an issued, non-expired challenge)
+            ↓
+MppGate verifies tx directly on-chain via chain indexer (no central API)
             ↓
 HTTP 200 — access granted, Payment-Receipt header available
 ```
@@ -156,17 +161,33 @@ Or equivalently via `X-Payment` header:
 X-Payment: <base64-encoded JSON>
 ```
 
-Payload structure:
+Payload structure (with challenge echo — full spec compliance):
 
 ```json
 {
-  "network": "algorand-mainnet",
+  "challenge": {
+    "id":     "<challenge-id-from-WWW-Authenticate>",
+    "realm":  "<realm>",
+    "method": "algorand",
+    "intent": "charge"
+  },
   "payload": {
-    "txId": "<algorand-transaction-id>",
+    "txId": "<on-chain-transaction-id>",
     "payer": "<optional-sender-address>"
   }
 }
 ```
+
+The `challenge` object echoes back the challenge issued in the `WWW-Authenticate` header. The `id` must match a non-expired challenge issued by this gate. Credentials without a `challenge` object are still accepted for backward compatibility.
+
+CAIP-2 network IDs are also accepted in `challenge.method` and resolved automatically:
+
+| CAIP-2 | Internal |
+|--------|----------|
+| `algorand:mainnet` | `algorand-mainnet` |
+| `voi:mainnet` | `voi-mainnet` |
+| `hedera:mainnet` | `hedera-mainnet` |
+| `stellar:pubnet` | `stellar-mainnet` |
 
 ---
 
@@ -198,6 +219,15 @@ The adapter maintains an in-memory set of used `tx_id` values. Each payment proo
 
 > For multi-process deployments, replace `_used_tx_ids` with a shared store (Redis, DB).
 
+## Challenge echo validation
+
+Per IETF `draft-ryan-httpauth-payment` Table 3, the client must echo the issued challenge back in the credential. The adapter:
+
+- Stores issued challenge IDs with expiry timestamps in `_issued_challenges`
+- Validates `challenge.id` on submission — rejects unknown or expired IDs with `"Invalid or expired challenge"` and issues a fresh challenge
+- Prunes expired entries on every `_build_challenge()` call to prevent unbounded growth
+- Challenge IDs are HMAC-SHA256 values bound to `(realm, method, intent, request, expires)` — tamper-evident and stateless-compatible
+
 ---
 
 ## Network and asset mapping
@@ -213,29 +243,44 @@ The adapter maintains an in-memory set of used `tx_id` values. Each payment proo
 
 ## Live test status
 
-Confirmed end-to-end on **2026-04-13** against `api1.ilovechicken.co.uk`:
+Confirmed end-to-end on **2026-04-13** (v2.1.0):
 
 | Test | Result |
 |------|--------|
-| No credentials -> HTTP 402 + `WWW-Authenticate: Payment` | Pass |
-| `WWW-Authenticate`: `realm`, `id`, `method`, `intent`, `request`, `expires` | Pass |
+| No credentials → HTTP 401 + `WWW-Authenticate: Payment` | Pass |
+| `WWW-Authenticate`: `realm`, `id`, `method`, `intent="charge"`, `request=`, `expires=` | Pass |
 | `id=` is HMAC-SHA256 bound, 32-char hex | Pass |
 | `request=` decodes to charge intent object (`amount`, `currency`, `recipient`, `methodDetails`) | Pass |
 | `amount` field (not `maxAmountRequired`) | Pass |
 | `resource` field inside each accepts entry | Pass |
 | `X-Payment-Required` decodes with `accepts` array | Pass |
-| Invalid base64 credential -> 402 with encoding error | Pass |
-| Missing `txId` -> 402 with error | Pass |
-| Fake `txId` -> verification fails | Pass |
+| Challenge echo: valid `challenge.id` accepted, reaches indexer | Pass |
+| Challenge echo: unknown/expired `challenge.id` rejected, new challenge issued | Pass |
+| CAIP-2 `challenge.method` (`algorand:mainnet`, `voi:mainnet`, etc.) resolved | Pass |
+| No `challenge` object (backward compat) — reaches indexer | Pass |
+| Invalid base64 credential → 401 with encoding error | Pass |
+| Missing `txId` → 401 with error | Pass |
+| Fake `txId` → verification fails | Pass |
 | Replay protection: used `tx_id` rejected | Pass |
 | `MppReceipt`: `status`, `method`, `timestamp`, `reference` | Pass |
 | WSGI guard returns `402 Payment Required` tuple | Pass |
-| Hedera TX ID normalisation (wallet `@` format -> Mirror Node `-` format) | Pass |
-| Unit tests (129/129) | Pass |
+| Hedera TX ID normalisation (wallet `@` format → Mirror Node `-` format) | Pass |
+| Unit tests (153/153) | Pass |
 
-## Live smoke test — 4 chains (13 April 2026)
+## Live smoke tests — 4 chains
 
-0.01 USDC paid on each chain via MPP protocol flow and verified end-to-end:
+### 13 April 2026 — v2.1.0 (challenge echo validation, CAIP-2 routing)
+
+0.01 USDC paid on each chain and verified end-to-end via on-chain indexers:
+
+| Chain | TX ID | Result |
+|-------|-------|--------|
+| Algorand mainnet (USDC ASA 31566704) | `PNN25O7E6WTOWFB36YVZHRLIHICPOWOYBRDFP3ZJKKJ32PKL472A` | Pass |
+| VOI mainnet (aUSDC ARC200 302190) | `YOJTOMTW7K2VASM3N2OALPIDC66CMABDD2ZJE4SYTHGR2H2MKTYA` | Pass |
+| Hedera mainnet (USDC HTS 0.0.456858) | `0.0.10376692@1776103661.888390747` | Pass |
+| Stellar pubnet (USDC Circle) | `338b0061e81cf615631f7830e0a480f6beed0c333206c4366c14e6a761393153` | Pass |
+
+### 13 April 2026 — v2.0.0 (initial 4-chain release)
 
 | Chain | TX ID | Result |
 |-------|-------|--------|

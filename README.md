@@ -128,7 +128,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Wave | — (B2B webhook) | Algorand, VOI, Hedera, Stellar | — |
 | MYOB | — (polling, no push webhooks) | Algorand, VOI, Hedera, Stellar | — |
 | x402 AI Agent adapter | — (x402 spec v1: `accepts` array, CAIP-2 networks, microunit amounts, `payload.signature` proof) | Algorand, VOI, Hedera, Stellar | — |
-| MPP Gate | — (IETF `draft-ryan-httpauth-payment` charge intent, HMAC challenge IDs, on-chain verification) | Algorand, VOI, Hedera, Stellar | — |
+| MPP Gate | — (100% IETF `draft-ryan-httpauth-payment`: challenge echo, CAIP-2 routing, HMAC IDs, on-chain verification — v2.1.0, 153/153 tests, live smoke-tested all 4 chains 13 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | AP2 Gate | — (payment request + local ed25519 verification) | Algorand, VOI | — |
 
 **Last webhook test:** 11 April 2026 — 38 passed, 0 failed, 7 skipped (all 4 chains: `algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`)
@@ -139,7 +139,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 
 **AI agent adapters — production ready as of 13 April 2026:**
 - x402: **spec v1 compliant** — `x402Version: 1`, `accepts` array, CAIP-2 network IDs, string microunit amounts, `payload.signature` proof format. Real payments smoke-tested on all 4 chains (Algorand, VOI, Stellar, Hedera mainnet), `x402/verify` confirmed `verified:true` on each. 76/76 unit tests passing. Adapter v2.0.0.
-- MPP: **IETF spec compliant** — `id` (HMAC-SHA256), `method`, `intent="charge"`, `request=` (charge intent object), `expires`, replay protection, spec-compliant `Payment-Receipt`. On-chain verification smoke-tested on all 4 chains (Algorand, VOI, Hedera, Stellar) 13 Apr 2026. 129/129 unit tests. Adapter v2.0.0.
+- MPP: **100% IETF spec compliant** (v2.1.0) — `id` (HMAC-SHA256), `method`, `intent="charge"`, `request=` (charge intent object), `expires`, challenge echo validation (Table 3), CAIP-2 network routing, replay protection, spec-compliant `Payment-Receipt`. On-chain verification smoke-tested on all 4 chains (Algorand, VOI, Hedera, Stellar) 13 Apr 2026 ×2. 153/153 unit tests.
 - AP2: local ed25519 sig verification smoke-tested (fresh key pair, 15/15)
 
 ### Two payment flows
@@ -234,7 +234,7 @@ All 7 accounting adapters were end-to-end tested on **11 April 2026** against `a
 | Adapter | Files | Description | Status |
 |---------|-------|-------------|--------|
 | **x402** | [x402-ai-agents.md](./x402-ai-agents.md) / [x402-ai-agents/](./x402-ai-agents/) | Autonomous AI agent payments via the x402 protocol (spec v1 — `accepts` array, CAIP-2 IDs, microunit amounts, `payload.signature`) | **Production ready** — real payments smoke-tested on all 4 chains (Algorand, VOI, Stellar, Hedera), `x402/verify` confirmed on each. Adapter v2.0.0, 76/76 tests. |
-| **MPP** | [mpp-adapter/mpp-adapter.md](./mpp-adapter/mpp-adapter.md) / [mpp-adapter/](./mpp-adapter/) | Machine Payments Protocol server middleware — IETF spec compliant (`id`, `method`, `intent`, `request`, `expires`; charge intent; HMAC challenge IDs; replay protection) | **Production ready** — 0.01 USDC live smoke-tested on all 4 chains (Algorand, VOI, Hedera, Stellar) 13 Apr 2026. Adapter v2.0.0, 129/129 tests. |
+| **MPP** | [mpp-adapter/mpp-adapter.md](./mpp-adapter/mpp-adapter.md) / [mpp-adapter/](./mpp-adapter/) | Machine Payments Protocol server middleware — 100% IETF `draft-ryan-httpauth-payment` compliant (challenge echo validation, CAIP-2 network routing, HMAC challenge IDs, on-chain verification, replay protection) | **Production ready** — 0.01 USDC live smoke-tested on all 4 chains (Algorand, VOI, Hedera, Stellar) 13 Apr 2026. Adapter v2.1.0, 153/153 tests. |
 | **AP2** | [ap2-adapter/ap2-adapter.md](./ap2-adapter/ap2-adapter.md) / [ap2-adapter/](./ap2-adapter/) | Google Agent Payments Protocol (AP2) server middleware — accept ed25519 signed mandates from AI agents | **Production ready** — local ed25519 signature verification smoke-tested |
 
 ## Charity Interfaces
