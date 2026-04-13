@@ -1,11 +1,42 @@
 # AP2 — Agent Payment Protocol v2 Adapter for AlgoVoi
 
-Drop-in server middleware for accepting AP2 payment mandates from AI agents using ed25519-signed credentials. No on-chain transaction required at point of purchase — settlement is asynchronous.
+Drop-in server middleware for accepting AP2 v0.1 payment mandates from AI agents. Implements the [AlgoVoi crypto-algo extension](https://algovoi.io/ap2/extensions/crypto-algo/v1) to the AP2 v0.1 spec, adding Algorand and VOI on-chain payments to the CartMandate / PaymentMandate flow.
 
-**Smoke tested 2026-04-13 — real ed25519 key pair, valid mandate accepted, tampered mandates rejected. 55/55 tests passing.**
+**v2.0.0 — 81/81 tests passing. Real ed25519 smoke-tested 2026-04-13.**
+
+Extension URI:  `https://algovoi.io/ap2/extensions/crypto-algo/v1`
+Schema:         `https://algovoi.io/ap2/extensions/crypto-algo/v1/schema.json`
+Extensions API: `https://api1.ilovechicken.co.uk/ap2/extensions`
 
 Full integration guide: [ap2-adapter.md](ap2-adapter.md)
 https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
+
+---
+
+## How it works
+
+```
+Agent requests resource
+        |
+        v
+Ap2Gate.check() -- no X-AP2-Mandate found
+        |
+        v
+HTTP 402 + X-AP2-Cart-Mandate header
+  CartMandate.contents.payment_request.payment_methods:
+    [ { supported_methods: "https://algovoi.io/ap2/extensions/crypto-algo/v1",
+        data: { network, receiver, amount_microunits, asset_id, ... } } ]
+        |
+        v
+Agent pays on-chain (Algorand or VOI USDC)
+Agent signs PaymentMandate (ed25519) with tx_id
+        |
+        v
+Ap2Gate: verify ed25519 sig + verify tx on-chain via indexer
+        |
+        v
+HTTP 200 -- result.mandate has payer_address, network, tx_id
+```
 
 ---
 
@@ -13,26 +44,22 @@ https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 
 | File | Description |
 |------|-------------|
-| `ap2.py` | Adapter — `Ap2Gate` middleware class for Flask, Django, FastAPI, or any WSGI/ASGI framework |
-| `ap2-adapter.md` | Integration guide |
-| `test_ap2.py` | 55 unit tests including real ed25519 signature verification |
+| `ap2.py` | Adapter — `Ap2Gate`, `Ap2CartMandate`, `Ap2Mandate`, `Ap2Result` |
+| `ap2-adapter.md` | Full integration guide |
+| `test_ap2.py` | 81 unit tests |
 
 ---
 
 ## Supported chains
 
-| Config key | Wire format | Asset |
-|-----------|-------------|-------|
-| `algorand_mainnet` | `algorand-mainnet` | USDC (ASA 31566704) |
-| `voi_mainnet` | `voi-mainnet` | aUSDC (ARC200 302190) |
-| `hedera_mainnet` | `hedera-mainnet` | USDC (HTS 0.0.456858) |
-| `stellar_mainnet` | `stellar-mainnet` | USDC (Circle) |
+| Network key | Asset | Asset ID | Indexer |
+|-------------|-------|----------|---------|
+| `algorand-mainnet` | USDC | ASA 31566704 | Algonode |
+| `voi-mainnet` | aUSDC | ARC200 302190 | Nodely |
 
 ---
 
 ## Quick start
-
-Copy `ap2.py` into your project. No package install required.
 
 ```python
 from ap2 import Ap2Gate
@@ -42,8 +69,9 @@ gate = Ap2Gate(
     api_base="https://api1.ilovechicken.co.uk",
     api_key="algv_...",
     tenant_id="<your-tenant-uuid>",
-    amount_usd=1.99,
-    networks=["algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet"],
+    amount_microunits=10000,           # 0.01 USDC
+    networks=["algorand-mainnet", "voi-mainnet"],
+    payout_address="<your-algorand-address>",
 )
 
 # Flask
@@ -52,8 +80,28 @@ def resource():
     result = gate.check(dict(request.headers), request.get_json(silent=True))
     if result.requires_payment:
         return result.as_flask_response()
-    # result.mandate.payer_address, .amount, .network
+    # result.mandate.payer_address, .network, .tx_id
     return jsonify(data="premium content")
+```
+
+### PaymentMandate format (agent submits)
+
+```json
+{
+  "ap2_version": "0.1",
+  "type": "PaymentMandate",
+  "merchant_id": "shop42",
+  "payer_address": "<algorand-ed25519-address>",
+  "payment_response": {
+    "method_name": "https://algovoi.io/ap2/extensions/crypto-algo/v1",
+    "details": {
+      "network":    "algorand-mainnet",
+      "tx_id":      "<on-chain-tx-id>",
+      "note_field": "<cart-mandate-hash-optional>"
+    }
+  },
+  "signature": "<base64-ed25519-sig-over-canonical-json>"
+}
 ```
 
 ---
@@ -62,11 +110,12 @@ def resource():
 
 | Test | Result |
 |------|--------|
-| Real ed25519 key pair — valid mandate accepted | ✅ Pass |
-| Tampered mandate (amount changed) — rejected | ✅ Pass |
-| Wrong signature (different key) — rejected | ✅ Pass |
+| CartMandate: correct AP2 v0.1 structure, extension URI, PaymentMethodData | ✅ Pass |
+| Real PyNaCl ed25519 key pair — valid PaymentMandate accepted | ✅ Pass |
+| Tampered mandate (network changed) — sig rejected | ✅ Pass |
+| Wrong key (different SigningKey) — rejected | ✅ Pass |
 | cryptography package fallback verification | ✅ Pass |
-| 4-network payment request (ALGO, VOI, HBAR, XLM) | ✅ Pass |
+| Replay protection (tx_id reuse rejected) | ✅ Pass |
 
 ---
 
