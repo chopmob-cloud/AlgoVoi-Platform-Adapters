@@ -140,7 +140,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 **AI agent adapters — production ready as of 13 April 2026:**
 - x402: **spec v1 compliant** — `x402Version: 1`, `accepts` array, CAIP-2 network IDs, string microunit amounts, `payload.signature` proof format. Real payments smoke-tested on all 4 chains (Algorand, VOI, Stellar, Hedera mainnet), `x402/verify` confirmed `verified:true` on each. 76/76 unit tests passing. Adapter v2.0.0.
 - MPP: **100% IETF spec compliant** (v2.1.0) — `id` (HMAC-SHA256), `method`, `intent="charge"`, `request=` (charge intent object), `expires`, challenge echo validation (Table 3), CAIP-2 network routing, replay protection, spec-compliant `Payment-Receipt`. On-chain verification smoke-tested on all 4 chains (Algorand, VOI, Hedera, Stellar) 13 Apr 2026 ×2. 153/153 unit tests.
-- AP2: local ed25519 sig verification smoke-tested (fresh key pair, 15/15)
+- AP2: **production ready** (v1.0.0) — local ed25519 signature verification, real key pair smoke-tested 13 Apr 2026. Valid mandate accepted, tampered mandate rejected, wrong-key rejected. PyNaCl and cryptography fallback both confirmed. 55/55 tests.
 
 ### Two payment flows
 
@@ -235,7 +235,7 @@ All 7 accounting adapters were end-to-end tested on **11 April 2026** against `a
 |---------|-------|-------------|--------|
 | **x402** | [x402-ai-agents.md](./x402-ai-agents.md) / [x402-ai-agents/](./x402-ai-agents/) | Autonomous AI agent payments via the x402 protocol (spec v1 — `accepts` array, CAIP-2 IDs, microunit amounts, `payload.signature`) | **Production ready** — real payments smoke-tested on all 4 chains (Algorand, VOI, Stellar, Hedera), `x402/verify` confirmed on each. Adapter v2.0.0, 76/76 tests. |
 | **MPP** | [mpp-adapter/mpp-adapter.md](./mpp-adapter/mpp-adapter.md) / [mpp-adapter/](./mpp-adapter/) | Machine Payments Protocol server middleware — 100% IETF `draft-ryan-httpauth-payment` compliant (challenge echo validation, CAIP-2 network routing, HMAC challenge IDs, on-chain verification, replay protection) | **Production ready** — 0.01 USDC live smoke-tested on all 4 chains (Algorand, VOI, Hedera, Stellar) 13 Apr 2026. Adapter v2.1.0, 153/153 tests. |
-| **AP2** | [ap2-adapter/ap2-adapter.md](./ap2-adapter/ap2-adapter.md) / [ap2-adapter/](./ap2-adapter/) | Google Agent Payments Protocol (AP2) server middleware — accept ed25519 signed mandates from AI agents | **Production ready** — local ed25519 signature verification smoke-tested |
+| **AP2** | [ap2-adapter/ap2-adapter.md](./ap2-adapter/ap2-adapter.md) / [ap2-adapter/](./ap2-adapter/) | Google Agent Payments Protocol (AP2) server middleware — accept ed25519 signed mandates from AI agents, local verification (PyNaCl + cryptography fallback), 4-chain payment requests | **Production ready** — real ed25519 key pairs smoke-tested 13 Apr 2026 (valid mandate accepted, tampered/wrong-sig rejected, both crypto paths verified). v1.0.0, 55/55 tests. |
 
 ## Charity Interfaces
 

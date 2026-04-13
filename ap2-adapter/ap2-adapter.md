@@ -157,7 +157,7 @@ Note: Config keys use underscores; wire format uses hyphens (AP2 spec).
 
 ## Live test status
 
-Confirmed end-to-end on **2026-04-12** against `api1.ilovechicken.co.uk`:
+Confirmed end-to-end on **2026-04-13**:
 
 | Test | Result |
 |------|--------|
@@ -173,14 +173,31 @@ Confirmed end-to-end on **2026-04-12** against `api1.ilovechicken.co.uk`:
 | Mandate in request body (`ap2_mandate`) parsed | Pass |
 | JSON mandate (non-base64) accepted | Pass |
 | Flask response: status 402, `X-AP2-Payment-Request` header | Pass |
-| Unit tests (29/29) | Pass |
+| WSGI response: status, headers, body | Pass |
+| **Real ed25519 key pair — valid mandate accepted** | **Pass** |
+| **Tampered mandate (amount changed) — rejected** | **Pass** |
+| **Wrong signature (different key) — rejected** | **Pass** |
+| **cryptography package fallback verification** | **Pass** |
+| 4-network payment request (all 4 chains) | Pass |
+| Unit tests (55/55) | Pass |
+
+## Smoke test — 13 April 2026
+
+Real ed25519 key pairs generated with PyNaCl and the cryptography package. Mandates signed, submitted to `Ap2Gate.check()`, and verified end-to-end:
+
+| Scenario | Key source | Result |
+|----------|-----------|--------|
+| Valid mandate | PyNaCl `SigningKey.generate()` | ✅ Pass — `requires_payment=False`, mandate returned |
+| Tampered amount | PyNaCl (original key, modified fields) | ✅ Pass — verification failed |
+| Wrong signature | PyNaCl (different key, same address) | ✅ Pass — verification failed |
+| Valid mandate | `cryptography` `Ed25519PrivateKey` | ✅ Pass — fallback path confirmed |
 
 ## Verification architecture
 
-Per the [AP2 spec](https://github.com/tempoxyz/mpp-specs), there is no central verification API — verification is local using the agent's ed25519 public key. `Ap2Gate._verify_mandate()`:
+Per the AP2 spec, there is no central verification API — verification is local using the agent's ed25519 public key. `Ap2Gate._verify_mandate()`:
 
-1. Derives the 32-byte ed25519 public key from the agent's Algorand address (Algorand uses ed25519 natively — the address *is* the public key)
+1. Derives the 32-byte ed25519 public key from the agent's Algorand address (Algorand uses ed25519 natively — the address *is* the public key, base32-encoded)
 2. Reconstructs the canonical signing message: `json.dumps(mandate_fields_minus_signature, sort_keys=True, separators=(",",":"))`
-3. Verifies the signature using PyNaCl (available via algosdk) with cryptography package as fallback
+3. Verifies the signature using PyNaCl (preferred) with cryptography package as fallback
 
-**Smoke tested 13 April 2026** — fresh ed25519 key pair generated, mandate signed and accepted end-to-end. Tampered mandate and merchant mismatch both correctly rejected. 15/15 passed.
+Both verification paths confirmed working as of 2026-04-13.
