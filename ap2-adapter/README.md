@@ -108,14 +108,21 @@ def resource():
 
 ## Smoke test — 13 April 2026
 
-| Test | Result |
-|------|--------|
-| CartMandate: correct AP2 v0.1 structure, extension URI, PaymentMethodData | ✅ Pass |
-| Real PyNaCl ed25519 key pair — valid PaymentMandate accepted | ✅ Pass |
-| Tampered mandate (network changed) — sig rejected | ✅ Pass |
-| Wrong key (different SigningKey) — rejected | ✅ Pass |
-| cryptography package fallback verification | ✅ Pass |
-| Replay protection (tx_id reuse rejected) | ✅ Pass |
+Real ed25519 key pair per chain. PaymentMandate signed + on-chain tx verified end-to-end:
+
+| Chain | TX ID | Result |
+|-------|-------|--------|
+| Algorand | `SDIX4LHMRGX5E2JJ5XTZ7WEKIZB6AVSLIRWUPTQ3FYKRSSVDMHWQ` | ✅ Pass |
+| VOI | `WQIO2BHWFDWBSDHBBZDOLOYIFQ2ITH4OQKFGHMDEIHUU3TDOTY6A` | ✅ Pass |
+| Hedera | `0.0.10376692@1776113910.019442287` | ✅ Pass |
+| Stellar | `a6288f502789073abafec698e3d543396367d9efa1618de62bafbb93c6791a58` | ✅ Pass |
+
+| Sig test | Result |
+|----------|--------|
+| Tampered mandate — sig rejected | ✅ Pass |
+| Wrong key — rejected | ✅ Pass |
+| cryptography fallback | ✅ Pass |
+| Replay protection | ✅ Pass |
 
 ---
 

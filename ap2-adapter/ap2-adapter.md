@@ -227,12 +227,24 @@ Note: Config keys use underscores; wire format uses hyphens (AP2 spec).
 
 ## Smoke test — 13 April 2026
 
+### ed25519 verification
 | Scenario | Key source | Result |
 |----------|-----------|--------|
 | Valid PaymentMandate, fake tx_id | PyNaCl `SigningKey.generate()` | ✅ Sig accepted, on-chain verification attempted |
 | Tampered mandate (network changed) | PyNaCl (original sig, different fields) | ✅ Sig rejected |
 | Wrong signature | PyNaCl (different key, correct address) | ✅ Sig rejected |
 | Valid PaymentMandate | `cryptography` `Ed25519PrivateKey` | ✅ Fallback path confirmed |
+
+### 4-chain live payments — 0.01 USDC (13 April 2026)
+
+Real ed25519 key pair generated per chain. PaymentMandate signed and verified end-to-end (sig + on-chain):
+
+| Chain | TX ID | Result |
+|-------|-------|--------|
+| Algorand mainnet (USDC ASA 31566704) | `SDIX4LHMRGX5E2JJ5XTZ7WEKIZB6AVSLIRWUPTQ3FYKRSSVDMHWQ` | ✅ Pass |
+| VOI mainnet (aUSDC ARC200 302190) | `WQIO2BHWFDWBSDHBBZDOLOYIFQ2ITH4OQKFGHMDEIHUU3TDOTY6A` | ✅ Pass |
+| Hedera mainnet (USDC HTS 0.0.456858) | `0.0.10376692@1776113910.019442287` | ✅ Pass |
+| Stellar pubnet (USDC Circle) | `a6288f502789073abafec698e3d543396367d9efa1618de62bafbb93c6791a58` | ✅ Pass |
 
 ## Verification architecture
 
