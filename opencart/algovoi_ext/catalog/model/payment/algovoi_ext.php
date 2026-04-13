@@ -1,4 +1,8 @@
 <?php
+/**
+ * AlgoVoi: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
+ * Licensed under the Business Source License 1.1 - see LICENSE for details.
+ */
 namespace Opencart\Catalog\Model\Extension\AlgovoiExt\Payment;
 
 class AlgovoiExt extends \Opencart\System\Engine\Model {

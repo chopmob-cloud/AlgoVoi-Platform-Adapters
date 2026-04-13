@@ -1,4 +1,8 @@
 <?php
+/**
+ * AlgoVoi: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
+ * Licensed under the Business Source License 1.1 - see LICENSE for details.
+ */
 if (!defined("_PS_VERSION_")) exit;
 
 use PrestaShop\PrestaShop\Core\Payment\PaymentOption;

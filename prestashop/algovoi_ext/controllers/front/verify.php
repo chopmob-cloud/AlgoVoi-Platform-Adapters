@@ -1,4 +1,8 @@
 <?php
+/**
+ * AlgoVoi: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
+ * Licensed under the Business Source License 1.1 - see LICENSE for details.
+ */
 class Algovoi_ExtVerifyModuleFrontController extends ModuleFrontController
 {
     public function postProcess()
