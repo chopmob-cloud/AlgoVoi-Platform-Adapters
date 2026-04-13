@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/shopware/trunk/src/Core/System/SystemConfig/Schema/config.xsd">
+    <card>
+        <title>AlgoVoi Payment Settings</title>
+        <title lang="de-DE">AlgoVoi Zahlungseinstellungen</title>
+
+        <input-field>
+            <name>apiBaseUrl</name>
+            <defaultValue>https://api1.ilovechicken.co.uk</defaultValue>
+            <label>API Base URL</label>
+            <label lang="de-DE">API-Basis-URL</label>
+        </input-field>
+
+        <input-field>
+            <name>tenantId</name>
+            <label>Tenant ID</label>
+        </input-field>
+
+        <input-field type="password">
+            <name>apiKey</name>
+            <label>API Key</label>
+            <label lang="de-DE">API-Schlüssel</label>
+        </input-field>
+
+        <input-field type="password">
+            <name>webhookSecret</name>
+            <label>Webhook Secret</label>
+        </input-field>
+
+        <input-field type="single-select">
+            <name>network</name>
+            <defaultValue>algorand_mainnet</defaultValue>
+            <label>Preferred Network</label>
+            <label lang="de-DE">Bevorzugtes Netzwerk</label>
+            <options>
+                <option>
+                    <id>algorand_mainnet</id>
+                    <name>Algorand Mainnet (USDC)</name>
+                </option>
+                <option>
+                    <id>voi_mainnet</id>
+                    <name>VOI Mainnet (aUSDC)</name>
+                </option>
+            </options>
+        </input-field>
+    </card>
+</config>

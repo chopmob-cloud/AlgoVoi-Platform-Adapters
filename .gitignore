@@ -1,0 +1,36 @@
+# Environment / secrets
+.env
+.env.*
+*.env
+keys.txt
+*.keys.txt
+
+# Local overrides
+*.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+.claude/
+
+# Nginx server configs (contain server-specific IPs and paths)
+nginx/
+shopify-app/
+
+# WooCommerce dev/test helpers — not for distribution
+woocommerce/wc-basic-auth.php
+
+# Accounting adapter source — private, not distributed (see README)
+quickbooks-online/*.py
+xero/*.py
+freshbooks/*.py
+sage-business-cloud/*.py
+zoho-books/*.py
+wave/*.py
+myob/*.py

@@ -1,0 +1,8 @@
+[package]
+name = "algovoi"
+version = "1.0.0"
+edition = "2021"
+description = "AlgoVoi payment adapter — zero external dependencies"
+license = "MIT"
+
+# No [dependencies] — stdlib only

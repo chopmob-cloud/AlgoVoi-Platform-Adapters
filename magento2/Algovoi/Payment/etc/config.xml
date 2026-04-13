@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <payment>
+            <algovoi>
+                <active>1</active>
+                <model>Algovoi\Payment\Model\AlgovoiPayment</model>
+                <title>AlgoVoi — Pay with Crypto</title>
+                <description>Pay with USDC on Algorand, VOI, Hedera, or Stellar</description>
+                <api_base_url>https://api1.ilovechicken.co.uk</api_base_url>
+                <api_key/>
+                <tenant_id/>
+                <webhook_secret/>
+                <default_network>algorand_mainnet</default_network>
+                <order_status>pending_payment</order_status>
+                <payment_action>authorize</payment_action>
+                <allowspecific>0</allowspecific>
+                <sort_order>100</sort_order>
+            </algovoi>
+        </payment>
+    </default>
+</config>

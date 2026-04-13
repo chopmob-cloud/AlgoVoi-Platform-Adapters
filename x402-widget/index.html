@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoVoi x402 Widget — Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .page-heading {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+    .page-heading h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #6b7280;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: .4rem;
+    }
+    .page-heading p {
+      font-size: .8rem;
+      color: #4b5563;
+    }
+    algovoi-x402 {
+      display: block;
+      width: 100%;
+      max-width: 420px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-heading">
+    <h1>AlgoVoi Payment</h1>
+    <p>Secure &middot; On-chain &middot; Instant settlement</p>
+  </div>
+
+  <script type="module" src="/widget.js"></script>
+  <algovoi-x402
+    amount="29.99"
+    currency="USD"
+    chains="ALGO,VOI,XLM,HBAR"
+    tenant-id="YOUR_TENANT_ID"
+    api-key="algv_YOUR_API_KEY">
+  </algovoi-x402>
+</body>
+</html>

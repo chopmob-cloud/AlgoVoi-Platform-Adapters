@@ -1,0 +1,90 @@
+/**
+ * AlgoVoi Webhook Handler — Wix Velo Backend Web Module
+ *
+ * Receives AlgoVoi payment confirmation webhooks and updates
+ * the corresponding Wix order status.
+ *
+ * Deploy: backend/algovoi-webhook.jsw (Wix web module — accessible via HTTP)
+ *
+ * Webhook URL: https://yoursite.wixsite.com/_functions/algovoiWebhook
+ *
+ * Version: 1.0.0
+ */
+
+import { ok, badRequest, forbidden } from 'wix-http-functions';
+import { getSecret } from 'wix-secrets-backend';
+import wixData from 'wix-data';
+
+const ALGOVOI_API = 'https://api1.ilovechicken.co.uk';
+
+/**
+ * POST /algovoiWebhook
+ * Receives payment confirmation from AlgoVoi API.
+ * Verifies HMAC signature before processing.
+ */
+export async function post_algovoiWebhook(request) {
+  const rawBody = await request.body.text();
+  const signature = request.headers['x-algovoi-signature'] || '';
+
+  // Verify HMAC
+  const webhookSecret = await getSecret('ALGOVOI_WEBHOOK_SECRET');
+
+  if (!webhookSecret) {
+    return forbidden({ body: JSON.stringify({ error: 'Webhook secret not configured' }) });
+  }
+
+  const crypto = await import('crypto');
+  const expected = crypto
+    .createHmac('sha256', webhookSecret)
+    .update(rawBody)
+    .digest('base64');
+
+  // Timing-safe comparison
+  if (expected.length !== signature.length) {
+    return forbidden({ body: JSON.stringify({ error: 'Unauthorized' }) });
+  }
+
+  let match = true;
+  for (let i = 0; i < expected.length; i++) {
+    if (expected[i] !== signature[i]) match = false;
+  }
+  if (!match) {
+    return forbidden({ body: JSON.stringify({ error: 'Unauthorized' }) });
+  }
+
+  // Parse payload
+  let payload;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch (_) {
+    return badRequest({ body: JSON.stringify({ error: 'Invalid JSON' }) });
+  }
+
+  const orderId = payload.order_id;
+  const txId = payload.tx_id || '';
+
+  if (!orderId) {
+    return badRequest({ body: JSON.stringify({ error: 'Missing order_id' }) });
+  }
+
+  // tx_id length guard
+  if (txId && txId.length > 200) {
+    return badRequest({ body: JSON.stringify({ error: 'Invalid tx_id' }) });
+  }
+
+  // Store payment confirmation in Wix data collection
+  try {
+    await wixData.insert('AlgoVoiPayments', {
+      orderId,
+      txId,
+      chain: payload.chain || '',
+      amount: payload.amount || 0,
+      status: 'confirmed',
+      confirmedAt: new Date().toISOString(),
+    });
+  } catch (_) {
+    // Collection may not exist — log but don't fail
+  }
+
+  return ok({ body: JSON.stringify({ ok: true }) });
+}

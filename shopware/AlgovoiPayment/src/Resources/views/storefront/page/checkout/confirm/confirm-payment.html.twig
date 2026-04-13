@@ -1,0 +1,111 @@
+{% sw_extends '@Storefront/storefront/page/checkout/confirm/confirm-payment.html.twig' %}
+
+{% block page_checkout_change_payment_form %}
+    {{ parent() }}
+
+    <template id="av-chain-tpl">
+        <div id="av-chain-selector" style="margin-top:.5rem;padding:.75rem 1rem;background:#1e2130;border:1px solid #2d3252;border-radius:8px;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:8px;">Select network</div>
+            <div id="av-chain-options" style="display:flex;gap:16px;flex-wrap:wrap;"></div>
+        </div>
+    </template>
+
+    <script>
+    (function() {
+        var HOSTED_ID = 'YOUR_HOSTED_PAYMENT_METHOD_ID';
+        var WALLET_ID = 'YOUR_WALLET_PAYMENT_METHOD_ID';
+
+        var hostedChains = [
+            { value: 'algorand_mainnet', label: 'Algorand — USDC' },
+            { value: 'voi_mainnet',      label: 'VOI — aUSDC' },
+            { value: 'hedera_mainnet',   label: 'Hedera — USDC' },
+            { value: 'stellar_mainnet', label: 'Stellar — USDC' },
+        ];
+        var walletChains = [
+            { value: 'algorand_mainnet', label: 'Algorand — USDC' },
+            { value: 'voi_mainnet',      label: 'VOI — aUSDC' },
+        ];
+
+        function getHiddenInput() {
+            var form = document.getElementById('confirmOrderForm');
+            if (!form) return null;
+            var inp = form.querySelector('input[name="algovoi_network"]');
+            if (!inp) {
+                inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'algovoi_network';
+                inp.value = 'algorand_mainnet';
+                form.appendChild(inp);
+            }
+            return inp;
+        }
+
+        function renderChains(chains, container) {
+            container.innerHTML = '';
+            chains.forEach(function(c, i) {
+                var lbl = document.createElement('label');
+                lbl.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#e2e8f0;';
+                var radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'av_chain_radio';
+                radio.value = c.value;
+                radio.style.accentColor = '#3b82f6';
+                if (i === 0) radio.checked = true;
+                radio.addEventListener('change', function() {
+                    var inp = getHiddenInput();
+                    if (inp) inp.value = this.value;
+                });
+                lbl.appendChild(radio);
+                lbl.appendChild(document.createTextNode(' ' + c.label));
+                container.appendChild(lbl);
+            });
+            var inp = getHiddenInput();
+            if (inp) inp.value = chains[0].value;
+        }
+
+        function update() {
+            // Remove any existing selector
+            var old = document.getElementById('av-chain-selector');
+            if (old) old.remove();
+
+            var checked = document.querySelector('input[name="paymentMethodId"]:checked');
+            if (!checked) return;
+            var val = checked.value;
+
+            var chains = null;
+            if (val === HOSTED_ID) chains = hostedChains;
+            else if (val === WALLET_ID) chains = walletChains;
+            if (!chains) return;
+
+            // Clone the template and insert it inside the selected payment method
+            var tpl = document.getElementById('av-chain-tpl');
+            if (!tpl) return;
+            var clone = tpl.content.cloneNode(true);
+            var selector = clone.querySelector('#av-chain-selector');
+            var opts = clone.querySelector('#av-chain-options');
+            renderChains(chains, opts);
+
+            // Insert after the payment method label (inside the .payment-method div)
+            var methodDiv = checked.closest('.payment-method');
+            if (methodDiv) {
+                methodDiv.appendChild(selector);
+            }
+        }
+
+        function init() {
+            update();
+            // Shopware auto-submits the form on payment change and replaces DOM,
+            // so we use MutationObserver to re-inject after AJAX reload
+            var target = document.querySelector('.payment-methods') || document.body;
+            new MutationObserver(function() { setTimeout(update, 300); })
+                .observe(target, { childList: true, subtree: true });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    </script>
+{% endblock %}

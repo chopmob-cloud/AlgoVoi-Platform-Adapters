@@ -1,0 +1,73 @@
+<div class="algovoi-payment-panel" style="
+  background:#0d0d0d;
+  border:1px solid #2a2d3a;
+  border-radius:8px;
+  padding:20px 24px;
+  color:#e0e0e0;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  margin-bottom:16px;
+">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+    <strong style="color:#fff;font-size:16px;">AlgoVoi</strong>
+    <span style="color:#666;font-size:13px;">On-chain crypto payment</span>
+  </div>
+  <p style="margin:0 0 14px;font-size:13px;color:#aaa;line-height:1.5;">
+    Pay with stablecoins on Algorand, VOI or Hedera.
+    You will be redirected to a hosted checkout page after confirming your order.
+  </p>
+
+  <div style="margin-bottom:16px;">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:8px;">Select network</div>
+    <div style="display:flex;flex-direction:column;gap:6px;" id="algovoi-chain-picker">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="radio" name="algovoi_network" value="algorand_mainnet" checked style="accent-color:#3b82f6;">
+        <span style="font-size:13px;color:#e0e0e0;">Algorand &mdash; <span style="color:#3b82f6;">USDC</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="radio" name="algovoi_network" value="voi_mainnet" style="accent-color:#8b5cf6;">
+        <span style="font-size:13px;color:#e0e0e0;">VOI &mdash; <span style="color:#8b5cf6;">aUSDC</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="radio" name="algovoi_network" value="hedera_mainnet" style="accent-color:#00a9a5;">
+        <span style="font-size:13px;color:#e0e0e0;">Hedera &mdash; <span style="color:#00a9a5;">USDC</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="radio" name="algovoi_network" value="stellar_mainnet" style="accent-color:#7C63D0;">
+        <span style="font-size:13px;color:#e0e0e0;">Stellar &mdash; <span style="color:#7C63D0;">USDC</span></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="text-end">
+    <button type="button" id="button-algovoi-confirm" class="btn btn-primary">Confirm Order</button>
+  </div>
+</div>
+
+<script type="text/javascript">
+$('#button-algovoi-confirm').on('click', function() {
+    var element = this;
+    $(element).prop('disabled', true).text('Redirecting...');
+
+    var network = $('input[name="algovoi_network"]:checked').val() || 'algorand_mainnet';
+
+    $.ajax({
+        url: 'index.php?route=extension/algovoi/payment/algovoi.confirm&language={{ language }}',
+        type: 'POST',
+        data: { algovoi_network: network },
+        dataType: 'json',
+        success: function(json) {
+            if (json['error']) {
+                $('#alert').prepend('<div class="alert alert-danger alert-dismissible"><i class="fa-solid fa-circle-exclamation"></i> ' + json['error'] + ' <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
+                $(element).prop('disabled', false).text('Confirm Order');
+            }
+            if (json['redirect']) {
+                location = json['redirect'];
+            }
+        },
+        error: function(xhr) {
+            console.log(xhr.responseText);
+            $(element).prop('disabled', false).text('Confirm Order');
+        }
+    });
+});
+</script>

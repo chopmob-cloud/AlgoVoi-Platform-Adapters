@@ -1,0 +1,34 @@
+{
+    "name": "algovoi/payment",
+    "description": "AlgoVoi payment extension for Shopware 6",
+    "type": "shopware-platform-plugin",
+    "license": "BUSL-1.1",
+    "version": "1.0.0",
+    "require": {
+        "shopware/core": "~6.5.0 || ~6.6.0 || ~6.7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AlgovoiPayment\\": "src/"
+        }
+    },
+    "extra": {
+        "shopware-plugin-class": "AlgovoiPayment\\AlgovoiPayment",
+        "label": {
+            "de-DE": "AlgoVoi Zahlung",
+            "en-GB": "AlgoVoi Payment Gateway"
+        },
+        "description": {
+            "de-DE": "Stablecoin-Zahlungen (USDC) auf Algorand, VOI, Hedera und Stellar via AlgoVoi. Sofortige Abrechnung, keine Rückbuchungen.",
+            "en-GB": "Accept USDC stablecoin payments on Algorand, VOI, Hedera, and Stellar via AlgoVoi. Instant settlement, no chargebacks, no FX fees."
+        },
+        "manufacturerLink": {
+            "de-DE": "https://api1.ilovechicken.co.uk",
+            "en-GB": "https://api1.ilovechicken.co.uk"
+        },
+        "supportLink": {
+            "de-DE": "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/issues",
+            "en-GB": "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/issues"
+        }
+    }
+}

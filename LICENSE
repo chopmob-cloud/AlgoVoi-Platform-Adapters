@@ -1,0 +1,44 @@
+Business Source License 1.1
+
+Licensor: Christopher Hopley (ilovechicken.co.uk / AlgoVoi)
+Licensed Work: AlgoVoi Platform Adapters
+
+Copyright (c) 2026 Christopher Hopley (ilovechicken.co.uk). All rights reserved.
+
+Grant of Rights:
+
+You may use, copy, and modify the Licensed Work for the sole purpose of
+integrating YOUR OWN store or application with YOUR OWN AlgoVoi tenant
+account obtained from https://api1.ilovechicken.co.uk.
+
+You may NOT:
+
+1. Operate the Licensed Work (or any derivative) as a competing hosted
+   payment service, payment gateway, or payment-as-a-service platform.
+
+2. Resell, sublicense, or redistribute the Licensed Work as part of a
+   commercial product or service that competes with AlgoVoi.
+
+3. Remove or alter any attribution, copyright, or license notices.
+
+4. Use the Licensed Work to process payments without a valid AlgoVoi
+   tenant account.
+
+Permitted Uses:
+
+- Installing a plugin on your own WooCommerce, OpenCart, PrestaShop,
+  Shopware, or Shopify store to accept payments via AlgoVoi.
+- Deploying the Shopify app to your own Cloudflare account for your
+  own Shopify stores.
+- Using the native adapters (PHP, Python, Go, Rust) in your own
+  application with your own AlgoVoi API key.
+- Forking and modifying the code for your own internal use.
+- Contributing improvements back via pull requests.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
