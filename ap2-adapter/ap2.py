@@ -4,8 +4,8 @@ AlgoVoi AP2 (Agent Payment Protocol v2) Server Adapter
 Implements the AP2 v0.1 protocol with the AlgoVoi crypto-algo extension
 for on-chain payments on Algorand and VOI.
 
-Extension URI:  https://algovoi.io/ap2/extensions/crypto-algo/v1
-Schema:         https://algovoi.io/ap2/extensions/crypto-algo/v1/schema.json
+Extension URI:  https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1
+Schema:         https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1/schema.json
 Extensions API: https://api1.ilovechicken.co.uk/ap2/extensions
 
 Flow:
@@ -47,7 +47,7 @@ __version__ = "2.0.0"
 # ── AP2 constants ─────────────────────────────────────────────────────────────
 
 AP2_VERSION    = "0.1"
-EXTENSION_URI  = "https://algovoi.io/ap2/extensions/crypto-algo/v1"
+EXTENSION_URI  = "https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1"
 EXTENSION_SCHEMA = f"{EXTENSION_URI}/schema.json"
 
 
@@ -193,7 +193,7 @@ class Ap2Gate:
         "merchant_id": "<your-merchant-id>",
         "payer_address": "<algorand-address>",
         "payment_response": {
-          "method_name": "https://algovoi.io/ap2/extensions/crypto-algo/v1",
+          "method_name": "https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1",
           "details": {
             "network":     "algorand-mainnet",
             "tx_id":       "<on-chain-tx-id>",

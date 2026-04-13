@@ -1,11 +1,11 @@
 # AP2 — Agent Payment Protocol v2 Adapter for AlgoVoi
 
-Drop-in server middleware for accepting AP2 v0.1 payment mandates from AI agents. Implements the [AlgoVoi crypto-algo extension](https://algovoi.io/ap2/extensions/crypto-algo/v1) to the AP2 v0.1 spec, adding Algorand and VOI on-chain payments to the CartMandate / PaymentMandate flow.
+Drop-in server middleware for accepting AP2 v0.1 payment mandates from AI agents. Implements the [AlgoVoi crypto-algo extension](https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1) to the AP2 v0.1 spec, adding Algorand and VOI on-chain payments to the CartMandate / PaymentMandate flow.
 
 **v2.0.0 — 81/81 tests passing. Real ed25519 smoke-tested 2026-04-13.**
 
-Extension URI:  `https://algovoi.io/ap2/extensions/crypto-algo/v1`
-Schema:         `https://algovoi.io/ap2/extensions/crypto-algo/v1/schema.json`
+Extension URI:  `https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1`
+Schema:         `https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1/schema.json`
 Extensions API: `https://api1.ilovechicken.co.uk/ap2/extensions`
 
 Full integration guide: [ap2-adapter.md](ap2-adapter.md)
@@ -24,7 +24,7 @@ Ap2Gate.check() -- no X-AP2-Mandate found
         v
 HTTP 402 + X-AP2-Cart-Mandate header
   CartMandate.contents.payment_request.payment_methods:
-    [ { supported_methods: "https://algovoi.io/ap2/extensions/crypto-algo/v1",
+    [ { supported_methods: "https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1",
         data: { network, receiver, amount_microunits, asset_id, ... } } ]
         |
         v
@@ -93,7 +93,7 @@ def resource():
   "merchant_id": "shop42",
   "payer_address": "<algorand-ed25519-address>",
   "payment_response": {
-    "method_name": "https://algovoi.io/ap2/extensions/crypto-algo/v1",
+    "method_name": "https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1",
     "details": {
       "network":    "algorand-mainnet",
       "tx_id":      "<on-chain-tx-id>",

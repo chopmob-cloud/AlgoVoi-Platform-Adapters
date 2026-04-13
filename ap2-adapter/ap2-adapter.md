@@ -2,8 +2,8 @@
 
 Drop-in server middleware implementing the AP2 v0.1 CartMandate / PaymentMandate flow with the **AlgoVoi crypto-algo extension** for Algorand and VOI on-chain payments.
 
-Extension URI:  `https://algovoi.io/ap2/extensions/crypto-algo/v1`
-Schema:         `https://algovoi.io/ap2/extensions/crypto-algo/v1/schema.json`
+Extension URI:  `https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1`
+Schema:         `https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1/schema.json`
 Extensions API: `https://api1.ilovechicken.co.uk/ap2/extensions`
 
 > AP2 (Agent Payment Protocol v2) is an open standard for agent-to-merchant payments based on W3C Payment Request API structures and ed25519-signed mandates. This adapter implements the AP2 v0.1 CartMandate/PaymentMandate flow via an AlgoVoi-published extension that adds Algorand and VOI as supported payment methods. The extension is not part of the official AP2 v0.1 specification (which is cards-only) but is fully interoperable with AP2-compliant agents that support extension URIs.
@@ -119,7 +119,7 @@ Decoded `X-AP2-Cart-Mandate` (AP2 v0.1 CartMandate with crypto-algo extension):
     "payment_request": {
       "payment_methods": [
         {
-          "supported_methods": "https://algovoi.io/ap2/extensions/crypto-algo/v1",
+          "supported_methods": "https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1",
           "data": {
             "network": "algorand-mainnet",
             "receiver": "<payout-address>",
@@ -130,7 +130,7 @@ Decoded `X-AP2-Cart-Mandate` (AP2 v0.1 CartMandate with crypto-algo extension):
           }
         },
         {
-          "supported_methods": "https://algovoi.io/ap2/extensions/crypto-algo/v1",
+          "supported_methods": "https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1",
           "data": {
             "network": "voi-mainnet",
             "receiver": "<payout-address>",
@@ -147,7 +147,7 @@ Decoded `X-AP2-Cart-Mandate` (AP2 v0.1 CartMandate with crypto-algo extension):
 }
 ```
 
-The `data` field conforms to the `PaymentMethodData` schema at `https://algovoi.io/ap2/extensions/crypto-algo/v1/schema.json`.
+The `data` field conforms to the `PaymentMethodData` schema at `https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1/schema.json`.
 
 ---
 
@@ -170,7 +170,7 @@ PaymentMandate structure:
   "merchant_id": "shop42",
   "payer_address": "<algorand-ed25519-address>",
   "payment_response": {
-    "method_name": "https://algovoi.io/ap2/extensions/crypto-algo/v1",
+    "method_name": "https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1",
     "details": {
       "network":     "algorand-mainnet",
       "tx_id":       "<on-chain-tx-id>",

@@ -2,7 +2,7 @@
 AP2 Adapter v2.0.0 — Unit Tests
 
 Tests the AP2 v0.1 CartMandate / PaymentMandate flow with the
-AlgoVoi crypto-algo extension (https://algovoi.io/ap2/extensions/crypto-algo/v1).
+AlgoVoi crypto-algo extension (https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1).
 """
 
 import base64
@@ -65,7 +65,7 @@ def main():
     test("version is 2.0.0", ap2_mod.__version__ == "2.0.0")
     test("AP2_VERSION is 0.1", AP2_VERSION == "0.1")
     test("EXTENSION_URI is correct",
-         EXTENSION_URI == "https://algovoi.io/ap2/extensions/crypto-algo/v1")
+         EXTENSION_URI == "https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1")
     test("NETWORKS has algorand-mainnet", "algorand-mainnet" in NETWORKS)
     test("NETWORKS has voi-mainnet", "voi-mainnet" in NETWORKS)
     test("algorand asset_id is 31566704", NETWORKS["algorand-mainnet"]["asset_id"] == 31566704)
@@ -351,7 +351,7 @@ def main():
     # 21. Extension URI in source
     print("\n21. Extension URI and schema references in source")
     test("EXTENSION_URI in source",
-         "https://algovoi.io/ap2/extensions/crypto-algo/v1" in src)
+         "https://api1.ilovechicken.co.uk/ap2/extensions/crypto-algo/v1" in src)
     test("EXTENSION_SCHEMA in source",
          "schema.json" in src)
     test("AP2_VERSION 0.1 in source", '"0.1"' in src)
