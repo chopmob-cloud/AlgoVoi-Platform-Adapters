@@ -41,7 +41,7 @@ Usage:
     if result.requires_payment:
         status, headers, body = result.as_wsgi_response()
 
-Version: 2.0.0
+Version: 2.1.0
 """
 
 from __future__ import annotations
@@ -57,10 +57,18 @@ from typing import Any, Callable, Optional
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 # Payment intent identifier per charge intent spec
 INTENT = "charge"
+
+# CAIP-2 network ID → internal network key used for indexer routing
+_CAIP2_TO_INTERNAL: dict[str, str] = {
+    "algorand:mainnet": "algorand-mainnet",
+    "voi:mainnet":      "voi-mainnet",
+    "hedera:mainnet":   "hedera-mainnet",
+    "stellar:pubnet":   "stellar-mainnet",
+}
 
 
 def _safe_b64decode(s: str) -> bytes:
@@ -242,6 +250,9 @@ class MppGate:
         # In-memory replay protection — single-use proof enforcement per spec.
         # For multi-process deployments, back this with a shared store (Redis, DB).
         self._used_tx_ids: set[str] = set()
+        # Issued challenge IDs → expiry timestamp (UTC epoch float).
+        # Validates challenge echo in Authorization: Payment credentials.
+        self._issued_challenges: dict[str, float] = {}
 
     # ── Core check ───────────────────────────────────────────────────────
 
@@ -279,6 +290,17 @@ class MppGate:
                 error="Invalid credential encoding",
             )
 
+        # Validate challenge echo (IETF spec Table 3 — required field)
+        challenge_obj = decoded.get("challenge") or {}
+        if challenge_obj:
+            c_id = challenge_obj.get("id", "")
+            if not self._validate_challenge_id(c_id):
+                return MppResult(
+                    requires_payment=True,
+                    challenge=self._build_challenge(),
+                    error="Invalid or expired challenge",
+                )
+
         payload = decoded.get("payload") or {}
         tx_id = (
             payload.get("txId")
@@ -286,7 +308,14 @@ class MppGate:
             or decoded.get("tx_id")
             or ""
         )
-        network = decoded.get("network", "algorand-mainnet")
+
+        # Network: prefer challenge.method (CAIP-2) → top-level network → default
+        raw_network = (
+            challenge_obj.get("method")
+            or decoded.get("network")
+            or "algorand-mainnet"
+        )
+        network = _CAIP2_TO_INTERNAL.get(raw_network, raw_network)
 
         if not tx_id or len(tx_id) > 200:
             return MppResult(
@@ -325,6 +354,18 @@ class MppGate:
         key = (self.api_key or "mpp").encode()
         return _hmac.new(key, msg.encode(), hashlib.sha256).hexdigest()[:32]
 
+    def _validate_challenge_id(self, challenge_id: str) -> bool:
+        """
+        Validate that a challenge ID was issued by this gate and has not expired.
+        Uses constant-time comparison to prevent timing attacks.
+        """
+        if not challenge_id:
+            return False
+        expiry = self._issued_challenges.get(challenge_id)
+        if expiry is None:
+            return False
+        return time.time() < expiry
+
     def _build_challenge(self) -> MppChallenge:
         """Build a spec-compliant MPP challenge with all configured networks."""
         accepts = []
@@ -357,6 +398,16 @@ class MppGate:
             json.dumps(request_obj, separators=(",", ":")).encode()
         ).decode()
         challenge_id = self._make_challenge_id(request_b64, expires_str)
+
+        # Store issued challenge for echo validation
+        self._issued_challenges[challenge_id] = (
+            datetime.now(timezone.utc) + timedelta(seconds=self.challenge_ttl)
+        ).timestamp()
+        # Prune expired entries to avoid unbounded growth
+        now = time.time()
+        self._issued_challenges = {
+            k: v for k, v in self._issued_challenges.items() if v > now
+        }
 
         return MppChallenge(
             realm=self.realm,

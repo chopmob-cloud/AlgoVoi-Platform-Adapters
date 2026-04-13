@@ -58,7 +58,7 @@ def main():
     # 1. Version and constants
     print("\n1. Version and constants")
     import mpp as mpp_mod
-    test("version is 2.0.0", mpp_mod.__version__ == "2.0.0")
+    test("version is 2.1.0", mpp_mod.__version__ == "2.1.0")
     test("INTENT is 'charge'", INTENT == "charge")
     test("INTENT constant in source", '"charge"' in src)
     test("4 networks defined in NETWORKS", len(MppGate.NETWORKS) == 4)
@@ -369,6 +369,170 @@ def main():
     print("\n24. No hardcoded secrets")
     test("no real API keys", "algv_2z3N" not in src and "algv_iedCPy" not in src)
     test("no real payout addresses", "ZVLRVYQS" not in src)
+
+    # 25. _CAIP2_TO_INTERNAL mapping
+    print("\n25. _CAIP2_TO_INTERNAL CAIP-2 network mapping")
+    caip2 = mpp_mod._CAIP2_TO_INTERNAL
+    test("_CAIP2_TO_INTERNAL exists in module", isinstance(caip2, dict))
+    test("algorand:mainnet -> algorand-mainnet", caip2.get("algorand:mainnet") == "algorand-mainnet")
+    test("voi:mainnet -> voi-mainnet", caip2.get("voi:mainnet") == "voi-mainnet")
+    test("hedera:mainnet -> hedera-mainnet", caip2.get("hedera:mainnet") == "hedera-mainnet")
+    test("stellar:pubnet -> stellar-mainnet", caip2.get("stellar:pubnet") == "stellar-mainnet")
+    test("4 entries in _CAIP2_TO_INTERNAL", len(caip2) == 4)
+
+    # 26. _issued_challenges populated on _build_challenge()
+    print("\n26. _issued_challenges populated on _build_challenge()")
+    gate_echo = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="echo-test",
+        amount_microunits=10000,
+        payout_address="ADDR",
+    )
+    test("_issued_challenges starts empty", len(gate_echo._issued_challenges) == 0)
+    ch = gate_echo._build_challenge()
+    test("_issued_challenges has 1 entry after _build_challenge()", len(gate_echo._issued_challenges) == 1)
+    test("challenge_id is in _issued_challenges", ch.challenge_id in gate_echo._issued_challenges)
+    stored_expiry = gate_echo._issued_challenges.get(ch.challenge_id, 0)
+    test("stored expiry is in the future", stored_expiry > time.time())
+
+    # 27. _validate_challenge_id()
+    print("\n27. _validate_challenge_id()")
+    test("valid issued ID validates True", gate_echo._validate_challenge_id(ch.challenge_id))
+    test("unknown ID validates False", not gate_echo._validate_challenge_id("0000000000000000000000000000000000"))
+    test("empty string validates False", not gate_echo._validate_challenge_id(""))
+    # Simulate expired: overwrite expiry with past timestamp
+    gate_echo._issued_challenges[ch.challenge_id] = time.time() - 1
+    test("expired challenge validates False", not gate_echo._validate_challenge_id(ch.challenge_id))
+
+    # 28. Challenge echo validation — credential with valid echo accepted
+    print("\n28. Challenge echo — valid echo not rejected (reaches indexer)")
+    gate_v = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="echo-valid",
+        amount_microunits=10000,
+        payout_address="ADDR",
+    )
+    ch_v = gate_v._build_challenge()
+    valid_echo_cred = b64j({
+        "challenge": {
+            "id":     ch_v.challenge_id,
+            "realm":  gate_v.realm,
+            "method": "algorand",
+            "intent": "charge",
+        },
+        "payload": {"txId": "FAKETX_ECHO_VALID"},
+    })
+    result_echo_valid = gate_v.check({"Authorization": f"Payment {valid_echo_cred}"})
+    test("valid challenge echo: error is NOT invalid_challenge",
+         "invalid or expired challenge" not in (result_echo_valid.error or "").lower(),
+         f"error={result_echo_valid.error}")
+    test("valid challenge echo: error is verification (indexer rejects fake txId)",
+         "verification" in (result_echo_valid.error or "").lower(),
+         f"error={result_echo_valid.error}")
+
+    # 29. Challenge echo — invalid/unknown ID rejected
+    print("\n29. Challenge echo — invalid ID rejected")
+    gate_inv = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="echo-invalid",
+        amount_microunits=10000,
+        payout_address="ADDR",
+    )
+    unknown_echo_cred = b64j({
+        "challenge": {
+            "id":     "deadbeefdeadbeefdeadbeefdeadbeef",
+            "realm":  "Test API",
+            "method": "algorand",
+            "intent": "charge",
+        },
+        "payload": {"txId": "SOMETXID"},
+    })
+    result_echo_inv = gate_inv.check({"Authorization": f"Payment {unknown_echo_cred}"})
+    test("unknown challenge ID: requires_payment True", result_echo_inv.requires_payment)
+    test("unknown challenge ID: error is invalid/expired",
+         "invalid or expired challenge" in (result_echo_inv.error or "").lower(),
+         f"error={result_echo_inv.error}")
+    test("unknown challenge ID: new challenge issued", result_echo_inv.challenge is not None)
+
+    # 30. Challenge echo — credential without challenge object (backward compat)
+    print("\n30. Challenge echo — no challenge object (backward compat)")
+    gate_bc = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="echo-bc",
+        amount_microunits=10000,
+        payout_address="ADDR",
+    )
+    no_echo_cred = b64j({"network": "algorand-mainnet", "payload": {"txId": "FAKETX_NOECHO"}})
+    result_bc = gate_bc.check({"Authorization": f"Payment {no_echo_cred}"})
+    test("no challenge object: NOT invalid_challenge error",
+         "invalid or expired challenge" not in (result_bc.error or "").lower(),
+         f"error={result_bc.error}")
+    test("no challenge object: reaches indexer (verification error)",
+         "verification" in (result_bc.error or "").lower(),
+         f"error={result_bc.error}")
+
+    # 31. CAIP-2 network extraction from challenge.method
+    print("\n31. CAIP-2 network extraction from challenge.method")
+    gate_caip = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="caip2-test",
+        amount_microunits=10000,
+        networks=["algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet"],
+        payout_address="ADDR",
+    )
+    ch_caip = gate_caip._build_challenge()
+    # Use CAIP-2 format in challenge.method
+    caip2_cred = b64j({
+        "challenge": {
+            "id":     ch_caip.challenge_id,
+            "realm":  gate_caip.realm,
+            "method": "algorand:mainnet",   # CAIP-2 format
+            "intent": "charge",
+        },
+        "payload": {"txId": "FAKETX_CAIP2"},
+    })
+    result_caip = gate_caip.check({"Authorization": f"Payment {caip2_cred}"})
+    test("CAIP-2 method accepted (not invalid_challenge)",
+         "invalid or expired challenge" not in (result_caip.error or "").lower(),
+         f"error={result_caip.error}")
+    test("CAIP-2 algorand:mainnet routes to indexer (verification error)",
+         "verification" in (result_caip.error or "").lower(),
+         f"error={result_caip.error}")
+
+    # VOI CAIP-2
+    gate_voi_caip = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="caip2-voi",
+        amount_microunits=10000,
+        networks=["voi_mainnet"],
+        payout_address="ADDR",
+    )
+    ch_voi = gate_voi_caip._build_challenge()
+    voi_caip2_cred = b64j({
+        "challenge": {
+            "id":     ch_voi.challenge_id,
+            "realm":  gate_voi_caip.realm,
+            "method": "voi:mainnet",   # CAIP-2 format
+            "intent": "charge",
+        },
+        "payload": {"txId": "FAKETX_VOICAIP2"},
+    })
+    result_voi_caip = gate_voi_caip.check({"Authorization": f"Payment {voi_caip2_cred}"})
+    test("CAIP-2 voi:mainnet routes to nodely indexer (verification error)",
+         "verification" in (result_voi_caip.error or "").lower(),
+         f"error={result_voi_caip.error}")
 
     # Summary
     print("\n" + "=" * 55)
