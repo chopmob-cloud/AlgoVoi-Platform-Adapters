@@ -28,6 +28,7 @@ Included:
 - **Drop-in plugins** for WooCommerce, OpenCart, PrestaShop, and Shopware (tested and deployed)
 - **Native adapters** for PHP, Python, Go, and Rust (zero external dependencies)
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
+- **AI platform adapters** for OpenAI and compatible providers (MPP + AP2 payment gates, all 4 chains)
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
 - **Integration guides** for 30+ platforms including Shopify, Magento, eBay, and more
 - **27 provisional Python adapters** — see [Provisional adapters](#provisional-adapters) section below
@@ -91,6 +92,8 @@ platform-adapters/
 ├── whatsapp/             # [Provisional] WhatsApp Business API adapter
 ├── wormhole/             # [Provisional] Wormhole cross-chain bridge adapter
 ├── x402-ai-agents/       # x402 autonomous AI agent payment adapter (live-tested)
+├── ai-adapters/
+│   └── openai/           # Payment-gated OpenAI / compatible API wrappers (MPP + AP2)
 ├── xero/                 # Xero invoice payment adapter (production)
 ├── yapily/               # [Provisional] Yapily open banking adapter
 ├── zoho-books/           # Zoho Books invoice adapter (production)
@@ -236,6 +239,80 @@ All 7 accounting adapters were end-to-end tested on **11 April 2026** against `a
 | **x402** | [x402-ai-agents.md](./x402-ai-agents.md) / [x402-ai-agents/](./x402-ai-agents/) | Autonomous AI agent payments via the x402 protocol (spec v1 — `accepts` array, CAIP-2 IDs, microunit amounts, `payload.signature`) | **Production ready** — real payments smoke-tested on all 4 chains (Algorand, VOI, Stellar, Hedera), `x402/verify` confirmed on each. Adapter v2.0.0, 76/76 tests. |
 | **MPP** | [mpp-adapter/mpp-adapter.md](./mpp-adapter/mpp-adapter.md) / [mpp-adapter/](./mpp-adapter/) | Machine Payments Protocol server middleware — 100% IETF `draft-ryan-httpauth-payment` compliant (challenge echo validation, CAIP-2 network routing, HMAC challenge IDs, on-chain verification, replay protection) | **Production ready** — 0.01 USDC live smoke-tested on all 4 chains (Algorand, VOI, Hedera, Stellar) 13 Apr 2026. Adapter v2.1.0, 153/153 tests. |
 | **AP2** | [ap2-adapter/ap2-adapter.md](./ap2-adapter/ap2-adapter.md) / [ap2-adapter/](./ap2-adapter/) | AP2 v0.1 CartMandate/PaymentMandate server middleware with AlgoVoi crypto-algo extension. ed25519 mandate signing + on-chain tx verification across all 4 chains (Algorand, VOI, Hedera, Stellar). | **Production ready** — 0.01 USDC live smoke-tested on all 4 chains 13 Apr 2026. Real ed25519 sig verified. v2.0.0, 81/81 tests. |
+
+## AI Platform Adapters
+
+Drop-in payment gates for OpenAI and OpenAI-compatible AI providers. Each adapter wraps the AI call behind an on-chain payment check — the caller pays 0.01 USDC (or any configured amount) before the AI responds.
+
+All adapters live in [`ai-adapters/openai/`](./ai-adapters/openai/) and share a common interface: `check(headers, body)` → `result`, `complete(messages)` → `str`, `flask_guard()` convenience method.
+
+| Adapter | Class | Protocol | Chains | Files | Status |
+|---------|-------|----------|--------|-------|--------|
+| **MPP AI** | `AlgoVoiMppAI` | IETF MPP | Algorand, VOI, Hedera, Stellar | [mpp_algovoi.py](./ai-adapters/openai/mpp_algovoi.py) | **Available** — 42/42 tests, 0.01 USDC smoke-tested all 4 chains 14 Apr 2026 |
+| **AP2 AI** | `AlgoVoiAp2AI` | AP2 v0.1 + crypto-algo | Algorand, VOI | [ap2_algovoi.py](./ai-adapters/openai/ap2_algovoi.py) | **Available** — 39/39 tests, 0.01 USDC smoke-tested Algorand + VOI 14 Apr 2026 |
+| **x402 AI** | `AlgoVoiOpenAI` (x402 mode) | x402 spec v1 | Algorand, VOI, Hedera, Stellar | [openai_algovoi.py](./ai-adapters/openai/openai_algovoi.py) | *Pending server resources* |
+
+Supports any OpenAI-compatible provider via `base_url`:
+
+| Provider | base_url |
+|----------|----------|
+| OpenAI (default) | `https://api.openai.com/v1` |
+| Mistral | `https://api.mistral.ai/v1` |
+| Together AI | `https://api.together.xyz/v1` |
+| Groq | `https://api.groq.com/openai/v1` |
+| Perplexity | `https://api.perplexity.ai` |
+
+### MPP — Quick start
+
+```python
+from mpp_algovoi import AlgoVoiMppAI
+
+gate = AlgoVoiMppAI(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    networks          = ["algorand_mainnet"],   # or voi_mainnet / hedera_mainnet / stellar_mainnet
+    amount_microunits = 10000,                  # 0.01 USDC per call
+    resource_id       = "ai-chat",
+)
+
+@app.route("/ai/chat", methods=["POST"])
+def chat():
+    result = gate.check(dict(request.headers))
+    if result.requires_payment:
+        return result.as_flask_response()   # 402 + WWW-Authenticate: Payment challenge
+    # result.receipt.payer, .tx_id, .amount available
+    return jsonify({"content": gate.complete(request.json["messages"])})
+```
+
+### AP2 — Quick start
+
+```python
+from ap2_algovoi import AlgoVoiAp2AI
+
+gate = AlgoVoiAp2AI(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    networks          = ["algorand-mainnet", "voi-mainnet"],
+    amount_microunits = 10000,                  # 0.01 USDC per call
+)
+
+@app.route("/ai/chat", methods=["POST"])
+def chat():
+    body   = request.get_json(silent=True) or {}
+    result = gate.check(dict(request.headers), body)
+    if result.requires_payment:
+        return result.as_flask_response()   # 402 + X-AP2-Cart-Mandate header
+    # result.mandate.payer_address, .network, .tx_id available
+    return jsonify({"content": gate.complete(body["messages"])})
+```
+
+Full docs: [`ai-adapters/openai/README.md`](./ai-adapters/openai/README.md)
+
+---
 
 ## Charity Interfaces
 
