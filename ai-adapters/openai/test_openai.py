@@ -153,13 +153,30 @@ def test_x402_payment_verified():
         payout_address=PAYOUT_ADDR, network="algorand-mainnet", amount_microunits=10000,
     )
 
+    # Valid proof containing a tx_id
+    proof = base64.b64encode(json.dumps({
+        "x402Version": 1,
+        "payload": {"signature": "FAKETXID123"},
+    }).encode()).decode()
+
+    # Mock indexer returning a confirmed, correctly-sized payment
+    indexer_resp = json.dumps({"transaction": {
+        "confirmed-round": 12345678,
+        "sender": "PAYER_ADDR",
+        "asset-transfer-transaction": {
+            "receiver": PAYOUT_ADDR,
+            "amount": 10000,
+            "asset-id": 31566704,
+        },
+    }}).encode()
     mock_response = MagicMock()
-    mock_response.read.return_value = json.dumps({"verified": True}).encode()
+    mock_response.read.return_value = indexer_resp
+    mock_response.status = 200
     mock_response.__enter__ = lambda s: s
     mock_response.__exit__ = MagicMock(return_value=False)
 
     with patch("openai_algovoi.urlopen", return_value=mock_response):
-        result = gate.check({"X-Payment": "dGVzdA=="})
+        result = gate.check({"X-Payment": proof})
 
     results.append(ok("requires_payment is False", not result.requires_payment))
     return results
@@ -176,13 +193,30 @@ def test_x402_payment_rejected():
         payout_address=PAYOUT_ADDR, network="algorand-mainnet", amount_microunits=10000,
     )
 
+    # Valid proof containing a tx_id
+    proof = base64.b64encode(json.dumps({
+        "x402Version": 1,
+        "payload": {"signature": "FAKETXID456"},
+    }).encode()).decode()
+
+    # Mock indexer returning wrong amount (1 microunit instead of 10000)
+    indexer_resp = json.dumps({"transaction": {
+        "confirmed-round": 12345678,
+        "sender": "PAYER_ADDR",
+        "asset-transfer-transaction": {
+            "receiver": PAYOUT_ADDR,
+            "amount": 1,
+            "asset-id": 31566704,
+        },
+    }}).encode()
     mock_response = MagicMock()
-    mock_response.read.return_value = json.dumps({"verified": False, "error": "Invalid proof"}).encode()
+    mock_response.read.return_value = indexer_resp
+    mock_response.status = 200
     mock_response.__enter__ = lambda s: s
     mock_response.__exit__ = MagicMock(return_value=False)
 
     with patch("openai_algovoi.urlopen", return_value=mock_response):
-        result = gate.check({"x-payment": "dGVzdA=="})
+        result = gate.check({"x-payment": proof})
 
     results.append(ok("requires_payment is True", result.requires_payment))
     results.append(ok("error message set", result.error is not None))
@@ -450,11 +484,17 @@ def test_x402_verify_network_error():
         payout_address=PAYOUT_ADDR, network="algorand-mainnet", amount_microunits=10000,
     )
 
+    # Valid proof so extraction succeeds; urlopen itself throws
+    proof = base64.b64encode(json.dumps({
+        "x402Version": 1,
+        "payload": {"signature": "FAKETXID789"},
+    }).encode()).decode()
+
     with patch("openai_algovoi.urlopen", side_effect=URLError("timeout")):
-        result = gate.check({"X-Payment": "dGVzdA=="})
+        result = gate.check({"X-Payment": proof})
 
     results.append(ok("requires_payment True on network error", result.requires_payment))
-    results.append(ok("error message set", "Verification error" in (result.error or "")))
+    results.append(ok("error message set", result.error is not None))
     return results
 
 

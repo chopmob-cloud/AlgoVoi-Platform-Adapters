@@ -141,6 +141,24 @@ class _Result:
 
 # ── Inline x402 gate ──────────────────────────────────────────────────────────
 
+# Chain indexers for direct on-chain verification (no central API needed)
+_INDEXERS = {
+    "algorand-mainnet": "https://mainnet-idx.algonode.cloud/v2",
+    "voi-mainnet":      "https://mainnet-idx.voi.nodely.dev/v2",
+    "hedera-mainnet":   "https://mainnet-public.mirrornode.hedera.com/api/v1",
+    "stellar-mainnet":  "https://horizon.stellar.org",
+}
+
+# Integer asset IDs for AVM chains (for indexer comparison)
+_ASSET_ID_INT = {
+    "algorand-mainnet": 31566704,
+    "voi-mainnet":      302190,
+}
+
+# Stellar USDC issuer
+_STELLAR_USDC_ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+
+
 class _X402Result:
     """Result for the inline x402 gate."""
 
@@ -166,7 +184,8 @@ class _X402Gate:
     Minimal x402 server gate.
 
     Issues X-PAYMENT-REQUIRED challenges (spec v1) and verifies
-    X-PAYMENT proofs via the AlgoVoi verify endpoint.
+    X-PAYMENT proofs via direct on-chain indexer calls — no central
+    verification API required.
     """
 
     def __init__(
@@ -178,15 +197,12 @@ class _X402Gate:
         network: str,
         amount_microunits: int,
     ):
-        self._api_base      = api_base.rstrip("/")
-        self._api_key       = api_key
-        self._tenant_id     = tenant_id
         self._payout_address = payout_address
-        self._network       = network
-        self._amount        = amount_microunits
-        self._ssl           = ssl.create_default_context()  # nosec B310
-        self._caip2         = _CAIP2[network]
-        self._asset_id      = _ASSET_ID[network]
+        self._network        = network
+        self._amount         = amount_microunits
+        self._ssl            = ssl.create_default_context()  # nosec B310
+        self._caip2          = _CAIP2[network]
+        self._asset_id       = _ASSET_ID[network]
 
     def _payment_required_header(self) -> str:
         payload = {
@@ -202,6 +218,127 @@ class _X402Gate:
         }
         return base64.b64encode(json.dumps(payload).encode()).decode()
 
+    def _extract_tx_id(self, proof: str) -> Optional[str]:
+        """Extract tx_id from a base64-encoded x402 proof."""
+        try:
+            obj = json.loads(base64.b64decode(proof + "=="))
+        except Exception:
+            return None
+        payload = obj.get("payload") or {}
+        return (
+            payload.get("signature")
+            or payload.get("tx_id")
+            or obj.get("tx_id")
+            or obj.get("txId")
+        )
+
+    def _verify_avm(self, tx_id: str) -> bool:
+        """Verify Algorand or VOI payment via chain indexer."""
+        indexer = _INDEXERS.get(self._network)
+        if not indexer:
+            return False
+        try:
+            req = Request(
+                f"{indexer}/transactions/{tx_id}",
+                headers={"Accept": "application/json"},
+            )
+            with urlopen(req, timeout=15, context=self._ssl) as resp:  # nosec B310
+                if resp.status != 200:
+                    return False
+                data = json.loads(resp.read())
+        except (URLError, OSError, json.JSONDecodeError):
+            return False
+
+        tx = data.get("transaction", {})
+        if not tx.get("confirmed-round"):
+            return False
+        atx = tx.get("asset-transfer-transaction", {})
+        if atx.get("receiver") != self._payout_address:
+            return False
+        if atx.get("amount", 0) < self._amount:
+            return False
+        expected_int = _ASSET_ID_INT.get(self._network)
+        if expected_int and atx.get("asset-id") != expected_int:
+            return False
+        return True
+
+    def _verify_hedera(self, tx_id: str) -> bool:
+        """Verify Hedera USDC payment via Hedera Mirror Node."""
+        base = _INDEXERS.get(self._network)
+        if not base:
+            return False
+        if "@" in tx_id:
+            account_part, time_part = tx_id.split("@", 1)
+            normalised = f"{account_part}-{time_part.replace('.', '-', 1)}"
+        else:
+            normalised = tx_id
+        try:
+            req = Request(
+                f"{base}/transactions/{normalised}",
+                headers={"Accept": "application/json"},
+            )
+            with urlopen(req, timeout=15, context=self._ssl) as resp:  # nosec B310
+                if resp.status != 200:
+                    return False
+                data = json.loads(resp.read())
+        except (URLError, OSError, json.JSONDecodeError):
+            return False
+
+        transactions = data.get("transactions", [])
+        if not transactions or transactions[0].get("result") != "SUCCESS":
+            return False
+        for transfer in transactions[0].get("token_transfers", []):
+            if transfer.get("token_id") != "0.0.456858":
+                continue
+            if (transfer.get("account") == self._payout_address
+                    and transfer.get("amount", 0) >= self._amount):
+                return True
+        return False
+
+    def _verify_stellar(self, tx_id: str) -> bool:
+        """Verify Stellar USDC payment via Horizon."""
+        base = _INDEXERS.get(self._network)
+        if not base:
+            return False
+        try:
+            req = Request(
+                f"{base}/transactions/{tx_id}/operations",
+                headers={"Accept": "application/json"},
+            )
+            with urlopen(req, timeout=15, context=self._ssl) as resp:  # nosec B310
+                if resp.status != 200:
+                    return False
+                data = json.loads(resp.read())
+        except (URLError, OSError, json.JSONDecodeError):
+            return False
+
+        for op in data.get("_embedded", {}).get("records", []):
+            if op.get("type") != "payment":
+                continue
+            if op.get("to") != self._payout_address:
+                continue
+            if op.get("asset_code") != "USDC":
+                continue
+            if op.get("asset_issuer") != _STELLAR_USDC_ISSUER:
+                continue
+            try:
+                amount_microunits = int(float(op.get("amount", "0")) * 1_000_000)
+            except (ValueError, TypeError):
+                continue
+            if amount_microunits >= self._amount:
+                return True
+        return False
+
+    def _verify_on_chain(self, tx_id: str) -> bool:
+        """Route to the correct chain verifier."""
+        if "algorand" in self._network or "voi" in self._network:
+            return self._verify_avm(tx_id)
+        if "hedera" in self._network:
+            return self._verify_hedera(tx_id)
+        if "stellar" in self._network:
+            return self._verify_stellar(tx_id)
+        return False
+
     def check(self, headers: dict, body: Optional[dict] = None) -> _X402Result:
         h = {k.lower(): v for k, v in headers.items()}
         proof = h.get("x-payment") or h.get("x-payment-signature")
@@ -212,41 +349,22 @@ class _X402Gate:
                 headers_402={"X-PAYMENT-REQUIRED": self._payment_required_header()},
             )
 
-        # Verify proof via AlgoVoi
-        try:
-            req_body = json.dumps({
-                "x402Version": 1,
-                "proof": proof,
-                "network": self._caip2,
-                "asset": self._asset_id,
-                "amount": str(self._amount),
-                "payTo": self._payout_address,
-                "tenantId": self._tenant_id,
-            }).encode()
-            req = Request(
-                f"{self._api_base}/x402/verify",
-                data=req_body,
-                headers={
-                    "Content-Type": "application/json",
-                    "X-API-Key": self._api_key,
-                },
-                method="POST",
-            )
-            with urlopen(req, timeout=15, context=self._ssl) as resp:
-                result = json.loads(resp.read())
-            if result.get("verified") or result.get("success"):
-                return _X402Result(requires_payment=False)
+        tx_id = self._extract_tx_id(proof)
+        if not tx_id:
             return _X402Result(
                 requires_payment=True,
                 headers_402={"X-PAYMENT-REQUIRED": self._payment_required_header()},
-                error=result.get("error", "Payment verification failed"),
+                error="Invalid payment proof — could not extract transaction ID",
             )
-        except (URLError, OSError, json.JSONDecodeError) as exc:
-            return _X402Result(
-                requires_payment=True,
-                headers_402={"X-PAYMENT-REQUIRED": self._payment_required_header()},
-                error=f"Verification error: {exc}",
-            )
+
+        if self._verify_on_chain(tx_id):
+            return _X402Result(requires_payment=False)
+
+        return _X402Result(
+            requires_payment=True,
+            headers_402={"X-PAYMENT-REQUIRED": self._payment_required_header()},
+            error="Payment verification failed — transaction not confirmed or amount incorrect",
+        )
 
 
 # ── Gate factory ──────────────────────────────────────────────────────────────
@@ -273,7 +391,7 @@ def _build_gate(
             payout_address=payout_address,
             network=network,
             amount_microunits=amount_microunits,
-        )
+        )  # api_base/api_key/tenant_id retained for future hosted-verify option
 
     if protocol == "mpp":
         _add_path("mpp-adapter")
