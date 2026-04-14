@@ -523,6 +523,245 @@ def scene_200(adapter: str, model: str, ai_reply: str) -> list[Image.Image]:
     return frames
 
 
+# ── How-to scenes ─────────────────────────────────────────────────────────────
+
+def scene_howto_setup() -> list[Image.Image]:
+    """Steps 1-3: sign up, download adapter, pip install."""
+
+    steps = [
+        ("1", "Sign up at algovoi.co.uk",         "Copy your Tenant ID + API key"),
+        ("2", "Download from GitHub:",             "openai_algovoi.py  +  app.py"),
+        ("3", "pip install openai flask",          ""),
+        ("4", "Edit app.py — fill in your keys",  "openai_key  algovoi_key  tenant_id  payout_address"),
+        ("5", "python app.py",                     ""),
+    ]
+
+    def base_frame(show: int) -> Image.Image:
+        img, d = _new_frame()
+        _title_bar(d, "OpenAI", "gpt-4o")
+        y = TOP
+        _divider(d, y, "setup")
+        y += LINE_H + 12
+        for i, (num, line1, line2) in enumerate(steps):
+            if i >= show:
+                break
+            # step number circle
+            cx, cy = LPAD + 14, y + 10
+            d.ellipse([cx - 13, cy - 13, cx + 13, cy + 13], fill=BADGE_BLUE)
+            d.text((cx, cy), num, font=FONT_BOLD, fill=(255, 255, 255), anchor="mm")
+            d.text((LPAD + 36, y + 2), line1, font=FONT_LG, fill=TEXT)
+            y += LINE_H + 6
+            if line2:
+                d.text((LPAD + 36, y), line2, font=FONT, fill=MUTED)
+                y += LINE_H
+            y += 14
+        return img
+
+    frames = []
+    for step in range(1, len(steps) + 1):
+        f = base_frame(step)
+        for _ in range(40):
+            frames.append(f)
+
+    last = base_frame(len(steps))
+    frames += _annotation_frames(
+        last,
+        heading="That's all the setup you need",
+        lines=[
+            "One Python file. Two pip packages.",
+            "Your Tenant ID + API key from algovoi.co.uk.",
+        ],
+        hold_frames=70,
+    )
+    return frames
+
+
+def scene_howto_code() -> list[Image.Image]:
+    """Step 4: create app.py — gate config with annotation, then Flask route with annotation."""
+
+    config_lines = [
+        ("from openai_algovoi import AlgoVoiOpenAI",                   PROMPT),
+        ("from flask import Flask, request, jsonify, Response",         MUTED),
+        ("",                                                             TEXT),
+        ("gate = AlgoVoiOpenAI(",                                       TEXT),
+        ('    openai_key        = "sk-...",',                           VAL),
+        ('    algovoi_key       = "algv_...",',                         VAL),
+        ('    tenant_id         = "your-tenant-uuid",',                 VAL),
+        ('    payout_address    = "YOUR_ALGORAND_ADDRESS",',            VAL),
+        ('    protocol          = "x402",',                             JSON_VAL),
+        ('    network           = "algorand-mainnet",',                 JSON_VAL),
+        ('    amount_microunits = 10000,',                              JSON_VAL),
+        (")",                                                            TEXT),
+    ]
+
+    route_lines = [
+        ("app = Flask(__name__)",                                        TEXT),
+        ("",                                                             TEXT),
+        ('@app.route("/ai/chat", methods=["POST"])',                    KEY),
+        ("def chat():",                                                  TEXT),
+        ("    body   = request.get_json() or {}",                       MUTED),
+        ("    result = gate.check(dict(request.headers), body)",        TEXT),
+        ("    if result.requires_payment:",                              TEXT),
+        ("        b, s, h = result.as_flask_response()",                MUTED),
+        ("        return Response(b, status=s, headers=h)",             STATUS2),
+        ('    return jsonify({"content": gate.complete(body["messages"])})', STATUS0),
+    ]
+
+    def config_frame(n: int) -> Image.Image:
+        img, d = _new_frame()
+        _title_bar(d, "OpenAI", "gpt-4o")
+        y = TOP
+        _divider(d, y, "4 · create app.py  —  gate config")
+        y += LINE_H + 4
+        for text, color in config_lines[:n]:
+            _out(d, y, text, color)
+            y += LINE_H
+        if n < len(config_lines):
+            _cursor(d, LPAD + 4, y)
+        return img
+
+    def route_frame(n: int) -> Image.Image:
+        img, d = _new_frame()
+        _title_bar(d, "OpenAI", "gpt-4o")
+        y = TOP
+        _divider(d, y, "4 · create app.py  —  Flask route")
+        y += LINE_H + 4
+        for text, color in route_lines[:n]:
+            _out(d, y, text, color)
+            y += LINE_H
+        if n < len(route_lines):
+            _cursor(d, LPAD + 4, y)
+        return img
+
+    frames = []
+
+    # Type out gate config
+    for n in range(1, len(config_lines) + 1, 2):
+        f = config_frame(n)
+        for _ in range(5):
+            frames.append(f)
+
+    # Annotate gate config
+    done_config = config_frame(len(config_lines))
+    for _ in range(30):
+        frames.append(done_config)
+    frames += _annotation_frames(
+        done_config,
+        heading="Gate config — 4 credentials, 3 payment settings",
+        lines=[
+            "openai_key / algovoi_key / tenant_id / payout_address — your keys.",
+            "protocol='x402'  network='algorand-mainnet'  amount=0.01 USDC.",
+            "Change network= to voi-mainnet / hedera-mainnet / stellar-mainnet.",
+        ],
+        hold_frames=80,
+    )
+
+    # Type out Flask route
+    for n in range(1, len(route_lines) + 1, 2):
+        f = route_frame(n)
+        for _ in range(5):
+            frames.append(f)
+
+    # Annotate Flask route
+    done_route = route_frame(len(route_lines))
+    for _ in range(30):
+        frames.append(done_route)
+    frames += _annotation_frames(
+        done_route,
+        heading="Flask route — 3 lines do all the work",
+        lines=[
+            "gate.check()  →  verifies payment proof via api1.ilovechicken.co.uk.",
+            "requires_payment=True  →  returns 402 + X-PAYMENT-REQUIRED challenge.",
+            "gate.complete()  →  calls OpenAI and returns the response.",
+        ],
+        hold_frames=80,
+    )
+
+    return frames
+
+
+def scene_howto_run(ai_reply: str, challenge_header: str = "") -> list[Image.Image]:
+    """Step 5: python app.py → 402 → pay → 200."""
+
+    def base_frame(phase: int) -> Image.Image:
+        img, d = _new_frame()
+        _title_bar(d, "OpenAI", "gpt-4o")
+        y = TOP
+        _divider(d, y, "python app.py")
+        y += LINE_H + 4
+
+        _out(d, y, " * Running on http://0.0.0.0:5000", MUTED)
+        y += LINE_H * 2
+        if phase >= 1:
+            pass
+
+        if phase >= 2:
+            _prompt(d, y, "curl -s -i -X POST http://localhost:5000/ai/chat \\")
+            y += LINE_H
+            _out(d, y, '  -d \'{"messages":[{"role":"user","content":"Hello"}]}\'', MUTED)
+            y += LINE_H
+
+        if phase >= 3:
+            _out(d, y, "HTTP/1.1 402 Payment Required", STATUS2)
+            y += LINE_H
+            raw = challenge_header or "eyJ4NDAyVmVyc2lvbiI6MSwiYWNjZXB0cyI6W3sibmV0d29yayI6ImFsZ29yYW5kLW1haW5uZXQi"
+            _out(d, y, "X-PAYMENT-REQUIRED: " + raw[:55] + "...", KEY)
+            y += LINE_H * 2
+
+        if phase >= 4:
+            _out(d, y, "# pay on Algorand, build proof...", MUTED)
+            y += LINE_H
+            _prompt(d, y, "curl -s -X POST http://localhost:5000/ai/chat \\")
+            y += LINE_H
+            _out(d, y, '  -H "X-PAYMENT: $PROOF" \\', MUTED)
+            _out(d, y + LINE_H, '  -d \'{"messages":[{"role":"user","content":"Hello"}]}\'', MUTED)
+            y += LINE_H * 2
+
+        if phase >= 5:
+            _out(d, y, "HTTP/1.1 200 OK", STATUS0)
+            y += LINE_H
+            display = '{"content": "' + ai_reply + '"}'
+            _out(d, y, display[:80], JSON_KEY)
+
+        return img
+
+    frames = []
+    for _ in range(20):
+        frames.append(base_frame(0))
+    for _ in range(30):
+        frames.append(base_frame(1))
+    for _ in range(30):
+        frames.append(base_frame(2))
+    for _ in range(30):
+        frames.append(base_frame(3))
+
+    frames += _annotation_frames(
+        base_frame(3),
+        heading="x402 — HTTP Payment Protocol",
+        lines=[
+            "api1.ilovechicken.co.uk issues a real X-PAYMENT-REQUIRED challenge.",
+            "The client pays on Algorand and retries with the tx_id as proof.",
+        ],
+        hold_frames=80,
+    )
+
+    for _ in range(30):
+        frames.append(base_frame(4))
+    for _ in range(30):
+        frames.append(base_frame(5))
+
+    frames += _annotation_frames(
+        base_frame(5),
+        heading="Payment verified — OpenAI response returned",
+        lines=[
+            "api1.ilovechicken.co.uk verified the TX on-chain in real time.",
+            "Cost: 0.01 USDC. Same code works on VOI, Hedera, and Stellar.",
+        ],
+        hold_frames=80,
+    )
+    return frames
+
+
 # ── Adapter configs ───────────────────────────────────────────────────────────
 
 ADAPTERS = [
@@ -551,6 +790,11 @@ ADAPTERS = [
         out      = "algovoi_gemini_demo.gif",
     ),
 ]
+
+HOWTO_CONFIG = dict(
+    reply  = "Hello! I'm GPT-4o. How can I help you today?",
+    out    = "algovoi_openai_x402_howto.gif",
+)
 
 
 # ── GIF writer ────────────────────────────────────────────────────────────────
@@ -632,13 +876,36 @@ if __name__ == "__main__":
     for cfg in adapters:
         make_gif(cfg, out_dir)
 
+    # How-to GIF
+    howto_cfg   = dict(HOWTO_CONFIG)
+    live_openai = live_data.get("openai", {})
+    if live_openai.get("challenge_header"):
+        howto_cfg["challenge_header"] = live_openai["challenge_header"]
+    if live_openai.get("ai_reply"):
+        howto_cfg["reply"] = live_openai["ai_reply"]
+
+    howto_path = os.path.join(out_dir, howto_cfg["out"])
+    print(f"  Generating {howto_cfg['out']} ...", end=" ", flush=True)
+    howto_frames  = []
+    howto_frames += scene_title("OpenAI", "gpt-4o", "x402")
+    howto_frames += scene_howto_setup()
+    howto_frames += scene_howto_code()
+    howto_frames += scene_howto_run(
+        howto_cfg["reply"],
+        howto_cfg.get("challenge_header", ""),
+    )
+    _save_gif(howto_frames, howto_path, frame_ms=50)
+    print(f"done  ({len(howto_frames)} frames, {os.path.getsize(howto_path) // 1024} KB)")
+
     print()
     print("Output files:")
     for cfg in adapters:
         p = os.path.join(out_dir, cfg["out"])
         src = "live" if live_data.get(cfg["name"].lower()) else "scripted"
         print(f"  {p}  [{src}]")
+    print(f"  {howto_path}")
     print()
     print("Embed in README:")
     for cfg in adapters:
         print(f"  ![{cfg['name']} demo](ai-adapters/demo/{cfg['out']})")
+    print(f"  ![OpenAI x402 how-to](ai-adapters/demo/{howto_cfg['out']})")
