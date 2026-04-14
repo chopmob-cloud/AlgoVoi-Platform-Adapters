@@ -207,10 +207,23 @@ def _make_logo(width: int = 420, height: int = 110) -> Image.Image:
         logo = Image.open(logo_path).convert("RGBA")
         # Fit to requested size preserving aspect ratio
         logo.thumbnail((width, height), Image.LANCZOS)
-        # Composite onto BG-coloured canvas
+        # Start with a canvas filled with the GIF background colour
         canvas = Image.new("RGBA", (width, height), (*BG, 255))
         x = (width  - logo.width)  // 2
         y = (height - logo.height) // 2
+        # If the logo has real transparency, use it; otherwise key out the
+        # background using the top-left corner pixel as the background colour
+        r, g, b, a = logo.split()
+        if a.getextrema() == (255, 255):
+            import struct
+            corner_r, corner_g, corner_b, _ = logo.getpixel((0, 0))
+            # Build alpha mask: pixels far from corner colour become opaque
+            import PIL.ImageChops as chops
+            ref = Image.new("RGBA", logo.size, (corner_r, corner_g, corner_b, 255))
+            diff = chops.difference(logo, ref).convert("L")
+            # Stretch contrast so near-background → transparent, logo → opaque
+            diff = diff.point(lambda v: min(255, v * 8))
+            logo.putalpha(diff)
         canvas.paste(logo, (x, y), logo)
         return canvas.convert("RGB")
 
