@@ -195,7 +195,7 @@ Once connected:
 
 ## Live test status
 
-Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`:
+Confirmed end-to-end on **2026-04-14** against `api1.ilovechicken.co.uk`:
 
 | Test | Network | Result |
 |------|---------|--------|
