@@ -4,6 +4,11 @@
 *.env
 keys.txt
 *.keys.txt
+openai.txt
+anthropic.txt
+gemini.txt
+*_key.txt
+*_keys.txt
 
 # Local overrides
 *.local
