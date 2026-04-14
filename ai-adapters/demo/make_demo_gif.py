@@ -580,14 +580,17 @@ def scene_howto_code() -> list[Image.Image]:
     """Step 4: create app.py — gate config with annotation, then Flask route with annotation."""
 
     config_lines = [
+        ("from dotenv import load_dotenv",                              MUTED),
+        ("load_dotenv()  # reads your .env file",                       MUTED),
+        ("import os",                                                    MUTED),
         ("from openai_algovoi import AlgoVoiOpenAI",                   PROMPT),
         ("from flask import Flask, request, jsonify, Response",         MUTED),
         ("",                                                             TEXT),
         ("gate = AlgoVoiOpenAI(",                                       TEXT),
-        ('    openai_key        = "sk-...",',                           VAL),
-        ('    algovoi_key       = "algv_...",',                         VAL),
-        ('    tenant_id         = "your-tenant-uuid",',                 VAL),
-        ('    payout_address    = "YOUR_ALGORAND_ADDRESS",',            VAL),
+        ('    openai_key        = os.environ["OPENAI_KEY"],',           VAL),
+        ('    algovoi_key       = os.environ["ALGOVOI_KEY"],',          VAL),
+        ('    tenant_id         = os.environ["TENANT_ID"],',            VAL),
+        ('    payout_address    = os.environ["PAYOUT_ADDRESS"],',       VAL),
         ('    protocol          = "x402",',                             JSON_VAL),
         ('    network           = "algorand-mainnet",',                 JSON_VAL),
         ('    amount_microunits = 10000,',                              JSON_VAL),
@@ -647,9 +650,9 @@ def scene_howto_code() -> list[Image.Image]:
         frames.append(done_config)
     frames += _annotation_frames(
         done_config,
-        heading="Gate config — 4 credentials, 3 payment settings",
+        heading="Gate config — credentials loaded from .env",
         lines=[
-            "openai_key / algovoi_key / tenant_id / payout_address — your keys.",
+            "OPENAI_KEY / ALGOVOI_KEY / TENANT_ID / PAYOUT_ADDRESS set in .env.",
             "protocol='x402'  network='algorand-mainnet'  amount=0.01 USDC.",
             "Change network= to voi-mainnet / hedera-mainnet / stellar-mainnet.",
         ],

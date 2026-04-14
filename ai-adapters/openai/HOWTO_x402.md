@@ -27,35 +27,6 @@ TENANT_ID=your-tenant-uuid
 PAYOUT_ADDRESS=YOUR_ALGORAND_ADDRESS
 ```
 
-**5. Edit app.py if needed** (protocol/network defaults are already set)
-```python
-from openai_algovoi import AlgoVoiOpenAI
-from flask import Flask, request, jsonify, Response
-
-gate = AlgoVoiOpenAI(
-    openai_key        = "sk-...",
-    algovoi_key       = "algv_...",   # your AlgoVoi API key
-    tenant_id         = "...",        # your Tenant ID
-    payout_address    = "...",        # your wallet address
-    protocol          = "x402",
-    network           = "algorand-mainnet",
-    amount_microunits = 10000         # 0.01 USDC per call
-)
-
-app = Flask(__name__)
-
-@app.route("/ai/chat", methods=["POST"])
-def chat():
-    body = request.get_json() or {}
-    result = gate.check(dict(request.headers), body)
-    if result.requires_payment:
-        b, s, h = result.as_flask_response()
-        return Response(b, status=s, headers=h)
-    return jsonify({"content": gate.complete(body["messages"])})
-
-app.run(port=5000)
-```
-
 **5. Run it**
 ```bash
 python app.py
