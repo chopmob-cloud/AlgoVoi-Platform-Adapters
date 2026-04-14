@@ -17,6 +17,7 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import os
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
@@ -335,7 +336,7 @@ def scene_health(adapter: str, model: str) -> list[Image.Image]:
 
 
 def scene_402(adapter: str, model: str, protocol: str,
-              payout: str) -> list[Image.Image]:
+              payout: str, challenge_header: str = "") -> list[Image.Image]:
     """Request without payment → 402 + annotation."""
     cmd  = "curl -s -i -X POST http://localhost:5000/ai/chat \\"
     cmd2 = '  -H "Content-Type: application/json" \\'
@@ -377,22 +378,29 @@ def scene_402(adapter: str, model: str, protocol: str,
         if lines >= 2:
             if protocol == "mpp":
                 _out(d, y, "WWW-Authenticate:", KEY)
-                _out(d, y + LINE_H,
-                     '  Payment realm="API Access", id="ch_abc123...",', VAL)
-                _out(d, y + LINE_H * 2,
-                     '  method="algorand-mainnet", amount="10000",', VAL)
-                _out(d, y + LINE_H * 3,
-                     f'  asset="31566704", payto="{payout[:24]}..."', VAL)
+                if challenge_header:
+                    # Real header — split across lines at ~70 chars
+                    raw = challenge_header
+                    _out(d, y + LINE_H,     "  " + raw[:70],  VAL)
+                    if len(raw) > 70:
+                        _out(d, y + LINE_H * 2, "  " + raw[70:140], VAL)
+                    if len(raw) > 140:
+                        _out(d, y + LINE_H * 3, "  " + raw[140:210], VAL)
+                else:
+                    _out(d, y + LINE_H,
+                         '  Payment realm="API Access", id="ch_abc123...",', VAL)
+                    _out(d, y + LINE_H * 2,
+                         '  method="algorand-mainnet", amount="10000",', VAL)
+                    _out(d, y + LINE_H * 3,
+                         f'  asset="31566704", payto="{payout[:24]}..."', VAL)
             elif protocol == "x402":
                 _out(d, y, "X-PAYMENT-REQUIRED:", KEY)
-                _out(d, y + LINE_H,
-                     "  eyJuZXR3b3JrIjoiYWxnb3JhbmQtbWFpbm5ldCIsICJhbW91bnQiOiAiMTAwMDAifQ==",
-                     VAL)
+                raw = challenge_header or "eyJuZXR3b3JrIjoiYWxnb3JhbmQtbWFpbm5ldCIsICJhbW91bnQiOiAiMTAwMDAifQ=="
+                _out(d, y + LINE_H, "  " + raw[:80], VAL)
             elif protocol == "ap2":
                 _out(d, y, "X-AP2-Cart-Mandate:", KEY)
-                _out(d, y + LINE_H,
-                     "  eyJ2IjogMSwgIm1lcmNoYW50IjogInlvdXItdGVuYW50LXV1aWQiLCAiYW1vdW50IjogMTAwMDB9",
-                     VAL)
+                raw = challenge_header or "eyJ2IjogMSwgIm1lcmNoYW50IjogInlvdXItdGVuYW50LXV1aWQiLCAiYW1vdW50IjogMTAwMDB9"
+                _out(d, y + LINE_H, "  " + raw[:80], VAL)
         return img
 
     frames = []
@@ -561,19 +569,20 @@ def _save_gif(frames: list[Image.Image], path: str, frame_ms: int = 50) -> None:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def make_gif(cfg: dict, out_dir: str = ".") -> None:
-    name     = cfg["name"]
-    model    = cfg["model"]
-    protocol = cfg["protocol"]
-    payout   = cfg["payout"]
-    reply    = cfg["reply"]
-    out_path = os.path.join(out_dir, cfg["out"])
+    name             = cfg["name"]
+    model            = cfg["model"]
+    protocol         = cfg["protocol"]
+    payout           = cfg["payout"]
+    reply            = cfg["reply"]
+    challenge_header = cfg.get("challenge_header", "")
+    out_path         = os.path.join(out_dir, cfg["out"])
 
     print(f"  Generating {cfg['out']} …", end=" ", flush=True)
 
     frames: list[Image.Image] = []
     frames += scene_title(name, model, protocol)
     frames += scene_health(name, model)
-    frames += scene_402(name, model, protocol, payout)
+    frames += scene_402(name, model, protocol, payout, challenge_header)
     frames += scene_200(name, model, reply)
 
     _save_gif(frames, out_path, frame_ms=50)
@@ -581,18 +590,55 @@ def make_gif(cfg: dict, out_dir: str = ".") -> None:
     print(f"done  ({len(frames)} frames, {size_kb} KB)")
 
 
+def _load_live_data() -> dict:
+    """
+    Load real captured values from demo_data.json if it exists.
+    Returns a dict keyed by adapter name (lowercase), or empty dict.
+    Run capture_demo_data.py first to generate this file.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo_data.json")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
 if __name__ == "__main__":
-    out_dir = os.path.dirname(os.path.abspath(__file__))
-    print("AlgoVoi Demo GIF Generator")
-    print("=" * 40)
+    out_dir   = os.path.dirname(os.path.abspath(__file__))
+    live_data = _load_live_data()
+
+    if live_data:
+        print("AlgoVoi Demo GIF Generator  [LIVE DATA MODE]")
+    else:
+        print("AlgoVoi Demo GIF Generator  [scripted fallback — run capture_demo_data.py for live data]")
+    print("=" * 60)
+
+    # Merge live values into adapter configs
+    adapters = []
     for cfg in ADAPTERS:
+        key  = cfg["name"].lower()
+        live = live_data.get(key, {})
+        merged = dict(cfg)
+        if live.get("challenge_header"):
+            merged["challenge_header"] = live["challenge_header"]
+        if live.get("ai_reply"):
+            merged["reply"] = live["ai_reply"]
+        if live.get("tx_id"):
+            merged["tx_id"] = live["tx_id"]
+        if live.get("proof"):
+            merged["proof_snippet"] = live["proof"]
+        adapters.append(merged)
+
+    for cfg in adapters:
         make_gif(cfg, out_dir)
+
     print()
     print("Output files:")
-    for cfg in ADAPTERS:
+    for cfg in adapters:
         p = os.path.join(out_dir, cfg["out"])
-        print(f"  {p}")
+        src = "live" if live_data.get(cfg["name"].lower()) else "scripted"
+        print(f"  {p}  [{src}]")
     print()
     print("Embed in README:")
-    for cfg in ADAPTERS:
+    for cfg in adapters:
         print(f"  ![{cfg['name']} demo](ai-adapters/demo/{cfg['out']})")
