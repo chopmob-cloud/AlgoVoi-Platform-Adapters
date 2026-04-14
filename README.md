@@ -93,7 +93,9 @@ platform-adapters/
 ├── wormhole/             # [Provisional] Wormhole cross-chain bridge adapter
 ├── x402-ai-agents/       # x402 autonomous AI agent payment adapter (live-tested)
 ├── ai-adapters/
-│   └── openai/           # Payment-gated OpenAI / compatible API wrappers (MPP + AP2)
+│   ├── openai/           # Payment-gated OpenAI / compatible API wrappers (MPP + AP2 + x402)
+│   ├── claude/           # Payment-gated Anthropic Claude wrappers (MPP + AP2 + x402)
+│   └── gemini/           # Payment-gated Google Gemini wrappers (MPP + AP2 + x402)
 ├── xero/                 # Xero invoice payment adapter (production)
 ├── yapily/               # [Provisional] Yapily open banking adapter
 ├── zoho-books/           # Zoho Books invoice adapter (production)
@@ -242,27 +244,17 @@ All 7 accounting adapters were end-to-end tested on **11 April 2026** against `a
 
 ## AI Platform Adapters
 
-Drop-in payment gates for OpenAI and OpenAI-compatible AI providers. Each adapter wraps the AI call behind an on-chain payment check — the caller pays 0.01 USDC (or any configured amount) before the AI responds.
+Drop-in payment gates for AI provider APIs. Each adapter wraps the AI call behind an on-chain payment check — the caller pays 0.01 USDC (or any configured amount) before the AI responds. All adapters accept OpenAI-format message lists and share a common interface: `check(headers, body)` → `result`, `complete(messages)` → `str`, `flask_guard()` convenience method.
 
-All adapters live in [`ai-adapters/openai/`](./ai-adapters/openai/) and share a common interface: `check(headers, body)` → `result`, `complete(messages)` → `str`, `flask_guard()` convenience method.
+| Platform | Class | SDK install | Protocol support | Files | Status |
+|----------|-------|-------------|-----------------|-------|--------|
+| **OpenAI** + compatible | `AlgoVoiMppAI` / `AlgoVoiAp2AI` / `AlgoVoiOpenAI` | `pip install openai` | MPP, AP2, x402 | [ai-adapters/openai/](./ai-adapters/openai/) | **Available** — smoke-tested all 4 chains 14 Apr 2026 |
+| **Anthropic Claude** | `AlgoVoiClaude` | `pip install anthropic` | MPP, AP2, x402 | [ai-adapters/claude/](./ai-adapters/claude/) | **Available** — 76/76 tests |
+| **Google Gemini** | `AlgoVoiGemini` | `pip install google-genai` | MPP, AP2, x402 | [ai-adapters/gemini/](./ai-adapters/gemini/) | **Available** — 75/75 tests |
 
-| Adapter | Class | Protocol | Chains | Files | Status |
-|---------|-------|----------|--------|-------|--------|
-| **MPP AI** | `AlgoVoiMppAI` | IETF MPP | Algorand, VOI, Hedera, Stellar | [mpp_algovoi.py](./ai-adapters/openai/mpp_algovoi.py) | **Available** — 42/42 tests, 0.01 USDC smoke-tested all 4 chains 14 Apr 2026 |
-| **AP2 AI** | `AlgoVoiAp2AI` | AP2 v0.1 + crypto-algo | Algorand, VOI | [ap2_algovoi.py](./ai-adapters/openai/ap2_algovoi.py) | **Available** — 39/39 tests, 0.01 USDC smoke-tested Algorand + VOI 14 Apr 2026 |
-| **x402 AI** | `AlgoVoiOpenAI` (x402 mode) | x402 spec v1 | Algorand, VOI, Hedera, Stellar | [openai_algovoi.py](./ai-adapters/openai/openai_algovoi.py) | *Pending server resources* |
+All adapters support all 4 chains (Algorand, VOI, Hedera, Stellar) and all 3 payment protocols (MPP, AP2, x402).
 
-Supports any OpenAI-compatible provider via `base_url`:
-
-| Provider | base_url |
-|----------|----------|
-| OpenAI (default) | `https://api.openai.com/v1` |
-| Mistral | `https://api.mistral.ai/v1` |
-| Together AI | `https://api.together.xyz/v1` |
-| Groq | `https://api.groq.com/openai/v1` |
-| Perplexity | `https://api.perplexity.ai` |
-
-### MPP — Quick start
+### OpenAI — MPP Quick start
 
 ```python
 from mpp_algovoi import AlgoVoiMppAI
@@ -286,7 +278,17 @@ def chat():
     return jsonify({"content": gate.complete(request.json["messages"])})
 ```
 
-### AP2 — Quick start
+Supports any OpenAI-compatible provider via `base_url`:
+
+| Provider | base_url |
+|----------|----------|
+| OpenAI (default) | `https://api.openai.com/v1` |
+| Mistral | `https://api.mistral.ai/v1` |
+| Together AI | `https://api.together.xyz/v1` |
+| Groq | `https://api.groq.com/openai/v1` |
+| Perplexity | `https://api.perplexity.ai` |
+
+### OpenAI — AP2 Quick start
 
 ```python
 from ap2_algovoi import AlgoVoiAp2AI
@@ -310,7 +312,59 @@ def chat():
     return jsonify({"content": gate.complete(body["messages"])})
 ```
 
-Full docs: [`ai-adapters/openai/README.md`](./ai-adapters/openai/README.md)
+### Claude — Quick start
+
+```python
+from claude_algovoi import AlgoVoiClaude
+
+gate = AlgoVoiClaude(
+    anthropic_key     = "sk-ant-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",               # "mpp" | "ap2" | "x402"
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,               # 0.01 USDC per call
+)
+
+@app.route("/ai/chat", methods=["POST"])
+def chat():
+    body   = request.get_json(silent=True) or {}
+    result = gate.check(dict(request.headers), body)
+    if result.requires_payment:
+        return result.as_flask_response()
+    return jsonify({"content": gate.complete(body["messages"])})
+```
+
+Models: `claude-opus-4-5` · `claude-sonnet-4-5` (default) · `claude-haiku-3-5`
+
+### Gemini — Quick start
+
+```python
+from gemini_algovoi import AlgoVoiGemini
+
+gate = AlgoVoiGemini(
+    gemini_key        = "AIza...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",               # "mpp" | "ap2" | "x402"
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,               # 0.01 USDC per call
+)
+
+@app.route("/ai/chat", methods=["POST"])
+def chat():
+    body   = request.get_json(silent=True) or {}
+    result = gate.check(dict(request.headers), body)
+    if result.requires_payment:
+        return result.as_flask_response()
+    return jsonify({"content": gate.complete(body["messages"])})
+```
+
+Models: `gemini-2.0-flash` (default) · `gemini-2.0-flash-lite` · `gemini-2.5-pro`
+
+OpenAI-format messages work across all three platforms — system roles are extracted automatically, and Gemini `assistant` roles are mapped to `model` internally.
 
 ---
 
