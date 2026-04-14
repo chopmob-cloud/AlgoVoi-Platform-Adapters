@@ -529,11 +529,11 @@ def scene_howto_setup() -> list[Image.Image]:
     """Steps 1-3: sign up, download adapter, pip install."""
 
     steps = [
-        ("1", "Sign up at algovoi.co.uk",         "Copy your Tenant ID + API key"),
-        ("2", "Download from GitHub:",             "openai_algovoi.py  +  app.py"),
-        ("3", "pip install openai flask",          ""),
-        ("4", "Edit app.py — fill in your keys",  "openai_key  algovoi_key  tenant_id  payout_address"),
-        ("5", "python app.py",                     ""),
+        ("1", "Sign up at algovoi.co.uk",          "Copy your Tenant ID + API key"),
+        ("2", "Download from GitHub:",              "openai_algovoi.py  +  app.py  +  .env.example"),
+        ("3", "pip install openai flask python-dotenv", ""),
+        ("4", "cp .env.example .env  — fill in keys", "OPENAI_KEY  ALGOVOI_KEY  TENANT_ID  PAYOUT_ADDRESS"),
+        ("5", "python app.py",                      ""),
     ]
 
     def base_frame(show: int) -> Image.Image:

@@ -11,10 +11,23 @@ https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 
 **3. Install dependencies**
 ```bash
-pip install openai flask
+pip install openai flask python-dotenv
 ```
 
-**4. Create app.py**
+**4. Create your `.env` file**
+```bash
+cp .env.example .env
+# then edit .env and fill in your keys
+```
+
+```ini
+OPENAI_KEY=sk-...
+ALGOVOI_KEY=algv_...
+TENANT_ID=your-tenant-uuid
+PAYOUT_ADDRESS=YOUR_ALGORAND_ADDRESS
+```
+
+**5. Edit app.py if needed** (protocol/network defaults are already set)
 ```python
 from openai_algovoi import AlgoVoiOpenAI
 from flask import Flask, request, jsonify, Response

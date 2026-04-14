@@ -1,14 +1,18 @@
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
 from openai_algovoi import AlgoVoiOpenAI
 from flask import Flask, request, jsonify, Response
 
 gate = AlgoVoiOpenAI(
-    openai_key        = "sk-...",           # ← your OpenAI key
-    algovoi_key       = "algv_...",         # ← your AlgoVoi API key
-    tenant_id         = "your-tenant-uuid", # ← your Tenant ID
-    payout_address    = "YOUR_ALGORAND_ADDRESS", # ← your wallet address
-    protocol          = "x402",
-    network           = "algorand-mainnet", # algorand-mainnet | voi-mainnet | hedera-mainnet | stellar-mainnet
-    amount_microunits = 10000,              # 0.01 USDC per call
+    openai_key        = os.environ["OPENAI_KEY"],
+    algovoi_key       = os.environ["ALGOVOI_KEY"],
+    tenant_id         = os.environ["TENANT_ID"],
+    payout_address    = os.environ["PAYOUT_ADDRESS"],
+    protocol          = os.environ.get("PROTOCOL",  "x402"),
+    network           = os.environ.get("NETWORK",   "algorand-mainnet"),
+    amount_microunits = int(os.environ.get("AMOUNT", "10000")),
 )
 
 app = Flask(__name__)
