@@ -344,17 +344,17 @@ def scene_402(adapter: str, model: str, protocol: str,
 
     PROTOCOL_NOTES = {
         "mpp":  ("MPP — IETF Payment Auth (WWW-Authenticate)",
-                 ["The server returns a 402 with a WWW-Authenticate: Payment header.",
-                  "It tells the client which chain to pay on, how much (0.01 USDC),",
-                  "and which address to send to. No payment = no AI response."]),
+                 ["Your Flask server calls api1.ilovechicken.co.uk internally to issue",
+                  "a real WWW-Authenticate: Payment challenge. The client is told which",
+                  "chain to pay on, how much (0.01 USDC), and which address to send to."]),
         "x402": ("x402 — HTTP Payment Protocol",
-                 ["The server returns a 402 with an X-PAYMENT-REQUIRED header",
-                  "containing a base64-encoded JSON payload with chain, amount,",
-                  "and recipient. The client pays on-chain then retries."]),
+                 ["Your Flask server calls api1.ilovechicken.co.uk internally to issue",
+                  "a real X-PAYMENT-REQUIRED challenge (base64 JSON: chain, amount,",
+                  "recipient). The client pays on-chain and retries with proof."]),
         "ap2":  ("AP2 — Crypto-Algo Cart Mandate",
-                 ["The server returns a 402 with an X-AP2-Cart-Mandate header.",
-                  "The mandate encodes the payment terms as a signed JSON object.",
-                  "The client fulfils the mandate then includes proof in the next request."]),
+                 ["Your Flask server calls api1.ilovechicken.co.uk internally to issue",
+                  "a real X-AP2-Cart-Mandate. The mandate encodes payment terms as a",
+                  "signed JSON object. The client fulfils it and includes proof."]),
     }
     heading, ann_lines = PROTOCOL_NOTES.get(protocol, ("402 Payment Required", []))
 
@@ -514,9 +514,9 @@ def scene_200(adapter: str, model: str, ai_reply: str) -> list[Image.Image]:
         done_img,
         heading="Payment verified — AI response returned",
         lines=[
-            "AlgoVoi verified the transaction on-chain in real time.",
-            "The adapter called the AI API and returned the response.",
-            f"Cost: 0.01 USDC per call. Works across all 4 supported chains.",
+            "api1.ilovechicken.co.uk verified the TX on-chain in real time.",
+            "The adapter then called the AI API and returned the response.",
+            "Cost: 0.01 USDC per call. Works across all 4 supported chains.",
         ],
         hold_frames=60,
     )
