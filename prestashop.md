@@ -324,12 +324,13 @@ nginx/
 
 ## Live test status
 
-Confirmed end-to-end on **2026-04-11** against `api1.ilovechicken.co.uk`:
+Confirmed end-to-end on **2026-04-14** against `api1.ilovechicken.co.uk`:
 
 | Test | Network | Result |
 |------|---------|--------|
 | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass |
 | Webhook → checkout link | `hedera_mainnet` (USDC (token 0.0.456858)) | Pass |
 | Webhook → checkout link | `stellar_mainnet` (USDC (Circle)) | Pass |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
 
 Signature verified and checkout link generated. Asset: WAD (ARC200 app ID 47138068).

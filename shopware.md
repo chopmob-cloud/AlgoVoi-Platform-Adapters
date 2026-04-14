@@ -2,7 +2,7 @@
 
 Accept **USDC on Algorand** and **aUSDC on VOI** as payment in your Shopware 6 store via two installable plugins.
 
-Live-tested on **Shopware 6.7.8.2 CE** against `api1.ilovechicken.co.uk` — 2026-04-02.
+Live-tested on **Shopware 6.7.8.2 CE** against `api1.ilovechicken.co.uk` — 2026-04-14.
 
 ---
 
@@ -296,12 +296,12 @@ bantime  = 1800
 
 ## Live test status
 
-Tested end-to-end on **2026-04-02** — Shopware 6.7.8.2 CE — `shopware.ilovechicken.co.uk`
+Tested end-to-end on **2026-04-14** — Shopware 6.7.8.2 CE — `shopware.ilovechicken.co.uk`
 
 | Test | Network | Result |
 |------|---------|--------|
-| Hosted checkout — place order, pay, webhook confirms | `algorand_mainnet` | Pass |
-| Wallet extension — sign ASA transfer in Pera, on-chain verify | `algorand_mainnet` | Pass |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
 | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass |
 | Webhook → checkout link | `hedera_mainnet` (USDC (token 0.0.456858)) | Pass |
 | Webhook → checkout link | `stellar_mainnet` (USDC (Circle)) | Pass |

@@ -524,13 +524,13 @@ Check banned IPs: `fail2ban-client status opencart-admin`
 
 ## Live test status
 
-Confirmed end-to-end on **2026-04-02** against `api1.ilovechicken.co.uk`, OpenCart 4.1.0.3 at `opencart.ilovechicken.co.uk`:
+Confirmed end-to-end on **2026-04-14** against `api1.ilovechicken.co.uk`, OpenCart 4.1.0.3 at `opencart.ilovechicken.co.uk`:
 
 | Test | Network | Result |
 |------|---------|--------|
-| Hosted checkout — payment link created, customer redirected | `algorand_mainnet` | Pass |
-| Hosted checkout — order status → Complete with TX ID | `algorand_mainnet` | Pass |
-| Extension payment — sign, submit, confirm, verify end-to-end | `algorand_mainnet` | Pass |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
 | Both payment methods visible at checkout after guest step | — | Pass |
 | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass |
 | Webhook → checkout link | `hedera_mainnet` (USDC (token 0.0.456858)) | Pass |

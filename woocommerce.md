@@ -369,12 +369,12 @@ add_header Permissions-Policy "geolocation=(), microphone=(), camera=()";
 
 ## Live test status
 
-Confirmed end-to-end on **2026-04-01** against `api1.ilovechicken.co.uk`, real WooCommerce store at `104.207.130.27` running WooCommerce 10.6.2 / WordPress 6.9.4:
+Confirmed end-to-end on **2026-04-14** against `api1.ilovechicken.co.uk`, real WooCommerce store at `104.207.130.27` running WooCommerce 10.6.2 / WordPress 6.9.4:
 
 | Test | Network | Result |
 |------|---------|--------|
-| `order.created` webhook → checkout link created | `algorand_mainnet` | Pass |
-| Extension gateway — sign, submit, confirm, verify end-to-end | `algorand_mainnet` | Pass |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
+| Webhook → checkout link | `algorand_mainnet` (USDC (ASA 31566704)) | Pass |
 | Webhook → checkout link | `voi_mainnet` (WAD (ARC200 app ID 47138068)) | Pass |
 | Nginx hardening — blocked paths return 403 | — | Pass |
 | Nginx hardening — `wp-login.php` rate limit (429 after burst) | — | Pass |
