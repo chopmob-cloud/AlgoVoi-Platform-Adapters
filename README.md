@@ -336,7 +336,7 @@ def chat():
     return jsonify({"content": gate.complete(body["messages"])})
 ```
 
-Models: `claude-opus-4-5` · `claude-sonnet-4-5` (default) · `claude-haiku-3-5`
+Models: `claude-opus-4-5` · `claude-sonnet-4-5` (default) · `claude-haiku-4-5`
 
 ### Gemini — Quick start
 

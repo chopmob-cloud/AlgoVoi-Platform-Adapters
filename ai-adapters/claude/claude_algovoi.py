@@ -46,7 +46,7 @@ Messages (OpenAI format — system role extracted automatically):
 Models:
     claude-opus-4-5        (most capable)
     claude-sonnet-4-5      (balanced — default)
-    claude-haiku-3-5       (fastest)
+    claude-haiku-4-5       (fastest)
 
 Networks:
     "algorand-mainnet"  USDC  (ASA 31566704)
