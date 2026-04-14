@@ -128,20 +128,94 @@ async def chat(req: Request):
 
 ## OpenAI-compatible APIs
 
-Pass `base_url` to use any OpenAI-compatible provider:
+Pass `base_url` to use any OpenAI-compatible provider — the same payment gate works unchanged across all of them:
+
+| Provider | `base_url` | Example model |
+|----------|-----------|---------------|
+| OpenAI (default) | *(omit `base_url`)* | `gpt-4o` |
+| Mistral AI | `https://api.mistral.ai/v1` | `mistral-large-latest` |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
+| Together AI | `https://api.together.xyz/v1` | `meta-llama/Llama-3-70b-chat-hf` |
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
+| xAI Grok | `https://api.x.ai/v1` | `grok-2-latest` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `openai/gpt-4o` |
+| Fireworks AI | `https://api.fireworks.ai/inference/v1` | `accounts/fireworks/models/llama-v3p1-70b-instruct` |
+| Perplexity | `https://api.perplexity.ai` | `sonar-pro` |
+| Azure OpenAI | `https://{resource}.openai.azure.com/openai/deployments/{deployment}` | `gpt-4o` |
+| Ollama (local) | `http://localhost:11434/v1` | `llama3.2` |
 
 ```python
-# Mistral
-gate = AlgoVoiOpenAI(..., base_url="https://api.mistral.ai/v1", model="mistral-large-latest")
+# Mistral AI
+gate = AlgoVoiOpenAI(
+    openai_key = "YOUR_MISTRAL_KEY",
+    base_url   = "https://api.mistral.ai/v1",
+    model      = "mistral-large-latest",
+    ...
+)
 
-# Together AI
-gate = AlgoVoiOpenAI(..., base_url="https://api.together.xyz/v1", model="meta-llama/Llama-3-70b-chat-hf")
+# Groq — ultra-fast inference
+gate = AlgoVoiOpenAI(
+    openai_key = "YOUR_GROQ_KEY",
+    base_url   = "https://api.groq.com/openai/v1",
+    model      = "llama-3.3-70b-versatile",
+    ...
+)
 
-# Groq
-gate = AlgoVoiOpenAI(..., base_url="https://api.groq.com/openai/v1", model="llama3-70b-8192")
+# DeepSeek — strong coding model
+gate = AlgoVoiOpenAI(
+    openai_key = "YOUR_DEEPSEEK_KEY",
+    base_url   = "https://api.deepseek.com/v1",
+    model      = "deepseek-chat",
+    ...
+)
 
-# Perplexity
-gate = AlgoVoiOpenAI(..., base_url="https://api.perplexity.ai", model="sonar-pro")
+# xAI Grok
+gate = AlgoVoiOpenAI(
+    openai_key = "YOUR_XAI_KEY",
+    base_url   = "https://api.x.ai/v1",
+    model      = "grok-2-latest",
+    ...
+)
+
+# OpenRouter — routes to 200+ models with a single key
+gate = AlgoVoiOpenAI(
+    openai_key = "YOUR_OPENROUTER_KEY",
+    base_url   = "https://openrouter.ai/api/v1",
+    model      = "anthropic/claude-sonnet-4-5",
+    ...
+)
+
+# Fireworks AI — fast open-source inference
+gate = AlgoVoiOpenAI(
+    openai_key = "YOUR_FIREWORKS_KEY",
+    base_url   = "https://api.fireworks.ai/inference/v1",
+    model      = "accounts/fireworks/models/llama-v3p1-70b-instruct",
+    ...
+)
+
+# Perplexity — search-augmented responses
+gate = AlgoVoiOpenAI(
+    openai_key = "YOUR_PERPLEXITY_KEY",
+    base_url   = "https://api.perplexity.ai",
+    model      = "sonar-pro",
+    ...
+)
+
+# Azure OpenAI
+gate = AlgoVoiOpenAI(
+    openai_key = "YOUR_AZURE_KEY",
+    base_url   = "https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT",
+    model      = "gpt-4o",
+    ...
+)
+
+# Ollama — local / self-hosted models, no API key needed
+gate = AlgoVoiOpenAI(
+    openai_key = "ollama",          # placeholder — Ollama ignores the key
+    base_url   = "http://localhost:11434/v1",
+    model      = "llama3.2",
+    ...
+)
 ```
 
 ---
