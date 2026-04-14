@@ -9,6 +9,8 @@ anthropic.txt
 gemini.txt
 *_key.txt
 *_keys.txt
+ap2_smoke_keys.json
+algo_mnemonic.txt
 
 # Local overrides
 *.local
