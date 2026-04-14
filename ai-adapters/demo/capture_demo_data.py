@@ -41,27 +41,27 @@ sys.path.insert(0, os.path.join(_ROOT, "mpp-adapter"))
 sys.path.insert(0, os.path.join(_ROOT, "ap2-adapter"))
 
 
-# ── Credentials ───────────────────────────────────────────────────────────────
+# -- Credentials ---------------------------------------------------------------
 
-def _load_key(prefix: str) -> str:
+def _load_key(prefix: str, exclude: str = "") -> str:
     txt = os.path.join(_ROOT, "openai.txt")
     with open(txt, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if line.startswith(prefix):
+            if line.startswith(prefix) and (not exclude or not line.startswith(exclude)):
                 return line
     raise RuntimeError(f"Key with prefix {prefix!r} not found in openai.txt")
 
 
 ANTHROPIC_KEY = _load_key("sk-ant-")
-OPENAI_KEY    = _load_key("sk-")       # first sk- that is NOT sk-ant-
+OPENAI_KEY    = _load_key("sk-", exclude="sk-ant-")   # OpenAI key, not Anthropic
 ALGOVOI_KEY   = _load_key("algv_")
 GEMINI_KEY    = os.environ.get("GEMINI_KEY", "")
 TENANT_ID     = "YOUR_TENANT_ID"
 
 PAYOUT_ALGO   = "ZVLRVYQSLJNVFMOIOKT35XH5SNQG45IVFMLLRFLHDQJQA5TO5H3SO4TVDQ"
 
-# ── Known TX IDs (from previous smoke tests) ──────────────────────────────────
+# -- Known TX IDs (from previous smoke tests) ----------------------------------
 #
 # These are real verified Algorand mainnet TXs.  Provide your own via env vars
 # if you want fresher data.
@@ -73,12 +73,18 @@ KNOWN_TXS = {
 }
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 def _mpp_proof(tx_id: str) -> str:
     return base64.b64encode(json.dumps({
         "network": "algorand-mainnet",
         "payload": {"txId": tx_id},
+    }).encode()).decode()
+
+
+def _x402_proof(tx_id: str) -> str:
+    return base64.b64encode(json.dumps({
+        "payload": {"tx_id": tx_id},
     }).encode()).decode()
 
 
@@ -97,12 +103,12 @@ def _capture_402_header(result, protocol: str) -> str:
     return ""
 
 
-# ── Capture per adapter ───────────────────────────────────────────────────────
+# -- Capture per adapter -------------------------------------------------------
 
 def capture_claude(data: dict) -> None:
     from claude_algovoi import AlgoVoiClaude
 
-    print("\n── Claude (MPP / Algorand) ──────────────────────────────")
+    print("\n-- Claude (MPP / Algorand) ------------------------------")
     gate = AlgoVoiClaude(
         anthropic_key=ANTHROPIC_KEY, algovoi_key=ALGOVOI_KEY,
         tenant_id=TENANT_ID, payout_address=PAYOUT_ALGO,
@@ -144,7 +150,7 @@ def capture_claude(data: dict) -> None:
 def capture_openai(data: dict) -> None:
     from openai_algovoi import AlgoVoiOpenAI
 
-    print("\n── OpenAI (x402 / Algorand) ─────────────────────────────")
+    print("\n-- OpenAI (x402 / Algorand) -----------------------------")
     gate = AlgoVoiOpenAI(
         openai_key=OPENAI_KEY, algovoi_key=ALGOVOI_KEY,
         tenant_id=TENANT_ID, payout_address=PAYOUT_ALGO,
@@ -164,7 +170,7 @@ def capture_openai(data: dict) -> None:
         print("  [SKIP] No TX set — skipping 200 capture")
         return
 
-    proof  = _mpp_proof(tx_id)
+    proof  = _x402_proof(tx_id)
     result = gate.check({"X-PAYMENT": proof})
     if result.requires_payment:
         print(f"  [FAIL] Payment rejected: {result.error}")
@@ -182,12 +188,12 @@ def capture_openai(data: dict) -> None:
 
 def capture_gemini(data: dict) -> None:
     if not GEMINI_KEY:
-        print("\n── Gemini [SKIP] — set GEMINI_KEY env var ───────────────")
+        print("\n-- Gemini [SKIP] — set GEMINI_KEY env var ---------------")
         return
 
     from gemini_algovoi import AlgoVoiGemini
 
-    print("\n── Gemini (AP2 / Algorand) ──────────────────────────────")
+    print("\n-- Gemini (AP2 / Algorand) ------------------------------")
     gate = AlgoVoiGemini(
         gemini_key=GEMINI_KEY, algovoi_key=ALGOVOI_KEY,
         tenant_id=TENANT_ID, payout_address=PAYOUT_ALGO,
@@ -205,7 +211,7 @@ def capture_gemini(data: dict) -> None:
     print("  [INFO] AP2 Phase 2 requires a funded billing key — skipping AI call")
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# -- Main ----------------------------------------------------------------------
 
 def main() -> None:
     data = {

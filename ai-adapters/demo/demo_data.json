@@ -1,0 +1,17 @@
+{
+  "claude": {
+    "challenge_header": "Payment realm=\"API Access\", id=\"5768885f7d65ca513db76a0591fa8827\", method=\"algorand\", intent=\"charge\", request=\"eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoidXNkYyIsInJlY2lwaWVudCI6IlpWTFJWWVFTTEpOVkZNT0lPS1QzNVhINVNOUUc0NUlWRk1MTFJGTEhEUUpRQTVUTzVIM1NPNFRWRFEiLCJtZXRob2REZXRhaWxzIjp7ImFjY2VwdHMiOlt7Im5ldHdvcmsiOiJhbGdvcmFuZC1tYWlubmV0IiwiYW1vdW50IjoiMTAwMDAiLCJhc3NldCI6IjMxNTY2NzA0IiwicGF5VG8iOiJaVkxSVllRU0xKTlZGTU9JT0tUMzVYSDVTTlFHNDVJVkZNTExSRkxIRFFKUUE1VE81SDNTTzRUVkRRIiwicmVzb3VyY2UiOiJhaS1jaGF0In1dLCJyZXNvdXJjZSI6ImFpLWNoYXQifX0=\", expires=\"2026-04-14T10:52:39Z\"",
+    "tx_id": "JW4OOGMKDI4SVMLZIJQ6STJ5CA5TJLOVA4GKQCXZWWTXKOE35VHA",
+    "proof": "eyJuZXR3b3JrIjogImFsZ29yYW5kLW1haW5uZXQi...",
+    "ai_reply": "Hello, I'm Claude, an AI assistant made by Anthropic.",
+    "payer": "GHSRL2SAY247LWE7HLUGEYKHC5JMDOGWECW5TMN6PTP73FT2Z5AWMADMWI",
+    "amount": 10000
+  },
+  "openai": {
+    "challenge_header": "eyJ4NDAyVmVyc2lvbiI6IDEsICJhY2NlcHRzIjogW3sibmV0d29yayI6ICJhbGdvcmFuZDptYWlubmV0IiwgImFzc2V0IjogIjMxNTY2NzA0IiwgImFtb3VudCI6ICIxMDAwMCIsICJwYXlUbyI6ICJaVkxSVllRU0xKTlZGTU9JT0tUMzVYSDVTTlFHNDVJVkZNTExSRkxIRFFKUUE1VE81SDNTTzRUVkRRIiwgIm1heFRpbWVvdXRTZWNvbmRzIjogMzAwLCAiZXh0cmEiOiB7fX1dfQ==",
+    "tx_id": "JW4OOGMKDI4SVMLZIJQ6STJ5CA5TJLOVA4GKQCXZWWTXKOE35VHA",
+    "proof": "eyJwYXlsb2FkIjogeyJ0eF9pZCI6ICJKVzRPT0dN...",
+    "ai_reply": "Hello! I am GPT-4o, here to assist you."
+  },
+  "gemini": {}
+}
