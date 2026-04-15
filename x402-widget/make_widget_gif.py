@@ -114,6 +114,25 @@ UI_MED  = _font_ui(15, bold=True)
 UI_LG   = _font_ui(18, bold=True)
 UI_XL   = _font_ui(28, bold=True)   # amount value
 
+# ── Real widget screenshots (captured by capture_widget_states.py) ─────────
+ASSETS_DIR  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+WIDGET_W    = 270   # rendered width in the GIF (scale ~0.45 from 600px source)
+
+def _load_widget_states():
+    """Load and pre-scale each captured widget screenshot."""
+    out = {}
+    for state in ("idle", "loading", "ready", "done"):
+        p = os.path.join(ASSETS_DIR, f"widget_{state}.png")
+        if not os.path.exists(p):
+            continue
+        im = Image.open(p).convert("RGB")
+        scale = WIDGET_W / im.width
+        new_h = int(im.height * scale)
+        out[state] = im.resize((WIDGET_W, new_h), Image.LANCZOS)
+    return out
+
+WIDGET_IMGS = _load_widget_states()
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 def _new_frame():
     img = Image.new("RGB", (W, H), BG)
@@ -382,98 +401,45 @@ def scene_editor():
     return frames
 
 # ── Widget card drawing helpers ────────────────────────────────────────────
-CX, CY, CW, CH = 240, 52, 320, 400
+CX, CY, CW, CH = 265, 58, WIDGET_W, 440
 
-def _card(d, amount="$0.01", state="idle", checkout_url="", err_msg=""):
-    # Drop shadow
-    for s in range(6, 0, -1):
-        shadow_a = int(40 * s / 6)
-        d.rounded_rectangle([CX+s, CY+s, CX+CW+s, CY+CH+s],
-                             radius=16, fill=(8, 10, 15))
-    # Card body
-    d.rounded_rectangle([CX, CY, CX+CW, CY+CH], radius=16,
-                         fill=CARD_BG, outline=CARD_BORDER, width=1)
+def _card(img, d, amount="$0.01", state="idle", checkout_url="", err_msg=""):
+    """Composite the real widget screenshot onto the canvas at (CX, CY).
 
-    # ── Badge row ──────────────────────────────────────────────────────────
-    # Blue dot with soft glow
-    DOT_X, DOT_Y = CX+18, CY+22
-    d.ellipse([DOT_X-7, DOT_Y-7, DOT_X+7, DOT_Y+7],
-              fill=(59, 130, 246, 60))   # glow halo
-    d.ellipse([DOT_X-4, DOT_Y-4, DOT_X+4, DOT_Y+4], fill=BLUE)
-    # Badge text — wraps like the real widget
-    d.text((DOT_X+11, DOT_Y-7), "USDC · MULTI-CHAIN ·",
-           font=UI_XS, fill=GRAY2)
-    d.text((DOT_X+11, DOT_Y+5), "POWERED BY ALGOVOI",
-           font=UI_XS, fill=GRAY2)
-
-    # ── Amount card ─────────────────────────────────────────────────────────
-    AX, AY = CX+12, CY+46
-    d.rounded_rectangle([AX, AY, AX+296, AY+78], radius=12,
-                         fill=BG, outline=CARD_BORDER, width=1)
-    d.text((AX+14, AY+9),  "AMOUNT", font=UI_XS, fill=GRAY1)
-    d.text((AX+14, AY+26), amount,   font=UI_XL,  fill=GREEN)
-    d.text((AX+14, AY+62), "USD · stablecoin", font=UI_SM, fill=GRAY1)
-    # Lightning bolt polygon (replaces ⚡ emoji which most fonts can't render)
-    # Drawn at ~30% opacity matching the real widget's opacity:.3 style
-    lx, ly = AX+270, AY+18
-    bolt = [(lx+6,ly),(lx+2,ly),(lx+4,ly+10),(lx+1,ly+10),(lx-4,ly+22),(lx+2,ly+22),(lx,ly+12),(lx+4,ly+12)]
-    d.polygon(bolt, fill=(55, 62, 80))
-
-    # ── Chain buttons ───────────────────────────────────────────────────────
-    # Real widget: ALL buttons share one CSS gradient(#3b82f6→#6366f1).
-    # GIF 256-colour palette flattens gradients anyway — use visual midpoint.
-    BTN_COL   = (74, 108, 243)   # perceptual midpoint of #3b82f6→#6366f1
-    BTN_DIM   = (34,  50, 115)   # dimmed for "done" state
-    BTN_LABEL = (255, 255, 255)
-    BTN_DIM_L = DIM
-
-    if state in ("idle", "ready", "done", "error"):
-        chains = ["Algorand", "VOI", "Stellar", "Hedera"]
-        bw, bh = 140, 40
-        is_done = state == "done"
-        for idx, label in enumerate(chains):
-            bx = CX + 12 + (idx % 2) * (bw + 8)
-            by = CY + 140 + (idx // 2) * (bh + 8)
-            d.rounded_rectangle([bx, by, bx+bw, by+bh], radius=10,
-                                 fill=BTN_DIM if is_done else BTN_COL)
-            d.text((bx+bw//2, by+bh//2), label, font=UI_MED,
-                   fill=BTN_DIM_L if is_done else BTN_LABEL, anchor="mm")
-
-    # Loading
-    if state == "loading":
-        d.rounded_rectangle([CX+12, CY+140, CX+12+296, CY+180], radius=10,
-                             fill=BTN_COL)
-        d.text((CX+12+148, CY+160), "Creating link…",
-               font=UI_MED, fill=(255,255,255), anchor="mm")
-
-    # Ready checkout box (matches real widget layout)
-    if state == "ready":
-        RX, RY, RW, RH = CX+12, CY+232, 296, 94
-        d.rounded_rectangle([RX, RY, RX+RW, RY+RH], radius=10,
-                             fill=BG, outline=CARD_BORDER, width=1)
-        d.text((RX+RW//2, RY+16), "Your secure checkout is ready.",
-               font=UI_SM, fill=DIM, anchor="mm")
-        d.rounded_rectangle([RX+14, RY+32, RX+RW-14, RY+68], radius=8,
-                             fill=BTN_COL)
-        d.text((RX+RW//2, RY+50), "Complete Payment →",
-               font=UI_MED, fill=(255,255,255), anchor="mm")
-        short = checkout_url[-36:] if len(checkout_url) > 36 else checkout_url
-        d.text((RX+RW//2, RY+80), short, font=UI_XS, fill=GRAY2, anchor="mm")
-
-    # Error
+    img: PIL Image to paste onto.
+    d:   ImageDraw for any overlay drawing (errors, loading progress).
+    """
     if state == "error":
-        EX2, EY2 = CX+12, CY+236
-        d.rounded_rectangle([EX2, EY2, EX2+296, EY2+34], radius=8,
+        # No error screenshot — fall back to drawn idle widget + error banner
+        widget_img = WIDGET_IMGS.get("idle")
+    else:
+        widget_img = WIDGET_IMGS.get(state) or WIDGET_IMGS.get("idle")
+
+    if widget_img is None:
+        # Asset directory missing — draw a stub so the script still runs
+        d.rounded_rectangle([CX, CY, CX+CW, CY+CH], radius=16,
+                             fill=CARD_BG, outline=CARD_BORDER, width=1)
+        d.text((CX+CW//2, CY+CH//2),
+               "Run capture_widget_states.py first",
+               font=UI_SM, fill=DIM, anchor="mm")
+        return
+
+    # Drop shadow under the screenshot
+    sh_pad = 6
+    sw, sh = widget_img.size
+    for s in range(sh_pad, 0, -1):
+        d.rounded_rectangle([CX+s, CY+s, CX+sw+s, CY+sh+s],
+                             radius=16, fill=(8, 10, 15))
+    # Composite the real widget screenshot
+    img.paste(widget_img, (CX, CY))
+
+    # Overlay: error banner on top of idle widget
+    if state == "error":
+        EX2, EY2 = CX+12, CY+sh-60
+        d.rounded_rectangle([EX2, EY2, EX2+sw-24, EY2+34], radius=8,
                              fill=(40,16,16), outline=(120,30,30), width=1)
         d.text((EX2+10, EY2+12), err_msg or "Something went wrong. Try again.",
                font=UI_SM, fill=(239,68,68))
-
-    # Footer
-    d.line([CX+12, CY+CH-36, CX+CW-12, CY+CH-36],
-           fill=CARD_BORDER, width=1)
-    d.text((CX+14, CY+CH-22), "Instant · On-chain · No chargebacks",
-           font=UI_XS, fill=GRAY2)
-    d.text((CX+CW-14, CY+CH-22), "AlgoVoi", font=UI_SM, fill=BLUE, anchor="ra")
 
 def _left_snippet(d):
     """Condensed code snippet shown to the left of the widget card."""
@@ -540,14 +506,14 @@ def scene_idle():
         d.polygon([(ax-4,H//2-15),(ax+4,H//2-10),(ax-4,H//2-5)], fill=fa(MUTED))
 
         # Widget
-        _card(d, state="idle")
+        _card(img, d, state="idle")
         frames.append(img)
 
     # Hold with annotation
     img_hold, d_hold = _new_frame()
     _title_bar(d_hold, "Any page + 2 tags = crypto payments")
     _left_snippet(d_hold)
-    _card(d_hold, state="idle")
+    _card(img_hold, d_hold, state="idle")
     ax = CX - 10
     d_hold.line([(200, H//2-10),(ax-4,H//2-10)], fill=MUTED, width=2)
     d_hold.polygon([(ax-4,H//2-15),(ax+4,H//2-10),(ax-4,H//2-5)], fill=MUTED)
@@ -571,21 +537,26 @@ def scene_loading():
         img, d = _new_frame()
         _title_bar(d, "Click a chain — payment link created instantly")
         _left_snippet(d)
-        _card(d, state="loading")
+        _card(img, d, state="loading")
 
-        # Animated progress bar
+        # Animated progress bar across the bottom of the widget area
         pct = min(0.95, i / 26)
-        BX, BY = CX+12, CY+178
-        d.rounded_rectangle([BX,BY,BX+296,BY+5], radius=2, fill=(30,35,50))
+        loading_h = WIDGET_IMGS["loading"].size[1] if "loading" in WIDGET_IMGS else 290
+        BX = CX + 12
+        BY = CY + loading_h + 8
+        d.rounded_rectangle([BX, BY, BX+WIDGET_W-24, BY+5], radius=2, fill=(30,35,50))
         if pct > 0:
-            d.rounded_rectangle([BX,BY,BX+int(296*pct),BY+5], radius=2, fill=BLUE)
+            d.rounded_rectangle([BX, BY, BX+int((WIDGET_W-24)*pct), BY+5],
+                                 radius=2, fill=BLUE)
         frames.append(img)
 
     img_load, d_load = _new_frame()
     _title_bar(d_load, "Click a chain — payment link created instantly")
     _left_snippet(d_load)
-    _card(d_load, state="loading")
-    d_load.rounded_rectangle([CX+12,CY+178,CX+12+296,CY+183], radius=2, fill=BLUE)
+    _card(img_load, d_load, state="loading")
+    loading_h = WIDGET_IMGS["loading"].size[1] if "loading" in WIDGET_IMGS else 290
+    d_load.rounded_rectangle([CX+12, CY+loading_h+8, CX+WIDGET_W-12, CY+loading_h+13],
+                              radius=2, fill=BLUE)
 
     frames += _ann_frames(
         img_load,
@@ -609,14 +580,14 @@ def scene_ready():
         img, d = _new_frame()
         _title_bar(d, "Checkout link ready — buyer pays on-chain")
         _left_snippet(d)
-        _card(d, state="ready" if alpha > 0.5 else "idle",
+        _card(img, d, state="ready" if alpha > 0.5 else "idle",
               checkout_url=checkout)
         frames.append(img)
 
     img_ready, d_ready = _new_frame()
     _title_bar(d_ready, "Checkout link ready — buyer pays on-chain")
     _left_snippet(d_ready)
-    _card(d_ready, state="ready", checkout_url=checkout)
+    _card(img_ready, d_ready, state="ready", checkout_url=checkout)
 
     frames += _ann_frames(
         img_ready,
@@ -729,8 +700,11 @@ def scene_security():
             "Option B: api-url proxy — credentials live in env vars, never sent to browser",
             "CF Pages, Next.js and Express examples in the widget README",
         ],
-        hold=65,
+        hold=180,   # ~9 seconds — long enough to read both code blocks
     )
+    # Extra silent hold so the panels stay on screen after the annotation fades
+    for _ in range(60):   # +3s
+        frames.append(img_sec.copy())
     return frames
 
 
@@ -748,7 +722,7 @@ def scene_cta():
         alpha = min(1.0, i / 14)
         img, d = _new_frame()
         _title_bar(d, "x402 Embeddable Widget")
-        _card(d, state="idle")
+        _card(img, d, state="idle")
 
         def fa(c): return tuple(int(v*alpha) for v in c)
 
