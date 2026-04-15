@@ -939,11 +939,22 @@ def test_platform(platform: str, network: str) -> bool:
         _p(f"  [ok] Integration cleaned up")
 
 
-_ORDER_ID_KEYS = ("id", "order_id", "orderId", "increment_id", "entity_id")
+_ORDER_ID_KEYS = (
+    "id", "order_id", "orderId", "increment_id", "entity_id",
+    # Shopee
+    "ordersn",
+    # Cdiscount
+    "OrderNumber",
+    # Walmart
+    "purchaseOrderId",
+    # Wormhole
+    "vaa_id",
+)
 
 # Deep-path overrides for adapters whose order ID is buried in nested objects.
-# Format: list of key paths leading to the order ID field.
-_DEEP_ORDER_ID_PATHS: list[list[str]] = [
+# Format: list of key/index paths leading to the order ID field.
+# Integer elements index into lists (e.g. entry[0].changes[0]…).
+_DEEP_ORDER_ID_PATHS: list[list] = [
     # eBay: notification.data.orderId
     ["notification", "data", "orderId"],
     # Telegram commerce: message.successful_payment.telegram_payment_charge_id
@@ -953,19 +964,53 @@ _DEEP_ORDER_ID_PATHS: list[list[str]] = [
     ["data", "orderId"],
     # BigCommerce: data.id (under root data key)
     ["data", "id"],
+    # Yapily / Allegro: event.id
+    ["event", "id"],
+    # Etsy: payload.receipt_id
+    ["payload", "receipt_id"],
+    # Rakuten: order.orderNumber
+    ["order", "orderNumber"],
+    # Tokopedia: order.order_id
+    ["order", "order_id"],
+    # Lazada: order.orderId
+    ["order", "orderId"],
+    # CEX: order.orderId
+    ["order", "orderId"],
+    # Printful: data.order.id
+    ["data", "order", "id"],
+    # WhatsApp: entry[0].changes[0].value.messages[0].id
+    ["entry", 0, "changes", 0, "value", "messages", 0, "id"],
+    # Instagram: entry[0].messaging[0].payment.payload
+    ["entry", 0, "messaging", 0, "payment", "payload"],
 ]
 
 
-def _set_deep(obj: dict, path: list[str], value: str | int) -> bool:
-    """Set value at the given key path. Returns True if path existed and was set."""
-    for key in path[:-1]:
-        if not isinstance(obj.get(key), dict):
+def _set_deep(obj, path: list, value: str | int) -> bool:
+    """Set value at the given key/index path. Returns True if path existed and was set.
+    Integer path elements index into lists; string elements key into dicts."""
+    for step in path[:-1]:
+        if isinstance(step, int):
+            if not isinstance(obj, list) or step >= len(obj):
+                return False
+            obj = obj[step]
+        else:
+            if not isinstance(obj, dict):
+                return False
+            if step not in obj:
+                return False
+            obj = obj[step]
+    final_step = path[-1]
+    if isinstance(final_step, int):
+        if not isinstance(obj, list) or final_step >= len(obj):
             return False
-        obj = obj[key]
-    final_key = path[-1]
-    if final_key in obj:
-        old_val = obj[final_key]
-        obj[final_key] = int(value) if isinstance(old_val, int) else str(value)
+        old_val = obj[final_step]
+        obj[final_step] = int(value) if isinstance(old_val, int) else str(value)
+        return True
+    if not isinstance(obj, dict):
+        return False
+    if final_step in obj:
+        old_val = obj[final_step]
+        obj[final_step] = int(value) if isinstance(old_val, int) else str(value)
         return True
     return False
 
@@ -1066,13 +1111,45 @@ def _security_test(platform: str, network: str) -> dict[str, bool]:
         elif "x-hub-signature-256" in valid_headers_empty:
             valid_headers_empty["x-hub-signature-256"] = "sha256=" + _hmac_hex(secret, good_empty)
         elif "x-wc-webhook-signature" in valid_headers_empty:
-            # WooCommerce: base64(HMAC-SHA256(secret, body))
             valid_headers_empty["x-wc-webhook-signature"] = _hmac_b64(secret, good_empty)
+        elif "x-ecwid-webhook-signature" in valid_headers_empty:
+            valid_headers_empty["x-ecwid-webhook-signature"] = _hmac_b64(secret, good_empty)
+        elif "x-bol-signature" in valid_headers_empty:
+            valid_headers_empty["x-bol-signature"] = _hmac_b64(secret, good_empty)
+        elif "x-etsy-signature" in valid_headers_empty:
+            valid_headers_empty["x-etsy-signature"] = _hmac_b64(secret, good_empty)
         elif "x-telegram-bot-api-secret-token" in valid_headers_empty:
             # Telegram: header IS the raw secret — body is not signed
             valid_headers_empty["x-telegram-bot-api-secret-token"] = secret
+        elif "x-printful-token" in valid_headers_empty:
+            # Printful: token comparison, not HMAC — keep header value as-is
+            pass
+        elif "authorization" in valid_headers_empty and valid_headers_empty["authorization"].startswith("Bearer "):
+            # Bearer token auth (Walmart, Magento, PrestaShop, Amazon) — token IS the secret
+            valid_headers_empty["authorization"] = f"Bearer {secret}"
+        elif "authorization" in valid_headers_empty and "Lazada" in valid_headers_empty.get("authorization", ""):
+            # Lazada: app_key:sig format — re-sign
+            import time as _time
+            ts = valid_headers_empty.get("x-lazada-timestamp", str(int(_time.time() * 1000)))
+            app_key = valid_headers_empty["authorization"].split(":")[0].replace("Lazada ", "")
+            canonical = f"{app_key}{ts}{good_empty.decode()}"
+            sig = _hmac_hex(secret, canonical.encode()).upper()
+            valid_headers_empty["authorization"] = f"Lazada {app_key}:{sig}"
+        elif "x-signature" in valid_headers_empty:
+            # MercadoLibre: signature is ts+request-id based, NOT body-based — regenerate format
+            import time as _time
+            ts = str(int(_time.time()))
+            data_id = valid_headers_empty.get("x-request-id", "ml-empty-001")
+            canonical = f"ts:{ts};request-id:{data_id};"
+            sig = _hmac_hex(secret, canonical.encode())
+            valid_headers_empty["x-signature"] = f"ts={ts},v1={sig}"
+        elif ("authorization" in valid_headers_empty
+              and not valid_headers_empty["authorization"].startswith("Bearer ")
+              and "Lazada" not in valid_headers_empty.get("authorization", "")):
+            # Shopee and similar: raw hex HMAC of body in Authorization header
+            valid_headers_empty["authorization"] = _hmac_hex(secret, good_empty)
         else:
-            # Generic: rebuild first sig header with new body
+            # Generic fallback: hex HMAC for most adapters
             for k in list(valid_headers_empty):
                 if "sig" in k or "hmac" in k:
                     valid_headers_empty[k] = _hmac_hex(secret, good_empty)
@@ -1109,11 +1186,44 @@ def _security_test(platform: str, network: str) -> dict[str, bool]:
         elif "x-hub-signature-256" in idm_headers:
             idm_headers["x-hub-signature-256"] = "sha256=" + _hmac_hex(secret, idm_body)
         elif "x-wc-webhook-signature" in idm_headers:
-            # WooCommerce: base64(HMAC-SHA256(secret, body))
             idm_headers["x-wc-webhook-signature"] = _hmac_b64(secret, idm_body)
+        elif "x-ecwid-webhook-signature" in idm_headers:
+            idm_headers["x-ecwid-webhook-signature"] = _hmac_b64(secret, idm_body)
+        elif "x-bol-signature" in idm_headers:
+            idm_headers["x-bol-signature"] = _hmac_b64(secret, idm_body)
+        elif "x-etsy-signature" in idm_headers:
+            idm_headers["x-etsy-signature"] = _hmac_b64(secret, idm_body)
         elif "x-telegram-bot-api-secret-token" in idm_headers:
             # Telegram: header IS the raw secret — body is not signed
             idm_headers["x-telegram-bot-api-secret-token"] = secret
+        elif "x-printful-token" in idm_headers:
+            # Printful: token comparison — keep as-is
+            pass
+        elif "authorization" in idm_headers and idm_headers["authorization"].startswith("Bearer "):
+            # Bearer token auth — token IS the secret, no re-signing needed
+            pass
+        elif ("authorization" in idm_headers
+              and not idm_headers["authorization"].startswith("Bearer ")
+              and "Lazada" not in idm_headers.get("authorization", "")
+              and "x-signature" not in idm_headers):
+            # Shopee and similar: raw hex HMAC of body in Authorization header
+            idm_headers["authorization"] = _hmac_hex(secret, idm_body)
+        elif "authorization" in idm_headers and "Lazada" in idm_headers.get("authorization", ""):
+            # Lazada: re-sign with new body
+            import time as _time
+            ts = idm_headers.get("x-lazada-timestamp", str(int(_time.time() * 1000)))
+            app_key = idm_headers["authorization"].split(":")[0].replace("Lazada ", "")
+            canonical = f"{app_key}{ts}{idm_body.decode()}"
+            sig = _hmac_hex(secret, canonical.encode()).upper()
+            idm_headers["authorization"] = f"Lazada {app_key}:{sig}"
+        elif "x-signature" in idm_headers:
+            # MercadoLibre: ts=...,v1=... format — ts is in header
+            import time as _time
+            ts = str(int(_time.time()))
+            data_id = idm_headers.get("x-request-id", "idm-001")
+            canonical = f"ts:{ts};request-id:{data_id};"
+            sig = _hmac_hex(secret, canonical.encode())
+            idm_headers["x-signature"] = f"ts={ts},v1={sig}"
         else:
             for k in list(idm_headers):
                 if "sig" in k or "hmac" in k:
