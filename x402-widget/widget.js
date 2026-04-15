@@ -26,6 +26,12 @@ class AlgoVoiX402 extends HTMLElement {
     this._apiUrl   = this.getAttribute('api-url')   || DEFAULT_API_URL;
     this._step     = 'idle';
     this._render();
+
+    // Single delegated click listener — works in light DOM (no Shadow DOM needed)
+    this.addEventListener('click', e => {
+      const btn = e.target.closest('[data-chain]');
+      if (btn) this._pay(btn.dataset.chain);
+    });
   }
 
   _render() {
@@ -118,7 +124,7 @@ class AlgoVoiX402 extends HTMLElement {
   ${s === 'idle' ? `
   <div class="av-chains">
     ${this._chains.map(c => `
-    <button class="av-btn" onclick="this.getRootNode().host._pay('${c}')">
+    <button class="av-btn" data-chain="${c}">
       ${CHAIN_LABELS[c] || c}
     </button>`).join('')}
   </div>` : ''}
@@ -131,7 +137,7 @@ class AlgoVoiX402 extends HTMLElement {
   ${s === 'ready' ? `
   <div class="av-chains">
     ${this._chains.map(c => `
-    <button class="av-btn" onclick="this.getRootNode().host._pay('${c}')">
+    <button class="av-btn" data-chain="${c}">
       ${CHAIN_LABELS[c] || c}
     </button>`).join('')}
   </div>
@@ -147,7 +153,7 @@ class AlgoVoiX402 extends HTMLElement {
   </div>
   <div class="av-chains" style="margin-top:.85rem;">
     ${this._chains.map(c => `
-    <button class="av-btn" onclick="this.getRootNode().host._pay('${c}')">
+    <button class="av-btn" data-chain="${c}">
       ${CHAIN_LABELS[c] || c}
     </button>`).join('')}
   </div>` : ''}
@@ -155,7 +161,7 @@ class AlgoVoiX402 extends HTMLElement {
   ${s === 'error' ? `
   <div class="av-chains">
     ${this._chains.map(c => `
-    <button class="av-btn" onclick="this.getRootNode().host._pay('${c}')">
+    <button class="av-btn" data-chain="${c}">
       ${CHAIN_LABELS[c] || c}
     </button>`).join('')}
   </div>
