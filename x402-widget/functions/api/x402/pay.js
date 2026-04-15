@@ -44,8 +44,14 @@ export async function onRequestPost(context) {
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    return Response.json({ error: err }, { status: res.status, headers: cors() });
+    let errMsg;
+    try {
+      const errJson = await res.json();
+      errMsg = errJson.detail || errJson.message || errJson.error || `Server error ${res.status}`;
+    } catch {
+      errMsg = `Server error ${res.status}`;
+    }
+    return Response.json({ error: errMsg }, { status: res.status, headers: cors() });
   }
 
   const { checkout_url } = await res.json();
