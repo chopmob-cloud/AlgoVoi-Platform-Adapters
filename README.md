@@ -26,9 +26,9 @@ This repository contains **production-ready payment adapters** and **integration
 
 Included:
 - **Drop-in plugins** for WooCommerce, OpenCart, PrestaShop, and Shopware (tested and deployed)
-- **Native adapters** for PHP, Python, Go, and Rust (zero external dependencies)
+- **Native adapters** for PHP, Python, Go, and Rust (zero external dependencies) — all hardened to v1.1.0 on 2026-04-15
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
-- **AI platform adapters** for OpenAI, Claude, and Gemini (MPP + AP2 + x402, all 4 chains)
+- **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, and Cohere (MPP + AP2 + x402, all 4 chains)
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
 - **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 4 chains
 
@@ -92,7 +92,9 @@ platform-adapters/
 ├── ai-adapters/
 │   ├── openai/           # Payment-gated OpenAI / compatible API wrappers (MPP + AP2 + x402)
 │   ├── claude/           # Payment-gated Anthropic Claude wrappers (MPP + AP2 + x402)
-│   └── gemini/           # Payment-gated Google Gemini wrappers (MPP + AP2 + x402)
+│   ├── gemini/           # Payment-gated Google Gemini wrappers (MPP + AP2 + x402)
+│   ├── bedrock/          # Payment-gated Amazon Bedrock Converse API wrappers (MPP + AP2 + x402)
+│   └── cohere/           # Payment-gated Cohere ClientV2 wrappers (MPP + AP2 + x402)
 ├── xero/                 # Xero invoice payment adapter
 ├── yapily/               # Yapily open banking adapter
 ├── zoho-books/           # Zoho Books invoice adapter
@@ -266,9 +268,11 @@ Drop-in payment gates for AI provider APIs. Each adapter wraps the AI call behin
 
 | Platform | Class | SDK install | Protocol support | Files | Status |
 |----------|-------|-------------|-----------------|-------|--------|
-| **OpenAI** + compatible | `AlgoVoiMppAI` / `AlgoVoiAp2AI` / `AlgoVoiOpenAI` | `pip install openai` | MPP, AP2, x402 | [ai-adapters/openai/](./ai-adapters/openai/) | **Available** — smoke-tested all 4 chains 14 Apr 2026 |
-| **Anthropic Claude** | `AlgoVoiClaude` | `pip install anthropic` | MPP, AP2, x402 | [ai-adapters/claude/](./ai-adapters/claude/) | **Available** — 76/76 tests |
-| **Google Gemini** | `AlgoVoiGemini` | `pip install google-genai` | MPP, AP2, x402 | [ai-adapters/gemini/](./ai-adapters/gemini/) | **Available** — 75/75 tests |
+| **OpenAI** + compatible | `AlgoVoiMppAI` / `AlgoVoiAp2AI` / `AlgoVoiOpenAI` | `pip install openai` | MPP, AP2, x402 | [ai-adapters/openai/](./ai-adapters/openai/) | **Available** — 101/101 tests + smoke-tested all 4 chains 14 Apr 2026 |
+| **Anthropic Claude** | `AlgoVoiClaude` | `pip install anthropic` | MPP, AP2, x402 | [ai-adapters/claude/](./ai-adapters/claude/) | **Available** — 76/76 tests + smoke-tested all 4 chains 14 Apr 2026 |
+| **Google Gemini** | `AlgoVoiGemini` | `pip install google-genai` | MPP, AP2, x402 | [ai-adapters/gemini/](./ai-adapters/gemini/) | **Available** — 75/75 tests (Phase 2 pending billing-enabled key) |
+| **Amazon Bedrock** | `AlgoVoiBedrock` | `pip install boto3` | MPP, AP2, x402 | [ai-adapters/bedrock/](./ai-adapters/bedrock/) | **Available** — 57/57 tests, Converse API (Nova / Claude / Llama / Titan models) |
+| **Cohere** | `AlgoVoiCohere` | `pip install cohere` | MPP, AP2, x402 | [ai-adapters/cohere/](./ai-adapters/cohere/) | **Available** — Phase 1 + 1.5 + 2 PASS 4/4 chains 15 Apr 2026 |
 
 All adapters support all 4 chains (Algorand, VOI, Hedera, Stellar) and all 3 payment protocols (MPP, AP2, x402).
 
@@ -382,7 +386,64 @@ def chat():
 
 Models: `gemini-2.0-flash` (default) · `gemini-2.0-flash-lite` · `gemini-2.5-pro`
 
-OpenAI-format messages work across all three platforms — system roles are extracted automatically, and Gemini `assistant` roles are mapped to `model` internally.
+### Bedrock — Quick start
+
+```python
+from bedrock_algovoi import AlgoVoiBedrock
+
+gate = AlgoVoiBedrock(
+    aws_access_key_id     = "AKIA...",       # or set AWS_ACCESS_KEY_ID env var
+    aws_secret_access_key = "wJal...",       # or set AWS_SECRET_ACCESS_KEY env var
+    aws_region            = "us-east-1",
+    algovoi_key           = "algv_...",
+    tenant_id             = "your-tenant-uuid",
+    payout_address        = "YOUR_ALGORAND_ADDRESS",
+    protocol              = "mpp",               # "mpp" | "ap2" | "x402"
+    network               = "algorand-mainnet",
+    amount_microunits     = 10000,               # 0.01 USDC per call
+    model                 = "amazon.nova-pro-v1:0",
+)
+
+@app.route("/ai/chat", methods=["POST"])
+def chat():
+    body   = request.get_json(silent=True) or {}
+    result = gate.check(dict(request.headers), body)
+    if result.requires_payment:
+        return result.as_flask_response()
+    return jsonify({"content": gate.complete(body["messages"])})
+```
+
+Models (any model exposed by Bedrock Converse in your AWS region/account):
+`amazon.nova-pro-v1:0` (default) · `amazon.nova-lite-v1:0` · `anthropic.claude-3-5-sonnet-20241022-v2:0` · `meta.llama3-70b-instruct-v1:0` · `amazon.titan-text-premier-v1:0`
+
+### Cohere — Quick start
+
+```python
+from cohere_algovoi import AlgoVoiCohere
+
+gate = AlgoVoiCohere(
+    cohere_key        = "...",                     # Cohere API key
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",                     # "mpp" | "ap2" | "x402"
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,                     # 0.01 USDC per call
+    model             = "command-r-plus-08-2024",
+)
+
+@app.route("/ai/chat", methods=["POST"])
+def chat():
+    body   = request.get_json(silent=True) or {}
+    result = gate.check(dict(request.headers), body)
+    if result.requires_payment:
+        return result.as_flask_response()
+    return jsonify({"content": gate.complete(body["messages"])})
+```
+
+Models: `command-r-plus-08-2024` (default — most capable) · `command-r-08-2024` (balanced) · `command-r7b-12-2024` (fastest)
+
+OpenAI-format messages work across all five platforms — system roles are extracted automatically where required (Claude, Bedrock), Gemini `assistant` roles are mapped to `model` internally, and Cohere accepts the system role natively via `ClientV2.chat()`.
 
 ---
 
@@ -460,9 +521,9 @@ Payments are verified directly on-chain — no intermediary holds funds. Settlem
 
 ### Security
 
-Every adapter is hardened against real-world payment attack vectors. The full audit was performed in April 2026 across all four deployed stores and all native adapters.
+Every adapter is hardened against real-world payment attack vectors. **Pass 1** (April 2026) covered cancel-bypass / empty-secret / cookie-swap / SSRF / timing attacks across all deployed stores and native adapters. **Pass 2** (15 April 2026) added defensive depth across the B2B webhook trio + native SDKs + a critical Rust compile fix.
 
-#### Vulnerabilities found and fixed
+#### Vulnerabilities found and fixed — Pass 1 (April 2026)
 
 | Vulnerability | Severity | Affected | Fix |
 |---------------|----------|----------|-----|
@@ -474,6 +535,26 @@ Every adapter is hardened against real-world payment attack vectors. The full au
 | **Missing SSL verification** | Medium | OpenCart, PrestaShop | `CURLOPT_SSL_VERIFYPEER => true` and `CURLOPT_SSL_VERIFYHOST => 2` on all `curl` calls |
 | **Input validation** | Low | All platforms | `tx_id` length guard (>200 chars rejected), network whitelist with strict `in_array()` |
 | **Webhook replay attack** | Medium | Xero (accounting) | `is_replay()` checks `eventDateUtc` (with `firstRetryMoment` fallback) — webhooks older than 5 minutes rejected |
+
+#### Vulnerabilities found and fixed — Pass 2 (15 April 2026)
+
+Comet-validated audit across the B2B webhook trio and all 4 native SDKs. All seven adapters bumped from `1.0.0` to `1.1.0`.
+
+| Vulnerability | Severity | Affected | Fix |
+|---------------|----------|----------|-----|
+| **Native Rust crate did not compile** | Critical | `native-rust` | `html_escape` referenced a non-existent `html::escape` module. Replaced with local implementation; crate now builds clean |
+| **XSS via `</script>` break-out** | High | `native-python` | Caller-supplied `verify_url` / `success_url` were embedded into a `<script>` block via `json.dumps()`, which does not escape `</`. Added `_safe_url_for_script()` validator + belt-and-braces `</` → `<\/` neutralisation |
+| **SSRF token-leak (caller-supplied URL)** | High | `amazon-mws` (`confirm_shipment`), `tiktok-shop` (`update_shipping`) | `marketplace_url` / `api_base` parameters now allowlisted to `*.amazon.com` / `*.tiktokglobalshop.com` only. SP-API access token cannot be sent to attacker-controlled hosts |
+| **HMAC TypeError on bytes/None signature** | High | All Python adapters | `hmac.compare_digest` raises uncaught `TypeError` on type mismatch — surface as 500 instead of clean 401. Type guards added before the comparison |
+| **`parse_order_webhook` `AttributeError` on null fields** | Medium | `tiktok-shop`, `squarespace` | `dict.get(k, default)` returns the literal `None` when the key exists but is JSON null. Added explicit `is None` checks + `AttributeError` to except tuple. Squarespace also dropped the flat-payload fallback that allowed unwrapped spoofs |
+| **Plaintext API-key leak via `post()`** | High | `native-php`, `native-go`, `native-rust` | Internal `post()` helpers built request URLs from `api_base` with no scheme check. With misconfigured `http://`, the `Authorization: Bearer` header travelled in plaintext on every request. All three now refuse `http://` before any request is built |
+| **Webhook body-size unbounded** | Low | All Python adapters | `verify_webhook` parsed bodies of any size, processing 1 MB+ inputs in full. Added 64 KB cap (`MAX_WEBHOOK_BODY_BYTES`) before the HMAC computation |
+| **Amount sanity (`NaN` / `Inf` / negative / zero)** | Low | All adapters | `process_order` / `create_payment_link` accepted any `float`. Added `isfinite() && > 0` guard locally so the gateway round-trip is avoided |
+| **`redirect_url` scheme unrestricted** | Low | All adapters | `file://`, `gopher://`, `javascript:` schemes were forwarded to the gateway verbatim. Now rejected with `https`-only allowlist |
+| **`verify_payment` / `verify_hosted_return` no scheme guard** | Medium | All adapters | `_post()` had a guard but the `GET /checkout/{token}` path bypassed it. Plaintext `api_base` would leak the token in the URL. Explicit `startswith("https://")` check added on every read path |
+| **`token` length cap missing** | Low | All adapters | Only `tx_id` had the 200-char cap; `token` was checked for emptiness only, allowing arbitrary-length payloads to be URL-encoded into the request path. Both inputs now length-capped |
+| **Port-mismatch SSRF in `_scrape_checkout`** | Low | `native-php`, `native-go`, `native-rust` | Host comparison ignored port — same hostname on a different port slipped through. Now compares `host:port` |
+| **Constructor signature drift in READMEs** | Low (docs) | 7 adapters | Quick-start examples documented args (`refresh_token`, `app_key`, `algovoi_api_key`, etc.) that did not exist on the actual classes — copy-pasting raised `AttributeError`. All 7 READMEs rewritten to match real signatures |
 
 #### Security measures in every adapter
 
