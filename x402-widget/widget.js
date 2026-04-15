@@ -12,7 +12,7 @@
  *   </algovoi-x402>
  */
 
-const API_URL = 'https://worker.ilovechicken.co.uk/api/x402/pay';
+const DEFAULT_API_URL = 'https://worker.ilovechicken.co.uk/api/x402/pay';
 
 const CHAIN_LABELS = { ALGO: 'Algorand', VOI: 'VOI', XLM: 'Stellar', HBAR: 'Hedera' };
 
@@ -23,6 +23,7 @@ class AlgoVoiX402 extends HTMLElement {
     this._chains   = (this.getAttribute('chains')   || 'ALGO').split(',').map(c => c.trim().toUpperCase());
     this._tenantId = this.getAttribute('tenant-id') || '';
     this._apiKey   = this.getAttribute('api-key')   || '';
+    this._apiUrl   = this.getAttribute('api-url')   || DEFAULT_API_URL;
     this._step     = 'idle';
     this._render();
   }
@@ -172,16 +173,14 @@ class AlgoVoiX402 extends HTMLElement {
     this._render();
 
     try {
-      const res = await fetch(API_URL, {
+      const payload = { chain, amount: this._amount, currency: this._currency };
+      if (this._tenantId) payload.tenantId = this._tenantId;
+      if (this._apiKey)   payload.apiKey   = this._apiKey;
+
+      const res = await fetch(this._apiUrl, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          chain,
-          amount:   this._amount,
-          currency: this._currency,
-          tenantId: this._tenantId,
-          apiKey:   this._apiKey,
-        }),
+        body:    JSON.stringify(payload),
       });
 
       if (!res.ok) {
