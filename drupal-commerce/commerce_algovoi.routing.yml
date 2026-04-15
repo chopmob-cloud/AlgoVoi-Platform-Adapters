@@ -1,0 +1,11 @@
+commerce_algovoi.webhook:
+  path: '/payment/notify/algovoi/{commerce_payment_gateway}'
+  defaults:
+    _controller: '\Drupal\commerce_algovoi\Controller\WebhookController::handle'
+  requirements:
+    _access: 'TRUE'
+  options:
+    no_cache: 'TRUE'
+    parameters:
+      commerce_payment_gateway:
+        type: entity:commerce_payment_gateway

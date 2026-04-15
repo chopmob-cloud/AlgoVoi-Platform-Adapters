@@ -26,6 +26,7 @@ This repository contains **production-ready payment adapters** and **integration
 
 Included:
 - **Drop-in plugins** for WooCommerce, OpenCart, PrestaShop, and Shopware (tested and deployed)
+- **CMS payment gateways** for Drupal Commerce, Easy Digital Downloads (WordPress), and Ghost — all Comet-validated 2026-04-15
 - **Native adapters** for PHP, Python, Go, and Rust (zero external dependencies) — all hardened to v1.1.0 on 2026-04-15
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
 - **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 4 chains)
@@ -97,6 +98,9 @@ platform-adapters/
 │   ├── cohere/           # Payment-gated Cohere ClientV2 wrappers (MPP + AP2 + x402)
 │   ├── xai/              # Payment-gated xAI Grok wrappers (MPP + AP2 + x402)
 │   └── mistral/          # Payment-gated Mistral AI wrappers (MPP + AP2 + x402)
+├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
+├── easy-digital-downloads/ # EDD 3.2+ WordPress plugin (digital downloads, licensing)
+├── ghost/                # Ghost 5.x paid-membership grant-on-payment adapter
 ├── xero/                 # Xero invoice payment adapter
 ├── yapily/               # Yapily open banking adapter
 ├── zoho-books/           # Zoho Books invoice adapter
@@ -200,6 +204,9 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | **OpenCart** | [opencart.md](./opencart.md) | [opencart/](./opencart/) | **Available — hosted + extension** |
 | **Shopware** | [shopware.md](./shopware.md) | [shopware/](./shopware/) | **Available — hosted + extension** |
 | **TikTok Shop** | [tiktok-shop.md](./tiktok-shop.md) | [tiktok-shop/](./tiktok-shop/) | **Available — B2B webhook adapter** |
+| **Drupal Commerce** | [drupal-commerce/README.md](./drupal-commerce/README.md) | [drupal-commerce/](./drupal-commerce/) | **Available — Drupal 10/11 + Commerce 2/3 module (Comet-validated 2026-04-15)** |
+| **Easy Digital Downloads** | [easy-digital-downloads/README.md](./easy-digital-downloads/README.md) | [easy-digital-downloads/](./easy-digital-downloads/) | **Available — EDD 3.2+ WordPress plugin (Comet-validated 2026-04-15)** |
+| **Ghost** | [ghost/README.md](./ghost/README.md) | [ghost/](./ghost/) | **Available — Ghost 5.x paid-membership adapter (Comet-validated 2026-04-15)** |
 
 ## Regional & international marketplace integrations
 

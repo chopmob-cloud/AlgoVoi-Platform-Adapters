@@ -1,0 +1,11 @@
+name: 'AlgoVoi Commerce Payment Gateway'
+type: module
+description: 'Accept USDC stablecoin payments on Algorand, VOI, Hedera, and Stellar via AlgoVoi hosted checkout. Non-custodial — merchants receive funds directly to their wallet.'
+package: Commerce (contrib)
+core_version_requirement: ^10 || ^11
+dependencies:
+  - commerce:commerce_payment
+  - commerce:commerce_order
+configure: commerce_payment.payment_gateways
+version: '1.0.0'
+project: 'commerce_algovoi'
