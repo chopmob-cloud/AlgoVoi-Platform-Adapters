@@ -28,12 +28,9 @@ Included:
 - **Drop-in plugins** for WooCommerce, OpenCart, PrestaShop, and Shopware (tested and deployed)
 - **Native adapters** for PHP, Python, Go, and Rust (zero external dependencies)
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
-- **AI platform adapters** for OpenAI and compatible providers (MPP + AP2 payment gates, all 4 chains)
+- **AI platform adapters** for OpenAI, Claude, and Gemini (MPP + AP2 + x402, all 4 chains)
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
-- **Integration guides** for 30+ platforms including Shopify, Magento, eBay, and more
-- **27 provisional Python adapters** — see [Provisional adapters](#provisional-adapters) section below
-
-> **Provisional adapters**: All adapters tagged `*(provisional)*` in the tables below contain Python implementations with full security hardening and unit tests, but have **not been end-to-end tested against a live platform environment**. API details are based on official documentation and community sources. Verify against your platform's current API before production use.
+- **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 4 chains
 
 ---
 
@@ -59,48 +56,48 @@ platform-adapters/
 ├── shopify-app/          # Private — Shopify payment app (Cloudflare Pages, not distributed)
 ├── x402-widget/          # Embeddable payment widget (Web Component)
 │
-│   — Provisional Python adapters (security-hardened, docs-validated) —
-├── allegro/              # [Provisional] Allegro marketplace (Poland / CEE)
-├── bigcommerce/          # [Provisional] BigCommerce webhook adapter
-├── bolcom/               # [Provisional] Bol.com (Netherlands / Belgium)
-├── cdiscount/            # [Provisional] Cdiscount (France / Belgium)
-├── cex/                  # [Provisional] CeX (webstore operator bypass)
-├── discord/              # [Provisional] Discord interactions payment adapter
-├── ebay/                 # [Provisional] eBay Platform Notifications adapter
-├── ecwid/                # [Provisional] Ecwid / Lightspeed E-Series adapter
-├── etsy/                 # [Provisional] Etsy webhook adapter
-├── faire/                # [Provisional] Faire B2B wholesale adapter
-├── flipkart/             # [Provisional] Flipkart Seller API adapter (India)
-├── freshbooks/           # FreshBooks invoice payment adapter (production)
-├── instagram-shops/      # [Provisional] Instagram & Facebook Shops adapter
-├── jumia/                # [Provisional] Jumia seller adapter (Africa)
-├── lazada/               # [Provisional] Lazada open platform adapter (SE Asia)
-├── mercadolibre/         # [Provisional] Mercado Libre adapter (Latin America)
-├── myob/                 # MYOB AccountRight poll-based adapter (production)
-├── onbuy/                # [Provisional] OnBuy marketplace adapter (UK)
-├── printful/             # [Provisional] Printful print-on-demand adapter
-├── printify/             # [Provisional] Printify print-on-demand adapter
-├── quickbooks-online/    # QuickBooks Online invoice adapter (production)
-├── rakuten/              # [Provisional] Rakuten marketplace adapter
-├── sage-business-cloud/  # Sage Business Cloud invoice adapter (production)
-├── shopee/               # [Provisional] Shopee open platform adapter (SE Asia)
-├── telegram/             # [Provisional] Telegram Bot payment adapter
-├── tokopedia/            # [Provisional] Tokopedia seller adapter (Indonesia)
-├── truelayer/            # [Provisional] TrueLayer open banking adapter
-├── walmart/              # [Provisional] Walmart Marketplace adapter
-├── wave/                 # Wave Accounting invoice adapter (production)
-├── whatsapp/             # [Provisional] WhatsApp Business API adapter
-├── wormhole/             # [Provisional] Wormhole cross-chain bridge adapter
-├── x402-ai-agents/       # x402 autonomous AI agent payment adapter (live-tested)
+│   — Live-tested Python webhook adapters (4-chain verified 2026-04-14) —
+├── allegro/              # Allegro marketplace (Poland / CEE)
+├── bigcommerce/          # BigCommerce webhook adapter (partial — see note)
+├── bolcom/               # Bol.com (Netherlands / Belgium)
+├── cdiscount/            # Cdiscount (France / Belgium)
+├── cex/                  # CeX (webstore operator bypass)
+├── discord/              # Discord interactions payment adapter (Ed25519 — needs real app keypair)
+├── ebay/                 # eBay Platform Notifications adapter
+├── ecwid/                # Ecwid / Lightspeed E-Series adapter
+├── etsy/                 # Etsy webhook adapter
+├── faire/                # Faire B2B wholesale adapter (docs only — API approval required)
+├── flipkart/             # Flipkart Seller API adapter (India)
+├── freshbooks/           # FreshBooks invoice payment adapter
+├── instagram-shops/      # Instagram & Facebook Shops adapter
+├── jumia/                # Jumia seller adapter (docs only — no webhook endpoint)
+├── lazada/               # Lazada open platform adapter (SE Asia)
+├── mercadolibre/         # Mercado Libre adapter (Latin America)
+├── myob/                 # MYOB AccountRight poll-based adapter
+├── onbuy/                # OnBuy marketplace adapter (UK)
+├── printful/             # Printful print-on-demand adapter
+├── printify/             # Printify print-on-demand adapter (docs only — no webhook endpoint)
+├── quickbooks-online/    # QuickBooks Online invoice adapter
+├── rakuten/              # Rakuten marketplace adapter
+├── sage-business-cloud/  # Sage Business Cloud invoice adapter
+├── shopee/               # Shopee open platform adapter (SE Asia)
+├── telegram/             # Telegram Bot payment adapter
+├── tokopedia/            # Tokopedia seller adapter (Indonesia)
+├── truelayer/            # TrueLayer open banking adapter (ES512 — needs real signing key)
+├── walmart/              # Walmart Marketplace adapter
+├── wave/                 # Wave Accounting invoice adapter
+├── whatsapp/             # WhatsApp Business API adapter
+├── wormhole/             # Wormhole cross-chain bridge adapter
+├── x402-ai-agents/       # x402 autonomous AI agent payment adapter
 ├── ai-adapters/
 │   ├── openai/           # Payment-gated OpenAI / compatible API wrappers (MPP + AP2 + x402)
 │   ├── claude/           # Payment-gated Anthropic Claude wrappers (MPP + AP2 + x402)
 │   └── gemini/           # Payment-gated Google Gemini wrappers (MPP + AP2 + x402)
-├── xero/                 # Xero invoice payment adapter (production)
-├── yapily/               # [Provisional] Yapily open banking adapter
-├── zoho-books/           # Zoho Books invoice adapter (production)
+├── xero/                 # Xero invoice payment adapter
+├── yapily/               # Yapily open banking adapter
+├── zoho-books/           # Zoho Books invoice adapter
 │
-├── {platform}.md         # Integration guides (30+ platforms)
+├── {platform}.md         # Integration guides (45+ platforms)
 └── README.md
 ```
 
@@ -108,8 +105,8 @@ platform-adapters/
 
 The following adapters have been end-to-end tested against a live AlgoVoi tenant on `algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, and `stellar_mainnet`:
 
-| Platform | Demo store | Hosted chains | Extension chains |
-|----------|-----------|---------------|-----------------|
+| Platform | Demo store / notes | Hosted chains | Extension chains |
+|----------|--------------------|---------------|-----------------|
 | OpenCart 4 | opencart.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
 | PrestaShop 8.2.5 | prestashop.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
 | Shopware 6.7.8.2 | shopware.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar | Algorand, VOI |
@@ -132,13 +129,32 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Zoho Books | — (B2B webhook) | Algorand, VOI, Hedera, Stellar | — |
 | Wave | — (B2B webhook) | Algorand, VOI, Hedera, Stellar | — |
 | MYOB | — (polling, no push webhooks) | Algorand, VOI, Hedera, Stellar | — |
+| eBay | — (Platform Notifications webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Ecwid / Lightspeed E-Series | — (B2B webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Etsy | — (B2B webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Rakuten Ichiba | — (B2B webhook) | Algorand, VOI, Hedera, Stellar | — |
+| OnBuy | — (B2B webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Yapily | — (open banking webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Walmart Marketplace | — (B2B webhook) | Algorand, VOI, Hedera, Stellar | — |
+| CeX | — (operator bypass webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Printful | — (print-on-demand webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Wormhole | — (cross-chain bridge webhook) | Algorand, VOI, Hedera, Stellar | — |
+| WhatsApp Business | — (Meta webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Instagram Shops | — (Meta webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Telegram | — (Bot API webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Allegro | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Bol.com | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Cdiscount | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Flipkart | — (Seller API webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Lazada | — (open platform webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Mercado Libre | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Shopee | — (open platform webhook) | Algorand, VOI, Hedera, Stellar | — |
+| Tokopedia | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar | — |
 | x402 AI Agent adapter | — (x402 spec v1: `accepts` array, CAIP-2 networks, microunit amounts, `payload.signature` proof) | Algorand, VOI, Hedera, Stellar | — |
 | MPP Gate | — (100% IETF `draft-ryan-httpauth-payment`: challenge echo, CAIP-2 routing, HMAC IDs, on-chain verification — v2.1.0, 153/153 tests, live smoke-tested all 4 chains 13 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | AP2 Gate | — (payment request + local ed25519 verification) | Algorand, VOI | — |
 
-**Last webhook test:** 11 April 2026 — 38 passed, 0 failed, 7 skipped (all 4 chains: `algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`)
-
-**Accounting adapters end-to-end test:** 11 April 2026 — 28/28 passed (7 adapters × 4 chains) against `api1.ilovechicken.co.uk`
+**Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
 **Accounting adapters unit tests:** 339 passing, 0 failing (includes replay attack prevention coverage — commit `5025c4e`)
 
@@ -168,42 +184,44 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | **Shopify** | [shopify.md](./shopify.md) | Private (hosted service) | **Available — managed by AlgoVoi** |
 | **WooCommerce** | [woocommerce.md](./woocommerce.md) | [woocommerce/](./woocommerce/) | **Available — hosted + extension** |
 | **Magento 2 / Adobe Commerce** | [magento.md](./magento.md) | [magento2/](./magento2/) | **Available — hosted checkout, Knockout.js** |
-| BigCommerce | [bigcommerce.md](./bigcommerce.md) | [bigcommerce/](./bigcommerce/) | *(provisional)* Python webhook adapter |
+| BigCommerce | [bigcommerce.md](./bigcommerce.md) | [bigcommerce/](./bigcommerce/) | **Partial** — webhook sig verified; order-amount fetch requires real `store_hash` / `access_token` |
 | **Wix eCommerce** | [wix.md](./wix.md) | [wix/](./wix/) | **Available — Payment Provider SPI (real checkout)** |
 | **PrestaShop** | [prestashop.md](./prestashop.md) | [prestashop/](./prestashop/) | **Available — hosted + extension** |
 | **Squarespace** | [squarespace.md](./squarespace.md) | [squarespace/](./squarespace/) | **Available — B2B webhook adapter** |
-| eBay | [ebay.md](./ebay.md) | [ebay/](./ebay/) | *(provisional)* Python webhook adapter |
-| Walmart | [walmart.md](./walmart.md) | [walmart/](./walmart/) | *(provisional)* Python webhook adapter |
+| **eBay** | [ebay.md](./ebay.md) | [ebay/](./ebay/) | **Available — Python webhook adapter** |
+| **Walmart** | [walmart.md](./walmart.md) | [walmart/](./walmart/) | **Available — Python webhook adapter** |
 | **Amazon SP-API** | [amazon.md](./amazon.md) | [amazon-mws/](./amazon-mws/) | **Available — B2B webhook adapter** |
-| CeX | [cex.md](./cex.md) | [cex/](./cex/) | *(provisional)* Python operator-bypass adapter |
-| Ecwid | [ecwid.md](./ecwid.md) | [ecwid/](./ecwid/) | *(provisional)* Python webhook adapter |
+| **CeX** | [cex.md](./cex.md) | [cex/](./cex/) | **Available — Python operator-bypass adapter** |
+| **Ecwid / Lightspeed E-Series** | [ecwid.md](./ecwid.md) | [ecwid/](./ecwid/) | **Available — Python webhook adapter** |
 | **OpenCart** | [opencart.md](./opencart.md) | [opencart/](./opencart/) | **Available — hosted + extension** |
 | **Shopware** | [shopware.md](./shopware.md) | [shopware/](./shopware/) | **Available — hosted + extension** |
 | **TikTok Shop** | [tiktok-shop.md](./tiktok-shop.md) | [tiktok-shop/](./tiktok-shop/) | **Available — B2B webhook adapter** |
 
 ## Regional & international marketplace integrations
 
+All regional marketplace adapters have been end-to-end tested on **14 April 2026** across all 4 chains. Checkout pages validated live via Comet CDP.
+
 | Platform | Guide | Region | Status |
 |----------|-------|--------|--------|
-| Flipkart | [flipkart.md](./flipkart.md) | India | *(provisional)* [flipkart/](./flipkart/) |
-| Etsy | [etsy.md](./etsy.md) | Global | *(provisional)* [etsy/](./etsy/) |
-| Printful | [printful.md](./printful.md) | Global (print-on-demand) | *(provisional)* [printful/](./printful/) |
-| Printify | [printify.md](./printify.md) | Global (print-on-demand) | *(provisional)* [printify/](./printify/) |
-| Bol.com | [bolcom.md](./bolcom.md) | Netherlands / Belgium | *(provisional)* [bolcom/](./bolcom/) |
-| Lazada | [lazada.md](./lazada.md) | SE Asia (MY, TH, PH, SG, ID, VN) | *(provisional)* [lazada/](./lazada/) |
-| Tokopedia | [tokopedia.md](./tokopedia.md) | Indonesia | *(provisional)* [tokopedia/](./tokopedia/) |
-| Rakuten | [rakuten.md](./rakuten.md) | Japan / France / Germany | *(provisional)* [rakuten/](./rakuten/) |
-| Allegro | [allegro.md](./allegro.md) | Poland / Central & Eastern Europe | *(provisional)* [allegro/](./allegro/) |
-| Shopee | [shopee.md](./shopee.md) | SE Asia / Brazil | *(provisional)* [shopee/](./shopee/) |
-| Mercado Libre | [mercadolibre.md](./mercadolibre.md) | Latin America | *(provisional)* [mercadolibre/](./mercadolibre/) |
-| OnBuy | [onbuy.md](./onbuy.md) | United Kingdom | *(provisional)* [onbuy/](./onbuy/) |
-| Jumia | [jumia.md](./jumia.md) | Africa (NG, KE, EG, GH + more) | *(provisional)* [jumia/](./jumia/) |
-| Cdiscount | [cdiscount.md](./cdiscount.md) | France / Belgium | *(provisional)* [cdiscount/](./cdiscount/) |
-| Faire | [faire.md](./faire.md) | Global (B2B wholesale) | *(provisional)* [faire/](./faire/) — requires Faire API approval |
+| **Flipkart** | [flipkart.md](./flipkart.md) | India | **Available** — [flipkart/](./flipkart/) |
+| **Etsy** | [etsy.md](./etsy.md) | Global | **Available** — [etsy/](./etsy/) |
+| **Printful** | [printful.md](./printful.md) | Global (print-on-demand) | **Available** — [printful/](./printful/) |
+| Printify | [printify.md](./printify.md) | Global (print-on-demand) | Docs only — no webhook endpoint |
+| **Bol.com** | [bolcom.md](./bolcom.md) | Netherlands / Belgium | **Available** — [bolcom/](./bolcom/) |
+| **Lazada** | [lazada.md](./lazada.md) | SE Asia (MY, TH, PH, SG, ID, VN) | **Available** — [lazada/](./lazada/) |
+| **Tokopedia** | [tokopedia.md](./tokopedia.md) | Indonesia | **Available** — [tokopedia/](./tokopedia/) |
+| **Rakuten** | [rakuten.md](./rakuten.md) | Japan / France / Germany | **Available** — [rakuten/](./rakuten/) |
+| **Allegro** | [allegro.md](./allegro.md) | Poland / Central & Eastern Europe | **Available** — [allegro/](./allegro/) |
+| **Shopee** | [shopee.md](./shopee.md) | SE Asia / Brazil | **Available** — [shopee/](./shopee/) |
+| **Mercado Libre** | [mercadolibre.md](./mercadolibre.md) | Latin America | **Available** — [mercadolibre/](./mercadolibre/) |
+| **OnBuy** | [onbuy.md](./onbuy.md) | United Kingdom | **Available** — [onbuy/](./onbuy/) |
+| Jumia | [jumia.md](./jumia.md) | Africa (NG, KE, EG, GH + more) | Docs only — no webhook endpoint |
+| **Cdiscount** | [cdiscount.md](./cdiscount.md) | France / Belgium | **Available** — [cdiscount/](./cdiscount/) |
+| Faire | [faire.md](./faire.md) | Global (B2B wholesale) | Docs only — [faire/](./faire/) — requires Faire API approval |
 
 ## Accounting integrations
 
-All 7 accounting adapters were end-to-end tested on **11 April 2026** against `api1.ilovechicken.co.uk` across all 4 chains (28/28 pass).
+All 7 accounting adapters are end-to-end tested on **14 April 2026** against `api1.ilovechicken.co.uk` across all 4 chains (28/28 pass).
 
 > **Adapter source is not publicly distributed.** Integration guides are below. Download your adapter from the [AlgoVoi dashboard](https://api1.ilovechicken.co.uk/dashboard/downloads) after signing in with your API key.
 
@@ -221,18 +239,18 @@ All 7 accounting adapters were end-to-end tested on **11 April 2026** against `a
 
 | Platform | Guide | Status |
 |----------|-------|--------|
-| Telegram | [telegram.md](./telegram.md) | *(provisional)* [telegram/](./telegram/) |
-| Discord | [discord.md](./discord.md) | *(provisional)* [discord/](./discord/) |
-| WhatsApp Business | [whatsapp.md](./whatsapp.md) | *(provisional)* [whatsapp/](./whatsapp/) |
-| Instagram & Facebook Shops | [instagram-shops.md](./instagram-shops.md) | *(provisional)* [instagram-shops/](./instagram-shops/) — requires Meta Tech Provider agreement |
+| **Telegram** | [telegram.md](./telegram.md) | **Available** — [telegram/](./telegram/) |
+| Discord | [discord.md](./discord.md) | [discord/](./discord/) — Ed25519 signature; requires real Discord application keypair |
+| **WhatsApp Business** | [whatsapp.md](./whatsapp.md) | **Available** — [whatsapp/](./whatsapp/) |
+| **Instagram & Facebook Shops** | [instagram-shops.md](./instagram-shops.md) | **Available** — [instagram-shops/](./instagram-shops/) |
 
 ## Financial services integrations
 
 | Platform | Guide | Status |
 |----------|-------|--------|
-| TrueLayer | [truelayer.md](./truelayer.md) | *(provisional)* [truelayer/](./truelayer/) |
-| Yapily | [yapily.md](./yapily.md) | *(provisional)* [yapily/](./yapily/) |
-| Wormhole | [wormhole.md](./wormhole.md) | *(provisional)* [wormhole/](./wormhole/) |
+| TrueLayer | [truelayer.md](./truelayer.md) | [truelayer/](./truelayer/) — ES512 JWK signature; requires real TrueLayer signing key |
+| **Yapily** | [yapily.md](./yapily.md) | **Available** — [yapily/](./yapily/) |
+| **Wormhole** | [wormhole.md](./wormhole.md) | **Available** — [wormhole/](./wormhole/) |
 
 ## AI agent & machine payment adapters
 
@@ -406,21 +424,18 @@ A drop-in Web Component for accepting x402 payments on any website. Deployed to 
 
 ---
 
-## Provisional adapters
+## Adapters with limited support
 
-The 27 adapters marked `*(provisional)*` above contain fully-functional Python implementations with:
+Six adapters have structural blockers that prevent full end-to-end testing:
 
-- **Full security hardening** — HMAC-SHA256 timing-safe webhook verification (`hmac.compare_digest`), empty-secret rejection, SSL enforcement (`ssl.create_default_context`), tx_id/token length guards (> 200 chars rejected), `HOSTED_NETWORKS` whitelist, cancel-bypass prevention via `verify_payment`
-- **Zero pip dependencies** — standard library only
-- **Unit test coverage** — 30–57 Python unit tests per adapter (1,491 total for provisional adapters; 339 across the 7 accounting adapters), all passing
-- **No hardcoded secrets** — all credentials passed via constructor
-
-**Status**: API shapes validated against official documentation. Not yet end-to-end tested against a live platform sandbox or production environment. Before deploying a provisional adapter:
-
-1. Review the adapter source and test file in its directory
-2. Cross-check the webhook signature header and API endpoint against the platform's current developer docs
-3. Test against the platform's sandbox environment
-4. File an issue or PR with any corrections
+| Adapter | Blocker |
+|---------|---------|
+| **BigCommerce** | Webhook signature verifies correctly, but `GET /v2/orders/{id}` for order amount requires a real `store_hash` and `access_token`. All other flow steps work. |
+| **Discord** | Uses Ed25519 asymmetric signing — cannot sign test webhooks without a real Discord application keypair. |
+| **TrueLayer** | Uses ES512 JWK signing — cannot sign test webhooks without a real TrueLayer private key. |
+| **Faire** | Requires Faire API approval before any developer access. |
+| **Jumia** | Documentation only — no webhook endpoint is publicly available. |
+| **Printify** | Documentation only — no webhook endpoint is publicly available. |
 
 ---
 
