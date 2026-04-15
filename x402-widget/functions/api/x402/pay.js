@@ -27,12 +27,17 @@ export async function onRequestPost(context) {
     return Response.json({ error: `Unsupported chain: ${chain}` }, { status: 400, headers: cors() });
   }
 
+  // Forward the browser's Origin so the gateway can enforce domain allowlisting
+  // on widget (algvw_) keys when that feature is enabled.
+  const origin = context.request.headers.get('origin') || '';
+
   const res = await fetch(`${GATEWAY_URL}/v1/payment-links`, {
     method: 'POST',
     headers: {
       'Content-Type':  'application/json',
       'Authorization': `Bearer ${apiKey}`,
       'X-Tenant-Id':   tenantId,
+      ...(origin && { 'X-Widget-Origin': origin }),
     },
     body: JSON.stringify({
       amount:             parseFloat(amount),

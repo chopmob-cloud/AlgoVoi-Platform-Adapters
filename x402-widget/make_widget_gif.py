@@ -341,8 +341,8 @@ def scene_editor():
         [
             "One <script> tag loads the widget from worker.ilovechicken.co.uk",
             "One <algovoi-x402> element drops the payment card onto your page",
-            "Set your amount, chains, tenant-id and api-key  — done",
-            "Credentials stay in your HTML; no backend or server changes needed",
+            "Set amount, chains, tenant-id and api-key — or use api-url for a backend proxy",
+            "See README: Option A (algvw_ domain key) or Option B (api-url proxy, zero creds in HTML)",
         ],
         hold=55,
     )
@@ -532,9 +532,9 @@ def scene_loading():
 
     frames += _ann_frames(
         img_load,
-        "POST /api/x402/demo → AlgoVoi gateway",
+        "POST api-url → AlgoVoi gateway",
         [
-            "Widget calls worker.ilovechicken.co.uk/api/x402/pay with your credentials",
+            "Widget POSTs to api-url — default worker endpoint, or your own backend",
             "AlgoVoi creates a hosted checkout link valid for 30 minutes",
             "No wallet SDK, no Web3 library — the widget handles everything",
         ],
@@ -573,14 +573,118 @@ def scene_ready():
     )
     return frames
 
-# ── Scene 6 — Summary / CTA ────────────────────────────────────────────────
+# ── Scene 6 — Security options ────────────────────────────────────────────
+OPTION_A_CODE = [
+    ("<!-- Option A: origin-restricted widget key -->", SYN_COMMENT),
+    ("<algovoi-x402",                                   SYN_TAG),
+    ('  amount="29.99"  currency="USD"',                SYN_ATTR),
+    ('  chains="ALGO,VOI,XLM,HBAR"',                   SYN_ATTR),
+    ('  tenant-id="YOUR_TENANT_ID"',                    SYN_PH),
+    ('  api-key="algvw_YOUR_KEY">',                     SYN_PH),
+    ("</algovoi-x402>",                                 SYN_TAG),
+]
+
+OPTION_B_CODE = [
+    ("<!-- Option B: backend proxy, zero creds in HTML -->", SYN_COMMENT),
+    ("<algovoi-x402",                                         SYN_TAG),
+    ('  amount="29.99"  currency="USD"',                     SYN_ATTR),
+    ('  chains="ALGO,VOI,XLM,HBAR"',                         SYN_ATTR),
+    ('  api-url="/api/create-payment">',                      SYN_VAL),
+    ("</algovoi-x402>",                                       SYN_TAG),
+    ("",                                                       SYN_PLAIN),
+]
+
+def _draw_sec_panels(d, alpha=1.0):
+    def fa(c): return tuple(int(v*alpha) for v in c)
+
+    PA_X = 30
+    PB_X = W // 2 + 12
+    CODE_Y = 108
+    LH = 19
+
+    # ── Panel A ──
+    # Header pill
+    d.rounded_rectangle([PA_X, 58, PA_X+178, 80], radius=6, fill=fa((20,40,80)))
+    d.text((PA_X+8, 69), "Option A — Widget key (algvw_)",
+           font=FONT_SM, fill=fa(BLUE), anchor="lm")
+    d.text((PA_X, 86), "Visible in source, locked to your domain",
+           font=FONT_SM, fill=fa(MUTED))
+
+    # Code block A
+    max_w_a = max(int(d.textlength(t, font=FONT_SM))+4 for t,_ in OPTION_A_CODE if t)
+    d.rounded_rectangle([PA_X-4, CODE_Y-4, PA_X+max_w_a+8, CODE_Y+len(OPTION_A_CODE)*LH+6],
+                         radius=6, fill=fa(EDITOR_BG))
+    for j, (txt, col) in enumerate(OPTION_A_CODE):
+        d.text((PA_X, CODE_Y+j*LH), txt, font=FONT_SM, fill=fa(col))
+
+    note_y = CODE_Y + len(OPTION_A_CODE)*LH + 14
+    d.text((PA_X, note_y),    "● algvw_ key = domain-locked",  font=FONT_SM, fill=fa(SYN_PH))
+    d.text((PA_X, note_y+16), "● X-Widget-Origin forwarded automatically",
+           font=FONT_SM, fill=fa(MUTED))
+    d.text((PA_X, note_y+32), "✓ Works on static sites, Webflow, Framer",
+           font=FONT_SM, fill=fa(GREEN))
+
+    # ── Divider ──
+    mid = W // 2
+    d.line([(mid, 54), (mid, H-38)], fill=fa((40,45,60)), width=1)
+
+    # ── Panel B ──
+    d.rounded_rectangle([PB_X, 58, PB_X+208, 80], radius=6, fill=fa((10,50,30)))
+    d.text((PB_X+8, 69), "Option B — Server proxy (api-url)",
+           font=FONT_SM, fill=fa(GREEN), anchor="lm")
+    d.text((PB_X, 86), "No credentials reach the browser",
+           font=FONT_SM, fill=fa(MUTED))
+
+    # Code block B
+    max_w_b = max(int(d.textlength(t, font=FONT_SM))+4 for t,_ in OPTION_B_CODE if t)
+    d.rounded_rectangle([PB_X-4, CODE_Y-4, PB_X+max_w_b+8, CODE_Y+len(OPTION_B_CODE)*LH+6],
+                         radius=6, fill=fa(EDITOR_BG))
+    for j, (txt, col) in enumerate(OPTION_B_CODE):
+        d.text((PB_X, CODE_Y+j*LH), txt, font=FONT_SM, fill=fa(col))
+
+    note_y = CODE_Y + len(OPTION_B_CODE)*LH + 14
+    d.text((PB_X, note_y),    "● api-url = your CF Pages / Next.js / Express route",
+           font=FONT_SM, fill=fa(BLUE))
+    d.text((PB_X, note_y+16), "● Backend holds ALGOVOI_API_KEY in env vars",
+           font=FONT_SM, fill=fa(MUTED))
+    d.text((PB_X, note_y+32), "✓ Zero credentials exposed — best for production",
+           font=FONT_SM, fill=fa(GREEN))
+
+def scene_security():
+    frames = []
+
+    for i in range(30):
+        alpha = min(1.0, i / 10)
+        img, d = _new_frame()
+        _title_bar(d, "Securing your credentials — two options")
+        _draw_sec_panels(d, alpha)
+        frames.append(img)
+
+    img_sec, d_sec = _new_frame()
+    _title_bar(d_sec, "Securing your credentials — two options")
+    _draw_sec_panels(d_sec, 1.0)
+
+    frames += _ann_frames(
+        img_sec,
+        "Protect your API credentials in production",
+        [
+            "Option A: algvw_ widget key — domain-locked, safe to embed in static HTML",
+            "Option B: api-url proxy — credentials live in env vars, never sent to browser",
+            "CF Pages, Next.js and Express examples in the widget README",
+        ],
+        hold=65,
+    )
+    return frames
+
+
+# ── Scene 7 — Summary / CTA ────────────────────────────────────────────────
 def scene_cta():
     frames = []
     steps = [
         ("1", BLUE,       "Sign up for an AlgoVoi account"),
         ("2", INDIGO,     "Set your payout wallet & chain"),
         ("3", GREEN,      "Add 2 lines of HTML to any page"),
-        ("4", (255,165,0),"Collect USDC on 4 chains — done"),
+        ("4", (255,165,0),"Choose your security approach — done"),
     ]
 
     for i in range(50):
@@ -627,11 +731,12 @@ def scene_cta():
 # ── Save ───────────────────────────────────────────────────────────────────
 def main():
     frames = (
-        scene_title()   +
-        scene_editor()  +
-        scene_idle()    +
-        scene_loading() +
-        scene_ready()   +
+        scene_title()    +
+        scene_editor()   +
+        scene_idle()     +
+        scene_loading()  +
+        scene_ready()    +
+        scene_security() +
         scene_cta()
     )
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)),
