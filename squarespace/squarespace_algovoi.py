@@ -16,7 +16,7 @@ Zero pip dependencies — uses only the Python standard library.
 
 Squarespace API docs: https://developers.squarespace.com/commerce-apis/overview
 
-Version: 1.0.0
+Version: 1.1.0
 
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
@@ -28,15 +28,19 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import re
 import ssl
 import time
 from typing import Any, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
+
+# Hard cap on inbound webhook bodies — Squarespace order webhooks are <8 KB.
+MAX_WEBHOOK_BODY_BYTES = 64 * 1024
 
 HOSTED_NETWORKS = {"algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet"}
 
@@ -78,21 +82,37 @@ class SquarespaceAlgoVoi:
         """
         Verify a Squarespace webhook using the Squarespace-Signature header.
 
-        Squarespace signs webhooks with HMAC-SHA256 using the webhook secret.
+        Squarespace signs webhooks with HMAC-SHA256 using the webhook secret
+        and a hex digest.
 
         Args:
             raw_body:  Raw POST body as bytes
-            signature: Squarespace-Signature header value
+            signature: Squarespace-Signature header value (hex digest)
 
         Returns:
             Parsed payload dict, or None if verification fails
+
+        SECURITY NOTE — replay protection:
+            This method does NOT dedupe replays. The HMAC carries no
+            timestamp, so an attacker who captures one valid (body, sig)
+            pair could replay it indefinitely. Callers MUST track
+            processed `order_id` values in their persistence layer and
+            reject duplicates BEFORE calling process_order().
         """
         if not self.webhook_secret:
+            return None
+        # Type guards — compare_digest raises TypeError on bytes/None,
+        # which would surface as a 500. Fail closed instead.
+        if not isinstance(signature, str) or not signature:
+            return None
+        if not isinstance(raw_body, (bytes, bytearray)):
+            return None
+        if len(raw_body) > MAX_WEBHOOK_BODY_BYTES:
             return None
 
         expected = hmac.new(
             self.webhook_secret.encode(),
-            raw_body,
+            bytes(raw_body),
             hashlib.sha256,
         ).hexdigest()
 
@@ -136,13 +156,24 @@ class SquarespaceAlgoVoi:
         if not label:
             label = f"Squarespace Order #{order_id}"
 
+        # Defence-in-depth: reject obviously bad amounts before the
+        # gateway call.
+        if not isinstance(amount, (int, float)) or not math.isfinite(amount) or amount <= 0:
+            return None
+
         payload: dict[str, Any] = {
-            "amount": round(amount, 2),
+            "amount": round(float(amount), 2),
             "currency": currency.upper(),
             "label": label,
             "preferred_network": network,
         }
         if redirect_url:
+            # https-only — checkout tokens or payment-status parameters
+            # appended by the gateway must not travel over plaintext.
+            # Also blocks SSRF schemes (file://, gopher://, javascript:).
+            parsed = urlparse(redirect_url)
+            if parsed.scheme != "https" or not parsed.hostname:
+                return None
             payload["redirect_url"] = redirect_url
             payload["expires_in_seconds"] = 3600
 
@@ -172,8 +203,15 @@ class SquarespaceAlgoVoi:
 
         Returns:
             True only if the API confirms payment is complete
+
+        Note: GET /checkout/{token} is a public endpoint — the token
+        IS the authorisation, no Bearer header is required. If the
+        gateway changes that contract, this method must add Auth.
         """
         if not token:
+            return False
+        # Refuse to send the checkout token over plaintext HTTP.
+        if not self.api_base.startswith("https://"):
             return False
 
         url = f"{self.api_base}/checkout/{quote(token, safe='')}"
@@ -193,7 +231,10 @@ class SquarespaceAlgoVoi:
         """
         Parse a Squarespace order webhook payload.
 
-        Handles order.create and order.update topics.
+        Handles order.create and order.update topics. Squarespace always
+        wraps the order payload in a top-level "data" key — payloads
+        without it are rejected (avoids accepting flat / spoofed bodies
+        as legitimate orders).
 
         Args:
             payload: The parsed webhook JSON
@@ -201,40 +242,67 @@ class SquarespaceAlgoVoi:
         Returns:
             dict with order_id, amount, currency, status — or None
         """
+        # Defence: malformed or null-injected webhooks must NOT crash
+        # the handler. Coerce defensively at every step and add
+        # AttributeError to the except tuple as belt-and-suspenders.
+        if not isinstance(payload, dict):
+            return None
         try:
-            topic = payload.get("topic", "")
-            data = payload.get("data", payload)
-
+            topic = payload.get("topic") or ""
             if topic not in ("order.create", "order.update", ""):
                 return None
 
-            order_id = data.get("id", data.get("orderId", ""))
+            data = payload.get("data")
+            # Reject flat / unwrapped payloads — Squarespace always
+            # delivers the order under "data". Without this, a spoofed
+            # webhook that omits the wrapper could be parsed as valid.
+            if not isinstance(data, dict):
+                return None
+
+            order_id = data.get("id") or data.get("orderId") or ""
             if not order_id:
                 return None
 
-            # Squarespace uses grandTotal with value and currency
-            grand_total = data.get("grandTotal", data.get("subtotal", {}))
-            if isinstance(grand_total, dict):
-                amount = float(grand_total.get("value", grand_total.get("decimalValue", "0")))
-                currency = grand_total.get("currency", self.base_currency)
-            else:
-                amount = float(grand_total or 0)
-                currency = self.base_currency
+            # Squarespace uses grandTotal with value and currency.
+            # Coerce a null grandTotal to {} so the dict path runs and
+            # missing-amount is surfaced explicitly rather than masked
+            # as 0.0 (which `float(None or 0)` would silently produce).
+            grand_total = data.get("grandTotal")
+            if grand_total is None:
+                grand_total = data.get("subtotal")
+            if grand_total is None:
+                return None
+            if not isinstance(grand_total, dict):
+                # Squarespace always sends the {value, currency} dict.
+                # A scalar in this slot is malformed.
+                return None
 
-            status = data.get("fulfillmentStatus", data.get("financialStatus", ""))
-            order_number = data.get("orderNumber", "")
-            customer_email = data.get("customerEmail", "")
+            amount_str = grand_total.get("value")
+            if amount_str is None:
+                amount_str = grand_total.get("decimalValue")
+            if amount_str is None:
+                return None
+
+            amount = float(amount_str)
+            if not math.isfinite(amount) or amount <= 0:
+                return None
+
+            currency = grand_total.get("currency") or self.base_currency
+
+            status         = data.get("fulfillmentStatus") or data.get("financialStatus") or ""
+            order_number   = data.get("orderNumber") or ""
+            customer_email = data.get("customerEmail") or ""
 
             return {
                 "order_id": str(order_id),
                 "order_number": str(order_number),
                 "amount": amount,
-                "currency": currency.upper() if currency else self.base_currency,
+                "currency": currency.upper() if isinstance(currency, str) else self.base_currency,
                 "status": str(status),
                 "customer_email": customer_email,
                 "topic": topic,
             }
-        except (KeyError, ValueError, TypeError):
+        except (KeyError, ValueError, TypeError, AttributeError):
             return None
 
     def fulfill_order(
@@ -263,15 +331,26 @@ class SquarespaceAlgoVoi:
 
         if not self.squarespace_api_key:
             return False
+        if not order_id or not isinstance(order_id, str):
+            return False
 
         url = f"https://api.squarespace.com/1.0/commerce/orders/{quote(order_id, safe='')}/fulfillments"
 
         if not shipments:
+            # Don't truncate tx_id — the 200-char cap above is the only
+            # length guard. Algorand 52 / Stellar 64 / Voi 52 / Hedera
+            # all fit comfortably; truncating produces unverifiable refs.
+            #
+            # We deliberately omit `trackingUrl`: the previous version
+            # built a URL on api1.ilovechicken.co.uk using a truncated TX
+            # as if it were a checkout token — that URL would always
+            # 404. Squarespace accepts shipments without a trackingUrl;
+            # the merchant can always look the TX up by hand via the
+            # full hash in trackingNumber.
             shipments = [{
                 "shipDate": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "carrierName": "AlgoVoi",
-                "trackingNumber": f"TX:{tx_id[:64]}",
-                "trackingUrl": f"https://api1.ilovechicken.co.uk/checkout/{tx_id[:40]}",
+                "trackingNumber": f"TX:{tx_id}",
             }]
 
         payload = json.dumps({

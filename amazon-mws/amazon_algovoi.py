@@ -16,7 +16,7 @@ This adapter handles post-order payment flows only.
 Works with Flask, Django, FastAPI, or any WSGI framework.
 Zero pip dependencies — uses only the Python standard library.
 
-Version: 1.0.0
+Version: 1.1.0
 
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
@@ -28,14 +28,16 @@ import base64
 import hashlib
 import hmac
 import json
+import math
+import re
 import ssl
 import time
 from typing import Any, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 HOSTED_NETWORKS = {"algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet"}
 
@@ -45,6 +47,17 @@ CHAIN_LABELS = {
     "hedera_mainnet": "USDC on Hedera",
     "stellar_mainnet": "USDC on Stellar",
 }
+
+# Hard caps and validation patterns
+MAX_WEBHOOK_BODY_BYTES = 64 * 1024     # Amazon order notifications are <2 KB
+AMAZON_ORDER_ID_RE     = re.compile(r"^\d{3}-\d{7}-\d{7}$")
+
+# Amazon SP-API endpoints — the only hosts confirm_shipment may POST to.
+ALLOWED_MARKETPLACE_HOSTS = frozenset({
+    "sellingpartnerapi-eu.amazon.com",
+    "sellingpartnerapi-na.amazon.com",
+    "sellingpartnerapi-fe.amazon.com",
+})
 
 
 class AmazonAlgoVoi:
@@ -81,14 +94,30 @@ class AmazonAlgoVoi:
 
         Returns:
             Parsed payload dict, or None if verification fails
+
+        SECURITY NOTE — replay protection:
+            This method does NOT dedupe replays. The HMAC carries no
+            timestamp, so an attacker who captures one valid (body, sig)
+            pair could replay it indefinitely. Callers MUST track
+            processed `amazon_order_id` values in their persistence
+            layer and reject duplicates BEFORE calling process_order().
         """
         if not self.webhook_secret:
             return None  # Reject if secret not configured
 
+        # Type guards — compare_digest raises TypeError on bytes/None,
+        # which would surface as a 500. Fail closed instead.
+        if not isinstance(signature, str) or not signature:
+            return None
+        if not isinstance(raw_body, (bytes, bytearray)):
+            return None
+        if len(raw_body) > MAX_WEBHOOK_BODY_BYTES:
+            return None
+
         expected = base64.b64encode(
             hmac.new(
                 self.webhook_secret.encode(),
-                raw_body,
+                bytes(raw_body),
                 hashlib.sha256,
             ).digest()
         ).decode()
@@ -133,13 +162,25 @@ class AmazonAlgoVoi:
         if not label:
             label = f"Amazon Order #{amazon_order_id}"
 
+        # Defence-in-depth: reject obviously bad amounts before the gateway
+        # call. The gateway also validates, but local rejection avoids
+        # round-trips and keeps test logs clean.
+        if not isinstance(amount, (int, float)) or not math.isfinite(amount) or amount <= 0:
+            return None
+
         payload: dict[str, Any] = {
-            "amount": round(amount, 2),
+            "amount": round(float(amount), 2),
             "currency": currency.upper(),
             "label": label,
             "preferred_network": network,
         }
         if redirect_url:
+            # https-only — checkout tokens or payment-status parameters
+            # appended by the gateway must not travel over plaintext.
+            # Also blocks SSRF schemes (file://, gopher://, etc.).
+            parsed = urlparse(redirect_url)
+            if parsed.scheme != "https" or not parsed.hostname:
+                return None
             payload["redirect_url"] = redirect_url
             payload["expires_in_seconds"] = 3600
 
@@ -148,7 +189,6 @@ class AmazonAlgoVoi:
             return None
 
         token = ""
-        import re
         m = re.search(r"/checkout/([A-Za-z0-9_-]+)$", resp["checkout_url"])
         if m:
             token = m.group(1)
@@ -173,6 +213,9 @@ class AmazonAlgoVoi:
             True only if the API confirms payment is complete
         """
         if not token:
+            return False
+        # Refuse to send the checkout token over plaintext HTTP.
+        if not self.api_base.startswith("https://"):
             return False
 
         url = f"{self.api_base}/checkout/{quote(token, safe='')}"
@@ -210,9 +253,13 @@ class AmazonAlgoVoi:
             if not amazon_order_id:
                 return None
 
+            amount = float(amount_str)
+            if not math.isfinite(amount) or amount <= 0:
+                return None
+
             return {
                 "amazon_order_id": amazon_order_id,
-                "amount": float(amount_str),
+                "amount": amount,
                 "currency": currency,
                 "status": summary.get("OrderStatus", ""),
                 "marketplace_id": change.get("MarketplaceId", ""),
@@ -232,15 +279,25 @@ class AmazonAlgoVoi:
         Call this AFTER verify_payment() returns True.
 
         Args:
-            amazon_order_id: Amazon order ID
-            tx_id:           On-chain transaction ID
+            amazon_order_id: Amazon order ID, format: \\d{3}-\\d{7}-\\d{7}
+            tx_id:           On-chain transaction ID (max 200 chars)
             sp_api_token:    SP-API LWA access token
-            marketplace_url: SP-API regional endpoint
+            marketplace_url: SP-API regional endpoint — MUST be one of
+                             ALLOWED_MARKETPLACE_HOSTS or the call is
+                             rejected (prevents token leak via SSRF).
 
         Returns:
             True if shipment confirmation was accepted
         """
         if not tx_id or len(tx_id) > 200:
+            return False
+        if not amazon_order_id or not AMAZON_ORDER_ID_RE.match(amazon_order_id):
+            return False
+
+        # SSRF guard — refuse to send the SP-API access token to any host
+        # other than Amazon's official SP-API endpoints.
+        parsed = urlparse(marketplace_url or "")
+        if parsed.scheme != "https" or parsed.hostname not in ALLOWED_MARKETPLACE_HOSTS:
             return False
 
         url = f"{marketplace_url}/orders/v0/orders/{quote(amazon_order_id, safe='')}/shipment"

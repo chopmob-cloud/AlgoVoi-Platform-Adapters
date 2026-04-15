@@ -63,6 +63,18 @@ def main():
     src = open(__file__.replace("test_squarespace.py", "squarespace_algovoi.py")).read()
     test("uses hmac.compare_digest", "compare_digest" in src)
 
+    # 3a. Type guards (v1.1.0)
+    test("bytes sig returns None (no crash)",
+         adapter.verify_webhook(body, expected.encode()) is None)
+    test("None sig returns None (no crash)",
+         adapter.verify_webhook(body, None) is None)
+    test("int sig returns None (no crash)",
+         adapter.verify_webhook(body, 12345) is None)
+    test("non-bytes body returns None (no crash)",
+         adapter.verify_webhook("not-bytes", expected) is None)
+    test("64 KB+ body rejected",
+         adapter.verify_webhook(b'{"x":"' + b'A' * 70_000 + b'"}', "x") is None)
+
     # 4. Parse order webhook
     print("\n4. Order webhook parsing")
     webhook = {
@@ -101,14 +113,65 @@ def main():
     test("empty payload returns None", adapter.parse_order_webhook({}) is None)
     test("unknown topic returns None", adapter.parse_order_webhook({"topic": "page.update", "data": {}}) is None)
 
+    # 6a. Null-key fuzzing (v1.1.0)
+    test("payload=None returns None (no crash)",
+         adapter.parse_order_webhook(None) is None)
+    test("payload=list returns None (no crash)",
+         adapter.parse_order_webhook([1, 2, 3]) is None)
+    test("payload=str returns None (no crash)",
+         adapter.parse_order_webhook("not-a-dict") is None)
+    test("data=null returns None (no crash)",
+         adapter.parse_order_webhook({"topic": "order.create", "data": None}) is None)
+    test("grandTotal=null returns None (no silent 0.0)",
+         adapter.parse_order_webhook({"topic": "order.create",
+             "data": {"id": "X", "grandTotal": None}}) is None)
+    test("grandTotal=string returns None (malformed)",
+         adapter.parse_order_webhook({"topic": "order.create",
+             "data": {"id": "X", "grandTotal": "oops"}}) is None)
+    test("flat payload (no data wrapper) returns None",
+         adapter.parse_order_webhook({"topic": "order.create",
+             "id": "X", "grandTotal": {"value": "1.00"}}) is None)
+
+    # 6b. Amount sanity
+    def _wh(amount, oid="SQ-1"):
+        return {"topic": "order.create", "data": {
+            "id": oid,
+            "grandTotal": {"value": amount, "currency": "GBP"},
+            "fulfillmentStatus": "PENDING"}}
+    test("negative amount rejected", adapter.parse_order_webhook(_wh("-1.00")) is None)
+    test("NaN amount rejected", adapter.parse_order_webhook(_wh("nan")) is None)
+    test("Infinity amount rejected", adapter.parse_order_webhook(_wh("inf")) is None)
+    test("zero amount rejected", adapter.parse_order_webhook(_wh("0")) is None)
+
+    # 6c. process_order amount + redirect_url (v1.1.0)
+    test("negative amount returns None",
+         adapter.process_order("123", -1.00) is None)
+    test("NaN amount returns None",
+         adapter.process_order("123", float("nan")) is None)
+    test("Infinity amount returns None",
+         adapter.process_order("123", float("inf")) is None)
+    test("zero amount returns None",
+         adapter.process_order("123", 0) is None)
+    test("file:// redirect_url returns None",
+         adapter.process_order("123", 1.00, redirect_url="file:///etc/passwd") is None)
+    test("gopher:// redirect_url returns None",
+         adapter.process_order("123", 1.00, redirect_url="gopher://x") is None)
+    test("http:// redirect_url returns None (https-only)",
+         adapter.process_order("123", 1.00, redirect_url="http://example.com/ok") is None)
+
     # 7. Payment verification
     print("\n5. Payment verification")
     test("empty token returns False", adapter.verify_payment("") == False)
+    insecure = SquarespaceAlgoVoi(api_base="http://api1.ilovechicken.co.uk",
+                                  webhook_secret="s")
+    test("http:// api_base rejects verify_payment",
+         insecure.verify_payment("tok") == False)
 
     # 8. Order fulfilment
     print("\n6. Order fulfilment")
     test("empty tx_id rejected", adapter.fulfill_order("123", "", None) == False)
     test(">200 char tx_id rejected", adapter.fulfill_order("123", "A" * 201, None) == False)
+    test("empty order_id rejected", adapter.fulfill_order("", "TX", None) == False)
 
     # No API key
     adapter_nokey = SquarespaceAlgoVoi(squarespace_api_key="")

@@ -12,7 +12,7 @@
 // AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 // Licensed under the Business Source License 1.1 — see LICENSE for details.
 //
-// Version: 1.0.0
+// Version: 1.1.0
 package algovoi
 
 import (
@@ -24,11 +24,22 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
+)
+
+// Version is the adapter version.
+const Version = "1.1.0"
+
+// Hard caps and validation patterns.
+const (
+	MaxWebhookBodyBytes = 64 * 1024 // AlgoVoi webhooks are <2 KB in practice
+	MaxTokenLen         = 200       // checkout tokens are short — guard upper bound
+	MaxTxIDLen          = 200       // on-chain TX IDs (Algorand 52, Stellar 64, etc.)
 )
 
 // AlgodConfig holds node configuration for a specific chain.
@@ -39,10 +50,18 @@ type AlgodConfig struct {
 	Dec     int
 }
 
-var algodConfigs = map[string]AlgodConfig{
+// defaultAlgodConfigs are the bundled chain endpoints. They are deep-copied
+// per-Client so a caller-supplied AlgodOverrides cannot mutate the package
+// global, and callers can override at construction time without forking.
+var defaultAlgodConfigs = map[string]AlgodConfig{
 	"algorand-mainnet": {URL: "https://mainnet-api.algonode.cloud", AssetID: 31566704, Ticker: "USDC", Dec: 6},
 	"voi-mainnet":      {URL: "https://mainnet-api.voi.nodely.io", AssetID: 302190, Ticker: "aUSDC", Dec: 6},
 }
+
+// algodConfigs is kept as a backwards-compatible alias for code that
+// imported the unexported map by accident; new code should use the
+// per-Client map populated from defaultAlgodConfigs.
+var algodConfigs = defaultAlgodConfigs
 
 var hostedNetworks = map[string]bool{
 	"algorand_mainnet": true,
@@ -63,20 +82,44 @@ type Client struct {
 	TenantID      string
 	WebhookSecret string
 	HTTPClient    *http.Client
+	// Algod is the per-Client copy of chain endpoints — deep-copied
+	// from defaultAlgodConfigs at construction time. Callers can pass
+	// AlgodOverrides to New() to swap providers if a node migrates.
+	Algod map[string]AlgodConfig
 }
 
-// New creates a new AlgoVoi client with sensible defaults.
+// New creates a new AlgoVoi client with sensible defaults. To override
+// Algod endpoints, use NewWithAlgodOverrides.
 func New(apiBase, apiKey, tenantID, webhookSecret string) *Client {
+	return NewWithAlgodOverrides(apiBase, apiKey, tenantID, webhookSecret, nil)
+}
+
+// NewWithAlgodOverrides creates a Client and lets the caller swap in
+// alternate Algod node configurations (e.g. if a provider's domain
+// changes). Pass nil for `overrides` to use the bundled defaults.
+func NewWithAlgodOverrides(apiBase, apiKey, tenantID, webhookSecret string, overrides map[string]AlgodConfig) *Client {
+	algod := make(map[string]AlgodConfig, len(defaultAlgodConfigs))
+	for k, v := range defaultAlgodConfigs {
+		algod[k] = v
+	}
+	for k, v := range overrides {
+		if _, known := algod[k]; known && v.URL != "" {
+			algod[k] = v
+		}
+	}
 	return &Client{
 		APIBase:       strings.TrimRight(apiBase, "/"),
 		APIKey:        apiKey,
 		TenantID:      tenantID,
 		WebhookSecret: webhookSecret,
-		HTTPClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		HTTPClient:    &http.Client{Timeout: 30 * time.Second},
+		Algod:         algod,
 	}
 }
+
+// isHTTPS reports whether a URL is an https scheme. Used to refuse all
+// outbound traffic over plaintext.
+func isHTTPS(u string) bool { return strings.HasPrefix(u, "https://") }
 
 // ── Payment Link ────────────────────────────────────────────────────────
 
@@ -91,6 +134,13 @@ type PaymentLinkResponse struct {
 
 // CreatePaymentLink creates a payment link via the AlgoVoi API.
 func (c *Client) CreatePaymentLink(amount float64, currency, label, network, redirectURL string) (*PaymentLinkResponse, error) {
+	// Defence-in-depth: reject obviously bad amounts before the gateway
+	// call. The gateway also validates, but local rejection avoids
+	// round-trips and keeps test logs clean.
+	if math.IsNaN(amount) || math.IsInf(amount, 0) || amount <= 0 {
+		return nil, fmt.Errorf("algovoi: amount must be a positive finite number")
+	}
+
 	payload := map[string]interface{}{
 		"amount":            amount,
 		"currency":          strings.ToUpper(currency),
@@ -98,6 +148,13 @@ func (c *Client) CreatePaymentLink(amount float64, currency, label, network, red
 		"preferred_network": network,
 	}
 	if redirectURL != "" {
+		// https-only — checkout tokens or payment-status parameters
+		// appended by the gateway must not travel over plaintext.
+		// Also blocks SSRF schemes (file://, gopher://, javascript:).
+		u, err := url.Parse(redirectURL)
+		if err != nil || u.Scheme != "https" || u.Host == "" {
+			return nil, fmt.Errorf("algovoi: redirect_url must be a valid https URL")
+		}
 		payload["redirect_url"] = redirectURL
 		payload["expires_in_seconds"] = 3600
 	}
@@ -162,6 +219,13 @@ func (c *Client) HostedCheckout(amount float64, currency, label, network, redire
 // appear to have paid (cancel-bypass vulnerability).
 func (c *Client) VerifyHostedReturn(token string) (bool, error) {
 	if token == "" {
+		return false, nil
+	}
+	if len(token) > MaxTokenLen {
+		return false, nil
+	}
+	// Refuse to send the checkout token over plaintext HTTP.
+	if !isHTTPS(c.APIBase) {
 		return false, nil
 	}
 
@@ -232,9 +296,9 @@ func (c *Client) ExtensionCheckout(amount float64, currency, label, network stri
 		chain = "algorand-mainnet"
 	}
 	amountMU := link.AmountMicrounits
-	algod, ok := algodConfigs[chain]
+	algod, ok := c.Algod[chain]
 	if !ok {
-		algod = algodConfigs["algorand-mainnet"]
+		algod = c.Algod["algorand-mainnet"]
 	}
 
 	scraped, err := c.scrapeCheckout(link.CheckoutURL)
@@ -263,9 +327,20 @@ func (c *Client) ExtensionCheckout(amount float64, currency, label, network stri
 }
 
 // VerifyExtensionPayment verifies an extension payment transaction with the AlgoVoi API.
+//
+// Note: returns nil-map and a non-nil error on rejection — callers MUST
+// check err before using the map.
 func (c *Client) VerifyExtensionPayment(token, txID string) (map[string]interface{}, error) {
-	if token == "" || txID == "" || len(txID) > 200 {
-		return map[string]interface{}{"error": "Invalid parameters"}, fmt.Errorf("invalid parameters")
+	// Length-cap BOTH inputs — token was previously only checked for
+	// emptiness, allowing arbitrary-length payloads to be URL-encoded
+	// into the request path.
+	if token == "" || txID == "" ||
+		len(token) > MaxTokenLen || len(txID) > MaxTxIDLen {
+		return nil, fmt.Errorf("invalid parameters")
+	}
+	// Refuse to send the checkout token over plaintext HTTP.
+	if !isHTTPS(c.APIBase) {
+		return nil, fmt.Errorf("api_base must be https")
 	}
 
 	verifyURL := c.APIBase + "/checkout/" + url.PathEscape(token) + "/verify"
@@ -284,10 +359,25 @@ func (c *Client) VerifyExtensionPayment(token, txID string) (map[string]interfac
 // ── Webhook ─────────────────────────────────────────────────────────────
 
 // VerifyWebhook verifies and parses an incoming webhook request.
-// Returns nil if the secret is empty or the signature is invalid.
+//
+// Returns nil-map and an error on any failure (empty secret, signature
+// mismatch, oversized body, malformed JSON). Callers MUST check err
+// before using the returned map.
+//
+// SECURITY NOTE — replay protection: this method does NOT dedupe
+// replays. Callers must track processed webhook identifiers in their
+// persistence layer.
 func (c *Client) VerifyWebhook(rawBody []byte, signature string) (map[string]interface{}, error) {
 	if c.WebhookSecret == "" {
 		return nil, fmt.Errorf("webhook secret not configured")
+	}
+	if signature == "" {
+		return nil, fmt.Errorf("empty signature")
+	}
+	// Body cap — also guards direct callers who bypass WebhookHandler's
+	// io.LimitReader.
+	if len(rawBody) > MaxWebhookBodyBytes {
+		return nil, fmt.Errorf("body exceeds %d bytes", MaxWebhookBodyBytes)
 	}
 
 	mac := hmac.New(sha256.New, []byte(c.WebhookSecret))
@@ -316,7 +406,10 @@ func (c *Client) WebhookHandler(callback func(payload map[string]interface{})) h
 			return
 		}
 
-		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		// Cap inbound webhook bodies at the same MaxWebhookBodyBytes
+		// constant as direct callers — keep the limit consistent
+		// across paths.
+		body, err := io.ReadAll(io.LimitReader(r.Body, int64(MaxWebhookBodyBytes)))
 		if err != nil {
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
@@ -387,13 +480,19 @@ func IsValidExtNetwork(network string) bool { return extNetworks[network] }
 
 // ── Internal ────────────────────────────────────────────────────────────
 
-func (c *Client) post(url string, data map[string]interface{}, auth bool) ([]byte, error) {
+func (c *Client) post(rawURL string, data map[string]interface{}, auth bool) ([]byte, error) {
+	// Refuse to send the API key over plaintext HTTP. This is the
+	// highest-impact scheme guard — Authorization: Bearer + X-Tenant-Id
+	// are sent on every payment-link creation.
+	if auth && !isHTTPS(rawURL) {
+		return nil, fmt.Errorf("algovoi: refusing to POST authenticated request over plaintext")
+	}
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
+	req, err := http.NewRequest("POST", rawURL, bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
 	}
@@ -421,6 +520,11 @@ func (c *Client) post(url string, data map[string]interface{}, auth bool) ([]byt
 }
 
 func (c *Client) postRaw(rawURL string, data map[string]interface{}) ([]byte, error) {
+	// Refuse plaintext for raw POSTs too — these still carry the
+	// checkout token in the URL path.
+	if !isHTTPS(rawURL) {
+		return nil, fmt.Errorf("algovoi: refusing to POST over plaintext")
+	}
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -447,9 +551,15 @@ type scrapeResult struct {
 }
 
 func (c *Client) scrapeCheckout(checkoutURL string) (*scrapeResult, error) {
-	// SSRF guard: host must match API base
-	apiHost := mustParseHost(c.APIBase)
-	checkoutHost := mustParseHost(checkoutURL)
+	// Refuse to scrape over plaintext.
+	if !isHTTPS(checkoutURL) {
+		return nil, fmt.Errorf("algovoi: refusing to scrape plaintext checkout URL")
+	}
+	// SSRF guard: host AND port must match API base. Comparing only
+	// hostnames lets a non-standard-port service on the same host slip
+	// through if the legitimate API runs on a different port.
+	apiHost := mustParseHostPort(c.APIBase)
+	checkoutHost := mustParseHostPort(checkoutURL)
 	if apiHost == "" || checkoutHost != apiHost {
 		return nil, fmt.Errorf("algovoi: checkout URL host mismatch (SSRF blocked)")
 	}
@@ -481,10 +591,12 @@ func (c *Client) scrapeCheckout(checkoutURL string) (*scrapeResult, error) {
 	return &scrapeResult{Receiver: receiver, Memo: memo}, nil
 }
 
-func mustParseHost(rawURL string) string {
+// mustParseHostPort returns "host:port" so the SSRF guard rejects same-host
+// different-port traffic too.
+func mustParseHostPort(rawURL string) string {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return ""
 	}
-	return u.Hostname()
+	return u.Host // includes port if explicit
 }

@@ -67,6 +67,18 @@ def main():
     # 5. Webhook - timing safe
     test("uses hmac.compare_digest", "compare_digest" in open(__file__.replace("test_amazon.py", "amazon_algovoi.py")).read())
 
+    # 5a. Webhook - new type guards (v1.1.0 hardening)
+    test("bytes signature returns None (no crash)",
+         adapter.verify_webhook(body, expected.encode()) is None)
+    test("None signature returns None (no crash)",
+         adapter.verify_webhook(body, None) is None)
+    test("integer signature returns None (no crash)",
+         adapter.verify_webhook(body, 12345) is None)
+    test("non-bytes body returns None (no crash)",
+         adapter.verify_webhook("not-bytes", expected) is None)
+    test("body over 64 KB rejected",
+         adapter.verify_webhook(b'{"x":"' + b'A' * 70_000 + b'"}', "x") is None)
+
     # 6. Parse SP-API notification
     print("\n3. SP-API order parsing")
     notification = {
@@ -93,18 +105,63 @@ def main():
     test("empty notification returns None", adapter.parse_sp_api_order({}) is None)
     test("missing order ID returns None", adapter.parse_sp_api_order({"Payload": {"OrderChangeNotification": {}}}) is None)
 
+    # 7a. parse_sp_api_order - amount sanity (v1.1.0 hardening)
+    def _notif(amount_str, status="Unshipped"):
+        return {"Payload": {"OrderChangeNotification": {
+            "AmazonOrderId": "999-0000000-0000001",
+            "Summary": {"OrderTotalAmount": amount_str,
+                        "OrderTotalCurrencyCode": "GBP",
+                        "OrderStatus": status}}}}
+    test("negative amount rejected",
+         adapter.parse_sp_api_order(_notif("-1.00")) is None)
+    test("NaN amount rejected",
+         adapter.parse_sp_api_order(_notif("nan")) is None)
+    test("Infinity amount rejected",
+         adapter.parse_sp_api_order(_notif("inf")) is None)
+    test("zero amount rejected",
+         adapter.parse_sp_api_order(_notif("0")) is None)
+
     # 8. Process order (will fail API call but validates input handling)
     print("\n4. Order processing")
     test("invalid network defaults to algorand", adapter.default_network == "algorand_mainnet")
+    # 8a. process_order - amount + redirect_url validation
+    test("negative amount returns None",
+         adapter.process_order("123", -1.00) is None)
+    test("NaN amount returns None",
+         adapter.process_order("123", float("nan")) is None)
+    test("Infinity amount returns None",
+         adapter.process_order("123", float("inf")) is None)
+    test("zero amount returns None",
+         adapter.process_order("123", 0) is None)
+    test("file:// redirect_url returns None",
+         adapter.process_order("123", 1.00, redirect_url="file:///etc/passwd") is None)
+    test("gopher:// redirect_url returns None",
+         adapter.process_order("123", 1.00, redirect_url="gopher://x") is None)
+    test("http:// redirect_url returns None (https-only)",
+         adapter.process_order("123", 1.00, redirect_url="http://example.com/ok") is None)
 
-    # 9. Verify payment - empty token
+    # 9. Verify payment - empty token + scheme check
     print("\n5. Payment verification")
     test("empty token returns False", adapter.verify_payment("") == False)
+    insecure = AmazonAlgoVoi(api_base="http://api1.ilovechicken.co.uk",
+                             webhook_secret="s")
+    test("http:// api_base rejects verify_payment",
+         insecure.verify_payment("tok") == False)
 
-    # 10. Confirm shipment - tx_id guard
+    # 10. Confirm shipment - tx_id guard + SSRF allowlist + order-ID format
     print("\n6. Shipment confirmation")
-    test("empty tx_id rejected", adapter.confirm_shipment("123", "", "token") == False)
-    test(">200 char tx_id rejected", adapter.confirm_shipment("123", "A" * 201, "token") == False)
+    valid_oid = "123-1234567-1234567"
+    test("empty tx_id rejected", adapter.confirm_shipment(valid_oid, "", "token") == False)
+    test(">200 char tx_id rejected",
+         adapter.confirm_shipment(valid_oid, "A" * 201, "token") == False)
+    test("malformed amazon_order_id rejected",
+         adapter.confirm_shipment("not-an-order", "TX", "token") == False)
+    test("non-amazon marketplace_url rejected (SSRF guard)",
+         adapter.confirm_shipment(valid_oid, "TX", "token",
+             marketplace_url="https://attacker.invalid") == False)
+    test("http:// marketplace_url rejected",
+         adapter.confirm_shipment(valid_oid, "TX", "token",
+             marketplace_url="http://sellingpartnerapi-eu.amazon.com") == False)
 
     # 11. Marketplaces
     print("\n7. Marketplace support")

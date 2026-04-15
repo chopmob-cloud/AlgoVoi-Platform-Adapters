@@ -35,6 +35,20 @@
 use std::collections::HashMap;
 use std::fmt;
 
+// ── Constants ───────────────────────────────────────────────────────────
+
+/// Adapter version.
+pub const VERSION: &str = "1.1.0";
+
+/// Hard cap on inbound webhook bodies (64 KB — AlgoVoi webhooks are <2 KB).
+pub const MAX_WEBHOOK_BODY_BYTES: usize = 64 * 1024;
+
+/// Maximum length for checkout tokens — guard against pathological input.
+pub const MAX_TOKEN_LEN: usize = 200;
+
+/// Maximum length for on-chain transaction IDs.
+pub const MAX_TX_ID_LEN: usize = 200;
+
 // ── Configuration ───────────────────────────────────────────────────────
 
 /// Client configuration.
@@ -44,6 +58,11 @@ pub struct Config {
     pub api_key: String,
     pub tenant_id: String,
     pub webhook_secret: String,
+}
+
+/// Refuse to make any outbound call over plaintext HTTP.
+fn is_https(url: &str) -> bool {
+    url.starts_with("https://")
 }
 
 /// Chain-specific node configuration.
@@ -212,6 +231,43 @@ impl Client {
         network: &str,
         redirect_url: Option<&str>,
     ) -> Result<PaymentLink, Error> {
+        // Defence-in-depth: reject obviously bad amounts before the
+        // gateway call. NaN / Inf / non-positive values would either
+        // produce invalid JSON (NaN, inf) or silently flow through to
+        // the gateway. Fail closed locally.
+        if !amount.is_finite() || amount <= 0.0 {
+            return Err(Error::InvalidInput(
+                "amount must be a positive finite number".into(),
+            ));
+        }
+        // Refuse to send the API key over plaintext HTTP. This is the
+        // highest-impact scheme guard — Authorization: Bearer +
+        // X-Tenant-Id are sent on every payment-link creation.
+        if !is_https(&self.config.api_base) {
+            return Err(Error::InvalidInput(
+                "api_base must use https scheme".into(),
+            ));
+        }
+        // Validate redirect_url scheme — only https is allowed. Blocks
+        // SSRF schemes (file://, gopher://, javascript:) and prevents
+        // checkout tokens from travelling over plaintext.
+        if let Some(rurl) = redirect_url {
+            if !rurl.starts_with("https://") {
+                return Err(Error::InvalidInput(
+                    "redirect_url must be an https URL".into(),
+                ));
+            }
+            // Quick host check: an https URL must have something after
+            // "https://" and before the next "/".
+            let host = rurl.trim_start_matches("https://")
+                .split('/').next().unwrap_or("");
+            if host.is_empty() {
+                return Err(Error::InvalidInput(
+                    "redirect_url must include a host".into(),
+                ));
+            }
+        }
+
         let mut payload = format!(
             r#"{{"amount":{},"currency":"{}","label":"{}","preferred_network":"{}""#,
             round2(amount),
@@ -273,6 +329,13 @@ impl Client {
         if token.is_empty() {
             return Ok(false);
         }
+        if token.len() > MAX_TOKEN_LEN {
+            return Ok(false);
+        }
+        // Refuse to send the checkout token over plaintext HTTP.
+        if !is_https(&self.config.api_base) {
+            return Ok(false);
+        }
 
         let url = format!(
             "{}/checkout/{}",
@@ -329,8 +392,19 @@ impl Client {
         token: &str,
         tx_id: &str,
     ) -> Result<HashMap<String, serde_value::Value>, Error> {
-        if token.is_empty() || tx_id.is_empty() || tx_id.len() > 200 {
+        // Length-cap BOTH inputs — token was previously only checked
+        // for emptiness, allowing arbitrary-length payloads to be
+        // URL-encoded into the request path.
+        if token.is_empty() || tx_id.is_empty()
+                || token.len() > MAX_TOKEN_LEN
+                || tx_id.len() > MAX_TX_ID_LEN {
             return Err(Error::InvalidInput("invalid token or tx_id".into()));
+        }
+        // Refuse to send the checkout token over plaintext HTTP.
+        if !is_https(&self.config.api_base) {
+            return Err(Error::InvalidInput(
+                "api_base must use https scheme".into(),
+            ));
         }
 
         let url = format!(
@@ -350,10 +424,26 @@ impl Client {
 
     /// Verify and parse an incoming webhook request.
     ///
-    /// Returns `None` if the secret is empty or the signature is invalid.
+    /// Returns the body as `String` on success, or `Error::WebhookInvalid`
+    /// on any failure (empty secret, empty signature, oversized body,
+    /// signature mismatch). The body is NOT JSON-parsed — caller is
+    /// expected to plug in their preferred JSON deserialiser.
+    ///
+    /// **SECURITY NOTE — replay protection:** This method does NOT
+    /// dedupe replays. The HMAC carries no timestamp; callers MUST
+    /// track processed identifiers in their persistence layer.
     pub fn verify_webhook(&self, raw_body: &[u8], signature: &str) -> Result<String, Error> {
         if self.config.webhook_secret.is_empty() {
             return Err(Error::WebhookInvalid("webhook secret not configured".into()));
+        }
+        if signature.is_empty() {
+            return Err(Error::WebhookInvalid("empty signature".into()));
+        }
+        if raw_body.len() > MAX_WEBHOOK_BODY_BYTES {
+            return Err(Error::WebhookInvalid(format!(
+                "body exceeds {} bytes",
+                MAX_WEBHOOK_BODY_BYTES
+            )));
         }
 
         let expected = hmac_sha256_b64(self.config.webhook_secret.as_bytes(), raw_body);
@@ -367,10 +457,16 @@ impl Client {
     // ── Internal ────────────────────────────────────────────────────────
 
     fn scrape_checkout(&self, http: &dyn HttpClient, checkout_url: &str) -> Result<(String, String), Error> {
-        // SSRF guard
-        let api_host = parse_host(&self.config.api_base);
-        let checkout_host = parse_host(checkout_url);
-        if api_host.is_empty() || checkout_host != api_host {
+        // Refuse to scrape over plaintext.
+        if !is_https(checkout_url) {
+            return Err(Error::SsrfBlocked);
+        }
+        // SSRF guard: host AND port must match api_base. Comparing
+        // hostnames only lets a different port on the same hostname
+        // slip through.
+        let api_origin = parse_host_port(&self.config.api_base);
+        let checkout_origin = parse_host_port(checkout_url);
+        if api_origin.is_empty() || checkout_origin != api_origin {
             return Err(Error::SsrfBlocked);
         }
 
@@ -560,15 +656,43 @@ fn round2(v: f64) -> f64 {
 }
 
 fn json_escape(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-        .replace('\t', "\\t")
+    // RFC 8259 §7 — escape ALL of U+0000..U+001F, plus '"' and '\'.
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\x08' => out.push_str("\\b"),
+            '\x0c' => out.push_str("\\f"),
+            // Remaining control chars use the \u00XX form.
+            c if (c as u32) < 0x20 => {
+                out.push_str(&format!("\\u{:04x}", c as u32));
+            }
+            c => out.push(c),
+        }
+    }
+    out
 }
 
+/// HTML-escape user-controlled text. Local implementation so the crate
+/// stays zero-dependency. The previous version called `html::escape`
+/// which referenced a non-existent module and broke the build.
 fn html_escape(s: &str) -> String {
-    html::escape(s).to_string()
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&#39;"),
+            _ => out.push(c),
+        }
+    }
+    out
 }
 
 fn url_encode(s: &str) -> String {
@@ -592,6 +716,13 @@ fn parse_host(url: &str) -> String {
     let host_port = after_scheme.split('/').next().unwrap_or("");
     let host = host_port.split(':').next().unwrap_or("");
     host.to_lowercase()
+}
+
+/// Returns "host:port" (or "host" if port is implicit) so the SSRF guard
+/// rejects same-host different-port traffic too.
+fn parse_host_port(url: &str) -> String {
+    let after_scheme = url.split("://").nth(1).unwrap_or("");
+    after_scheme.split('/').next().unwrap_or("").to_lowercase()
 }
 
 fn extract_token(checkout_url: &str) -> String {
@@ -762,5 +893,138 @@ mod tests {
         assert!(html2.contains("voi_mainnet"));
         assert!(!html2.contains("hedera_mainnet"));
         assert!(!html2.contains("stellar_mainnet"));
+    }
+
+    // ── v1.1.0 hardening regression tests ──────────────────────────────
+
+    /// Stub HttpClient that returns success for any request without
+    /// touching the network. Only used by tests that should NEVER reach
+    /// it because of a local guard.
+    struct UnreachableClient;
+    impl HttpClient for UnreachableClient {
+        fn get(&self, _url: &str) -> Result<HttpResponse, Error> {
+            panic!("guard failed — UnreachableClient::get reached")
+        }
+        fn post(&self, _url: &str, _body: &str, _h: &[(&str, &str)]) -> Result<HttpResponse, Error> {
+            panic!("guard failed — UnreachableClient::post reached")
+        }
+    }
+
+    fn fresh_client(api_base: &str) -> Client {
+        Client::new(Config {
+            api_base: api_base.into(),
+            api_key: "k".into(),
+            tenant_id: "t".into(),
+            webhook_secret: "test_secret".into(),
+        })
+    }
+
+    #[test]
+    fn html_escape_compiles_and_works() {
+        // Regression — previous version called the non-existent `html::escape`.
+        assert_eq!(html_escape("<script>"), "&lt;script&gt;");
+        assert_eq!(html_escape("a&b"), "a&amp;b");
+        assert_eq!(html_escape("\"x\""), "&quot;x&quot;");
+        assert_eq!(html_escape("'x'"), "&#39;x&#39;");
+    }
+
+    #[test]
+    fn render_chain_selector_escapes_field_name() {
+        let h = render_chain_selector("<script>alert(1)</script>", "hosted");
+        assert!(!h.contains("<script>alert(1)</script>"));
+        assert!(h.contains("&lt;script&gt;"));
+    }
+
+    #[test]
+    fn webhook_rejects_empty_signature() {
+        let c = fresh_client("https://x");
+        assert!(c.verify_webhook(b"body", "").is_err());
+    }
+
+    #[test]
+    fn webhook_rejects_oversized_body() {
+        let c = fresh_client("https://x");
+        let huge = vec![b'A'; MAX_WEBHOOK_BODY_BYTES + 1];
+        assert!(c.verify_webhook(&huge, "anysig").is_err());
+    }
+
+    #[test]
+    fn create_payment_link_rejects_non_finite_amount() {
+        let c = fresh_client("https://x");
+        let http = UnreachableClient;
+        // Local guard MUST trip — UnreachableClient panics if reached.
+        for amt in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 0.0, -1.0] {
+            let r = c.create_payment_link(&http, amt, "USD", "L", "algorand_mainnet", None);
+            assert!(matches!(r, Err(Error::InvalidInput(_))),
+                "amount {} not rejected locally", amt);
+        }
+    }
+
+    #[test]
+    fn create_payment_link_rejects_non_https_redirect() {
+        let c = fresh_client("https://x");
+        let http = UnreachableClient;
+        for u in ["http://x.test", "file:///etc/passwd", "javascript:alert(1)", "gopher://x"] {
+            let r = c.create_payment_link(&http, 1.0, "USD", "L", "algorand_mainnet", Some(u));
+            assert!(matches!(r, Err(Error::InvalidInput(_))),
+                "redirect {} not rejected locally", u);
+        }
+    }
+
+    #[test]
+    fn create_payment_link_refuses_plaintext_api_base() {
+        let c = fresh_client("http://insecure");
+        let http = UnreachableClient;
+        let r = c.create_payment_link(&http, 1.0, "USD", "L", "algorand_mainnet", None);
+        assert!(matches!(r, Err(Error::InvalidInput(_))));
+    }
+
+    #[test]
+    fn verify_hosted_return_refuses_plaintext_api_base() {
+        let c = fresh_client("http://insecure");
+        let http = UnreachableClient;
+        // Returns Ok(false) without touching the network.
+        assert_eq!(c.verify_hosted_return(&http, "tok").unwrap(), false);
+    }
+
+    #[test]
+    fn verify_hosted_return_token_length_cap() {
+        let c = fresh_client("https://x");
+        let http = UnreachableClient;
+        let long = "A".repeat(MAX_TOKEN_LEN + 1);
+        assert_eq!(c.verify_hosted_return(&http, &long).unwrap(), false);
+    }
+
+    #[test]
+    fn verify_extension_payment_token_length_cap() {
+        let c = fresh_client("https://x");
+        let http = UnreachableClient;
+        let long = "A".repeat(MAX_TOKEN_LEN + 1);
+        assert!(c.verify_extension_payment(&http, &long, "TX_OK").is_err());
+    }
+
+    #[test]
+    fn verify_extension_payment_refuses_plaintext() {
+        let c = fresh_client("http://insecure");
+        let http = UnreachableClient;
+        assert!(c.verify_extension_payment(&http, "tok", "TX_OK").is_err());
+    }
+
+    #[test]
+    fn parse_host_port_includes_port() {
+        assert_eq!(parse_host_port("https://api.example.com/p"), "api.example.com");
+        assert_eq!(parse_host_port("https://api.example.com:9999/p"), "api.example.com:9999");
+        assert!(parse_host_port("api.example.com:9999/p").is_empty(),
+            "missing scheme should produce empty origin");
+    }
+
+    #[test]
+    fn json_escape_handles_control_chars() {
+        // RFC 8259 §7 — control chars must be escaped.
+        let out = json_escape("\x01\x02\x08\x0b");
+        assert!(out.contains("\\u0001"));
+        assert!(out.contains("\\u0002"));
+        assert!(out.contains("\\b"));        // 0x08
+        assert!(out.contains("\\u000b"));    // 0x0b (vertical tab)
     }
 }

@@ -15,7 +15,7 @@ This adapter handles post-order B2B payment flows only.
 Works with Flask, Django, FastAPI, or any WSGI framework.
 Zero pip dependencies — uses only the Python standard library.
 
-Version: 1.0.0
+Version: 1.1.0
 
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
@@ -27,15 +27,16 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import re
 import ssl
 import time
 from typing import Any, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 HOSTED_NETWORKS = {"algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet"}
 
@@ -45,6 +46,18 @@ CHAIN_LABELS = {
     "hedera_mainnet": "USDC on Hedera",
     "stellar_mainnet": "USDC on Stellar",
 }
+
+# Hard caps and validation patterns
+MAX_WEBHOOK_BODY_BYTES = 64 * 1024  # TikTok order webhooks are <4 KB
+
+# TikTok Shop Open Platform endpoints — the only hosts update_shipping
+# may POST to.  Both the global shop endpoint and the regional aliases
+# are accepted.  See: https://partner.tiktokshop.com/docv2
+ALLOWED_TIKTOK_HOSTS = frozenset({
+    "open-api.tiktokglobalshop.com",
+    "open-api-sg.tiktokglobalshop.com",
+    "open-api-eu.tiktokglobalshop.com",
+})
 
 
 class TikTokAlgoVoi:
@@ -82,17 +95,37 @@ class TikTokAlgoVoi:
 
         Args:
             raw_body:  Raw POST body as bytes
-            signature: X-Tts-Signature header value
+            signature: X-Tts-Signature header value (hex digest)
 
         Returns:
             Parsed payload dict, or None if verification fails
+
+        KNOWN LIMITATION:
+            TikTok's production signing scheme may include the
+            X-Tts-Timestamp header in the HMAC input. This adapter
+            verifies HMAC over `raw_body` only. If your shop is
+            configured to sign over (timestamp + body), wrap or
+            replace this method with the correct concatenation.
+
+        SECURITY NOTE — replay protection:
+            Even with a correctly verified HMAC, this method does not
+            track replays. Callers MUST dedupe by `order_id` in their
+            persistence layer.
         """
         if not self.tiktok_app_secret:
+            return None
+        # Type guards — compare_digest raises TypeError on bytes/None,
+        # which would surface as a 500. Fail closed instead.
+        if not isinstance(signature, str) or not signature:
+            return None
+        if not isinstance(raw_body, (bytes, bytearray)):
+            return None
+        if len(raw_body) > MAX_WEBHOOK_BODY_BYTES:
             return None
 
         expected = hmac.new(
             self.tiktok_app_secret.encode(),
-            raw_body,
+            bytes(raw_body),
             hashlib.sha256,
         ).hexdigest()
 
@@ -110,18 +143,27 @@ class TikTokAlgoVoi:
 
         Args:
             raw_body:  Raw POST body as bytes
-            signature: X-AlgoVoi-Signature header value
+            signature: X-AlgoVoi-Signature header value (base64 digest)
 
         Returns:
             Parsed payload dict, or None if verification fails
+
+        SECURITY NOTE — replay protection:
+            See verify_tiktok_webhook docstring. Caller must dedupe.
         """
         if not self.webhook_secret:
+            return None
+        if not isinstance(signature, str) or not signature:
+            return None
+        if not isinstance(raw_body, (bytes, bytearray)):
+            return None
+        if len(raw_body) > MAX_WEBHOOK_BODY_BYTES:
             return None
 
         expected = base64.b64encode(
             hmac.new(
                 self.webhook_secret.encode(),
-                raw_body,
+                bytes(raw_body),
                 hashlib.sha256,
             ).digest()
         ).decode()
@@ -166,13 +208,24 @@ class TikTokAlgoVoi:
         if not label:
             label = f"TikTok Order #{order_id}"
 
+        # Defence-in-depth: reject obviously bad amounts before the
+        # gateway call.
+        if not isinstance(amount, (int, float)) or not math.isfinite(amount) or amount <= 0:
+            return None
+
         payload: dict[str, Any] = {
-            "amount": round(amount, 2),
+            "amount": round(float(amount), 2),
             "currency": currency.upper(),
             "label": label,
             "preferred_network": network,
         }
         if redirect_url:
+            # https-only — checkout tokens or payment-status parameters
+            # appended by the gateway must not travel over plaintext.
+            # Also blocks SSRF schemes (file://, gopher://, javascript:).
+            parsed = urlparse(redirect_url)
+            if parsed.scheme != "https" or not parsed.hostname:
+                return None
             payload["redirect_url"] = redirect_url
             payload["expires_in_seconds"] = 3600
 
@@ -202,8 +255,15 @@ class TikTokAlgoVoi:
 
         Returns:
             True only if the API confirms payment is complete
+
+        Note: GET /checkout/{token} is a public endpoint — the token
+        IS the authorisation, no Bearer header is required. If the
+        gateway changes that contract, this method must add Auth.
         """
         if not token:
+            return False
+        # Refuse to send the checkout token over plaintext HTTP.
+        if not self.api_base.startswith("https://"):
             return False
 
         url = f"{self.api_base}/checkout/{quote(token, safe='')}"
@@ -231,34 +291,63 @@ class TikTokAlgoVoi:
         Returns:
             dict with order_id, amount, currency, status — or None
         """
+        # Defence: a malicious or malformed webhook may set any key to
+        # JSON null. dict.get(k, default) returns the *literal None* in
+        # that case, not the default — so we coerce defensively at every
+        # nested lookup, and add AttributeError to the except tuple.
+        if not isinstance(payload, dict):
+            return None
         try:
-            event_type = payload.get("type", "")
-            data = payload.get("data", {})
+            event_type = payload.get("type") or ""
+            data       = payload.get("data") or {}
+            if not isinstance(data, dict):
+                return None
 
-            if event_type in ("ORDER_STATUS_CHANGE", "ORDER_CREATED", "1"):
-                order_id = data.get("order_id", "")
-                if not order_id:
-                    # Try nested structure
-                    order_id = data.get("order", {}).get("order_id", "")
+            # Note: the legacy numeric "1" event type from pre-stable
+            # Open Platform drafts has been removed — accept only the
+            # documented string event names.
+            if event_type in ("ORDER_STATUS_CHANGE", "ORDER_CREATED"):
+                order_block = data.get("order") or {}
+                if not isinstance(order_block, dict):
+                    order_block = {}
 
-                payment = data.get("payment", data.get("order", {}).get("payment", {}))
-                amount_str = payment.get("total_amount", payment.get("original_total_price", "0"))
-                currency = payment.get("currency", self.base_currency)
-                status = data.get("order_status", data.get("status", ""))
+                order_id = data.get("order_id") or order_block.get("order_id") or ""
+
+                # Use None as the missing-data sentinel so we can
+                # distinguish "no payment block" from "payment of 0".
+                payment = data.get("payment")
+                if payment is None:
+                    payment = order_block.get("payment")
+                if payment is None:
+                    return None
+                if not isinstance(payment, dict):
+                    return None
+
+                amount_str = payment.get("total_amount",
+                                         payment.get("original_total_price"))
+                if amount_str is None:
+                    return None
+
+                currency = payment.get("currency") or self.base_currency
+                status   = data.get("order_status") or data.get("status") or ""
 
                 if not order_id:
                     return None
 
+                amount = float(amount_str)
+                if not math.isfinite(amount) or amount <= 0:
+                    return None
+
                 return {
                     "order_id": str(order_id),
-                    "amount": float(amount_str),
-                    "currency": currency.upper() if currency else self.base_currency,
+                    "amount": amount,
+                    "currency": currency.upper() if isinstance(currency, str) else self.base_currency,
                     "status": str(status),
                     "event_type": event_type,
                 }
 
             return None
-        except (KeyError, ValueError, TypeError):
+        except (KeyError, ValueError, TypeError, AttributeError):
             return None
 
     def update_shipping(
@@ -273,20 +362,33 @@ class TikTokAlgoVoi:
 
         Args:
             order_id:     TikTok order ID
-            tx_id:        On-chain transaction ID
+            tx_id:        On-chain transaction ID (max 200 chars)
             access_token: TikTok Open Platform access token
-            api_base:     TikTok API base URL
+            api_base:     TikTok API base URL — MUST be one of
+                          ALLOWED_TIKTOK_HOSTS (SSRF guard).
 
         Returns:
             True if the update was accepted
         """
         if not tx_id or len(tx_id) > 200:
             return False
+        if not order_id or not isinstance(order_id, str):
+            return False
+
+        # SSRF guard — refuse to send the access token to any host
+        # other than TikTok's official Open Platform endpoints.
+        parsed = urlparse(api_base or "")
+        if parsed.scheme != "https" or parsed.hostname not in ALLOWED_TIKTOK_HOSTS:
+            return False
 
         url = f"{api_base}/api/orders/shipping/update"
         payload = json.dumps({
             "order_id": order_id,
-            "tracking_number": f"AlgoVoi-TX:{tx_id[:64]}",
+            # Don't truncate — rely on the 200-char tx_id cap above so
+            # callers can never end up with a half-TX in the shipping
+            # record. Algorand 52 / Stellar 64 / Voi 52 / Hedera-format
+            # all fit well under the cap.
+            "tracking_number": f"AlgoVoi-TX:{tx_id}",
             "shipping_provider_id": "OTHER",
         }).encode()
 

@@ -23,17 +23,28 @@
  * AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  * Licensed under the Business Source License 1.1 — see LICENSE for details.
  *
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 
 class AlgoVoi
 {
+    public const VERSION                  = '1.1.0';
+    public const MAX_WEBHOOK_BODY_BYTES   = 65536;   // 64 KB
+    public const MAX_TOKEN_LEN            = 200;
+    public const MAX_TX_ID_LEN            = 200;
+
     private string $apiBase;
     private string $apiKey;
     private string $tenantId;
     private string $webhookSecret;
 
-    private const ALGOD = [
+    /**
+     * Default Algorand-family node endpoints used by the extension flow.
+     * Overridable by subclasses (PHP private constants are immutable —
+     * use a protected static array so a child class can swap providers
+     * if a node migrates domains).
+     */
+    protected static array $algod = [
         'algorand-mainnet' => ['url' => 'https://mainnet-api.algonode.cloud', 'asset_id' => 31566704, 'ticker' => 'USDC',  'dec' => 6],
         'voi-mainnet'      => ['url' => 'https://mainnet-api.voi.nodely.io',  'asset_id' => 302190,   'ticker' => 'aUSDC', 'dec' => 6],
     ];
@@ -47,6 +58,12 @@ class AlgoVoi
         $this->apiKey        = $config['api_key'] ?? '';
         $this->tenantId      = $config['tenant_id'] ?? '';
         $this->webhookSecret = $config['webhook_secret'] ?? '';
+    }
+
+    /** Refuse to make any outbound call over plaintext HTTP. */
+    private function isHttps(string $url): bool
+    {
+        return str_starts_with($url, 'https://');
     }
 
     /* ────────────────────────────────────────────────────────────────────────
@@ -65,13 +82,29 @@ class AlgoVoi
      */
     public function createPaymentLink(float $amount, string $currency, string $label, string $network, string $redirectUrl = ''): ?array
     {
+        // Defence-in-depth: reject obviously bad amounts before the
+        // gateway call. PHP's json_encode would return false for NaN/INF
+        // anyway, but failing closed earlier keeps logs clean and avoids
+        // wasted round-trips.
+        if (!is_finite($amount) || $amount <= 0) {
+            return null;
+        }
+
         $payload = [
             'amount'            => round($amount, 2),
             'currency'          => strtoupper($currency),
             'label'             => $label,
             'preferred_network' => $network,
         ];
-        if ($redirectUrl) {
+        if ($redirectUrl !== '') {
+            // https-only: checkout tokens or payment-status parameters
+            // appended by the gateway must not travel over plaintext.
+            // Also blocks SSRF schemes (file://, gopher://, javascript:).
+            $scheme = parse_url($redirectUrl, PHP_URL_SCHEME);
+            $host   = parse_url($redirectUrl, PHP_URL_HOST);
+            if ($scheme !== 'https' || !$host) {
+                return null;
+            }
             $payload['redirect_url'] = $redirectUrl;
             $payload['expires_in_seconds'] = 3600;
         }
@@ -135,6 +168,9 @@ class AlgoVoi
     public function verifyHostedReturn(string $token): bool
     {
         if (!$token) return false;
+        if (strlen($token) > self::MAX_TOKEN_LEN) return false;
+        // Refuse to send the checkout token over plaintext HTTP.
+        if (!$this->isHttps($this->apiBase)) return false;
 
         $ch = curl_init($this->apiBase . '/checkout/' . rawurlencode($token));
         curl_setopt_array($ch, [
@@ -181,7 +217,7 @@ class AlgoVoi
         $checkoutUrl = $link['checkout_url'];
         $chain       = $link['chain'] ?? 'algorand-mainnet';
         $amountMu    = (int)($link['amount_microunits'] ?? 0);
-        $algod       = self::ALGOD[$chain] ?? self::ALGOD['algorand-mainnet'];
+        $algod       = static::$algod[$chain] ?? static::$algod['algorand-mainnet'];
 
         // SSRF guard
         $scraped = $this->scrapeCheckout($checkoutUrl);
@@ -212,8 +248,17 @@ class AlgoVoi
      */
     public function verifyExtensionPayment(string $token, string $txId): array
     {
-        if (!$token || !$txId || strlen($txId) > 200) {
-            return ['error' => 'Invalid parameters'];
+        // Length-cap BOTH inputs — token was previously only checked
+        // for truthiness, allowing arbitrary-length payloads to be
+        // URL-encoded into the request path.
+        if (!$token || !$txId
+                || strlen($token) > self::MAX_TOKEN_LEN
+                || strlen($txId)  > self::MAX_TX_ID_LEN) {
+            return ['error' => 'Invalid parameters', '_http_code' => 400];
+        }
+        // Refuse to send the checkout token over plaintext HTTP.
+        if (!$this->isHttps($this->apiBase)) {
+            return ['error' => 'Insecure api_base scheme', '_http_code' => 400];
         }
 
         $ch = curl_init($this->apiBase . '/checkout/' . rawurlencode($token) . '/verify');
@@ -251,6 +296,14 @@ class AlgoVoi
         if (empty($this->webhookSecret)) {
             return null; // Reject if secret not configured
         }
+        // Reject empty signatures and oversized bodies before doing the
+        // (cheap but unnecessary) HMAC computation.
+        if ($signature === '') {
+            return null;
+        }
+        if (strlen($rawBody) > self::MAX_WEBHOOK_BODY_BYTES) {
+            return null;
+        }
 
         $expected = base64_encode(hash_hmac('sha256', $rawBody, $this->webhookSecret, true));
 
@@ -258,7 +311,11 @@ class AlgoVoi
             return null;
         }
 
-        return json_decode($rawBody, true);
+        // Avoid a TypeError when the body is valid JSON but not an
+        // object — json_decode returns the scalar (int, string, bool)
+        // and our `?array` return type would then throw at the boundary.
+        $decoded = json_decode($rawBody, true);
+        return is_array($decoded) ? $decoded : null;
     }
 
     /* ────────────────────────────────────────────────────────────────────────
@@ -390,6 +447,13 @@ HTML;
 
     private function post(string $path, array $data): ?array
     {
+        // Refuse to send the API key over plaintext HTTP.
+        // This is the highest-impact scheme guard — Authorization: Bearer
+        // and X-Tenant-Id are sent on every payment-link creation.
+        if (!$this->isHttps($this->apiBase)) {
+            return null;
+        }
+
         $ch = curl_init($this->apiBase . $path);
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
@@ -415,10 +479,19 @@ HTML;
 
     private function scrapeCheckout(string $checkoutUrl): ?array
     {
-        // SSRF guard: host must match API base
+        // Refuse to scrape over plaintext HTTP.
+        if (!$this->isHttps($checkoutUrl)) {
+            return null;
+        }
+
+        // SSRF guard: host AND port must match API base. Comparing only
+        // hostnames lets a non-standard-port service on the same host
+        // slip through if the legitimate API runs on a different port.
         $apiHost      = parse_url($this->apiBase, PHP_URL_HOST);
+        $apiPort      = parse_url($this->apiBase, PHP_URL_PORT);
         $checkoutHost = parse_url($checkoutUrl, PHP_URL_HOST);
-        if (!$apiHost || $checkoutHost !== $apiHost) {
+        $checkoutPort = parse_url($checkoutUrl, PHP_URL_PORT);
+        if (!$apiHost || $checkoutHost !== $apiHost || $apiPort !== $checkoutPort) {
             return null;
         }
 

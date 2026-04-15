@@ -24,7 +24,7 @@ Usage:
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
 
-Version: 1.0.0
+Version: 1.1.0
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import math
 import re
 import ssl
 from base64 import b64encode
@@ -41,18 +42,27 @@ from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
-ALGOD = {
+# Default Algorand-family node endpoints used by the extension flow.
+# Override at runtime by passing `algod_overrides=` to AlgoVoi() — useful
+# if a provider migrates domains.
+DEFAULT_ALGOD = {
     "algorand-mainnet": {"url": "https://mainnet-api.algonode.cloud", "asset_id": 31566704, "ticker": "USDC", "dec": 6},
     "voi-mainnet":      {"url": "https://mainnet-api.voi.nodely.io",  "asset_id": 302190,   "ticker": "aUSDC", "dec": 6},
 }
+# Backwards-compatible alias — older code still imports `ALGOD`.
+ALGOD = DEFAULT_ALGOD
 
 HOSTED_NETWORKS = {
     "algorand_mainnet", "voi_mainnet", "hedera_mainnet",
     "stellar_mainnet",
 }
 EXT_NETWORKS = {"algorand_mainnet", "voi_mainnet"}
+
+# Hard caps and validation patterns
+MAX_WEBHOOK_BODY_BYTES = 64 * 1024     # AlgoVoi webhooks are <2 KB in practice
+MAX_TOKEN_LEN          = 200            # checkout tokens are short — guard upper bound
 
 
 class AlgoVoi:
@@ -65,6 +75,7 @@ class AlgoVoi:
         tenant_id: str = "",
         webhook_secret: str = "",
         timeout: int = 30,
+        algod_overrides: Optional[dict] = None,
     ):
         self.api_base = api_base.rstrip("/")
         self.api_key = api_key
@@ -72,6 +83,14 @@ class AlgoVoi:
         self.webhook_secret = webhook_secret
         self.timeout = timeout
         self._ssl_ctx = ssl.create_default_context()
+        # Allow callers to override the bundled ALGOD endpoints if a
+        # provider migrates domains. We deep-copy DEFAULT_ALGOD then
+        # apply the overrides so a partial dict (just one chain) works.
+        self.algod = {k: dict(v) for k, v in DEFAULT_ALGOD.items()}
+        if algod_overrides:
+            for chain, override in algod_overrides.items():
+                if chain in self.algod and isinstance(override, dict):
+                    self.algod[chain].update(override)
 
     # ── Payment Link Creation ────────────────────────────────────────────
 
@@ -96,13 +115,24 @@ class AlgoVoi:
         Returns:
             API response dict or None on failure
         """
+        # Defence-in-depth: reject obviously bad amounts before the
+        # gateway call.
+        if not isinstance(amount, (int, float)) or not math.isfinite(amount) or amount <= 0:
+            return None
+
         payload: dict[str, Any] = {
-            "amount": round(amount, 2),
+            "amount": round(float(amount), 2),
             "currency": currency.upper(),
             "label": label,
             "preferred_network": network,
         }
         if redirect_url:
+            # https-only — checkout tokens or payment-status parameters
+            # appended by the gateway must not travel over plaintext.
+            # Also blocks SSRF schemes (file://, gopher://, javascript:).
+            parsed = urlparse(redirect_url)
+            if parsed.scheme != "https" or not parsed.hostname:
+                return None
             payload["redirect_url"] = redirect_url
             payload["expires_in_seconds"] = 3600
 
@@ -216,7 +246,7 @@ class AlgoVoi:
         checkout_url = link["checkout_url"]
         chain = link.get("chain", "algorand-mainnet")
         amount_mu = int(link.get("amount_microunits", 0))
-        algod = ALGOD.get(chain, ALGOD["algorand-mainnet"])
+        algod = self.algod.get(chain, self.algod["algorand-mainnet"])
 
         # SSRF guard + scrape
         scraped = self._scrape_checkout(checkout_url)
@@ -243,13 +273,17 @@ class AlgoVoi:
         Verify an extension payment transaction with the AlgoVoi API.
 
         Args:
-            token: The checkout token
-            tx_id: The on-chain transaction ID
+            token: The checkout token (max MAX_TOKEN_LEN chars)
+            tx_id: The on-chain transaction ID (max 200 chars)
 
         Returns:
             API response dict — check for 'success' key
         """
-        if not token or not tx_id or len(tx_id) > 200:
+        # Length-cap BOTH inputs — token was previously only checked for
+        # truthiness, allowing arbitrary-length payloads to be URL-quoted
+        # into the request path.
+        if (not token or not tx_id or
+                len(token) > MAX_TOKEN_LEN or len(tx_id) > 200):
             return {"error": "Invalid parameters", "_http_code": 400}
 
         url = f"{self.api_base}/checkout/{quote(token, safe='')}/verify"
@@ -263,18 +297,33 @@ class AlgoVoi:
 
         Args:
             raw_body:  The raw POST body as bytes
-            signature: The X-AlgoVoi-Signature header value
+            signature: The X-AlgoVoi-Signature header value (base64 digest)
 
         Returns:
             Parsed webhook payload dict, or None if verification fails
+
+        SECURITY NOTE — replay protection:
+            This method does NOT dedupe replays. The HMAC carries no
+            timestamp, so an attacker who captures one valid (body, sig)
+            pair could replay it indefinitely. Callers MUST track
+            processed webhook identifiers (e.g. order_id) in their
+            persistence layer and reject duplicates.
         """
         if not self.webhook_secret:
             return None  # Reject if secret not configured
+        # Type guards — compare_digest raises TypeError on bytes/None,
+        # which would surface as a 500. Fail closed instead.
+        if not isinstance(signature, str) or not signature:
+            return None
+        if not isinstance(raw_body, (bytes, bytearray)):
+            return None
+        if len(raw_body) > MAX_WEBHOOK_BODY_BYTES:
+            return None
 
         expected = b64encode(
             hmac.new(
                 self.webhook_secret.encode(),
-                raw_body,
+                bytes(raw_body),
                 hashlib.sha256,
             ).digest()
         ).decode()
@@ -328,6 +377,32 @@ class AlgoVoi:
         return html
 
     @staticmethod
+    def _safe_url_for_script(url: str) -> str:
+        """
+        Render a caller-supplied URL safe for embedding in a <script>
+        block. Two layers of defence:
+
+        1. URL must be http(s) with a hostname, OR a same-origin path
+           starting with "/". Anything else (file://, javascript:, raw
+           strings) is replaced with "/" — the caller's mistake won't
+           silently turn into XSS.
+        2. The JSON-stringified output has '</' escaped as '<\\/' so a
+           pathological URL containing the literal '</script>' cannot
+           break out of the surrounding <script> tag.
+        """
+        safe = "/"
+        if isinstance(url, str) and url:
+            if url.startswith("/") and not url.startswith("//"):
+                safe = url
+            else:
+                p = urlparse(url)
+                if p.scheme in ("http", "https") and p.hostname:
+                    safe = url
+        # Belt-and-suspenders: even after URL validation, neutralise </
+        # so any future regression here can't reopen the XSS path.
+        return json.dumps(safe).replace("</", "<\\/")
+
+    @staticmethod
     def render_extension_payment_ui(
         payment_data: dict,
         verify_url: str,
@@ -343,15 +418,25 @@ class AlgoVoi:
 
         Returns:
             HTML + JS block string
+
+        SECURITY: verify_url and success_url are validated by
+        _safe_url_for_script() — only http(s) URLs or absolute same-origin
+        paths are honoured. Anything else (javascript:, file://, raw HTML)
+        falls back to "/" rather than being injected into the page.
         """
         sa = escape(f"{payment_data['amount_display']} {payment_data['ticker']}")
         sc = escape("VOI" if "voi" in payment_data["chain"] else "Algorand")
         sco = escape(payment_data["checkout_url"])
-        jr = json.dumps(payment_data["receiver"])
-        jm = json.dumps(payment_data["memo"])
-        ja = json.dumps(payment_data["algod_url"])
-        jv = json.dumps(verify_url)
-        js_ = json.dumps(success_url)
+        # Apply the </script>-safe encoder to every JS literal we embed,
+        # not just the caller-supplied ones — defence-in-depth for the
+        # day the gateway/scrape returns unexpected content.
+        def _safe_js(value):
+            return json.dumps(value).replace("</", "<\\/")
+        jr = _safe_js(payment_data["receiver"])
+        jm = _safe_js(payment_data["memo"])
+        ja = _safe_js(payment_data["algod_url"])
+        jv = AlgoVoi._safe_url_for_script(verify_url)
+        js_ = AlgoVoi._safe_url_for_script(success_url)
         mu = payment_data["amount_mu"]
         aid = payment_data["asset_id"]
 

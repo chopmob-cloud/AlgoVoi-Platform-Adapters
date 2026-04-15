@@ -28,13 +28,43 @@ $av = new AlgoVoi([
     'webhook_secret' => 'YOUR_WEBHOOK_SECRET',
 ]);
 
-$link = $av->createPaymentLink([
-    'amount'    => 9.99,
-    'currency'  => 'USD',
-    'order_ref' => 'ORDER-001',
-]);
-header('Location: ' . $link['url']);
+// Hosted checkout — redirect the customer to AlgoVoi's payment page.
+$result = $av->hostedCheckout(
+    9.99,                                 // amount
+    'USD',                                // currency
+    'Order #1042',                        // label
+    'algorand_mainnet',                   // network
+    'https://yoursite.com/payment-return' // redirect URL after payment
+);
+if ($result === null) {
+    http_response_code(500); exit('Payment could not be initiated.');
+}
+$_SESSION['algovoi_token'] = $result['token'];
+header('Location: ' . $result['checkout_url']);
+exit;
 ```
+
+When the customer returns, **always** call `verifyHostedReturn()` before
+marking the order as paid — this prevents the cancel-bypass attack:
+
+```php
+if ($av->verifyHostedReturn($_SESSION['algovoi_token'] ?? '')) {
+    // Mark order paid
+} else {
+    // Order is still pending / cancelled
+}
+```
+
+> **Security notes (v1.1.0)**
+> - All outbound requests refuse to run over plain HTTP — `api_base`
+>   must start with `https://`.
+> - `verifyWebhook` requires a non-empty `webhook_secret`, caps the
+>   inbound body at 64 KB, and only returns when the body is a JSON
+>   object (scalar bodies are rejected).
+> - `createPaymentLink` rejects non-finite amounts and `redirect_url`
+>   schemes other than `https`.
+> - `verifyExtensionPayment` length-caps both `token` and `tx_id`
+>   (200 chars each).
 
 ---
 
