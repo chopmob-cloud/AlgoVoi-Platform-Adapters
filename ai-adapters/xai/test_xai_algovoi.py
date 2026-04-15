@@ -360,13 +360,29 @@ class TestCompleteMessageConversion:
         roles = [c[0][0]["role"] for c in chat.append.call_args_list]
         assert "system" not in roles
 
-    def test_unknown_role_treated_as_user(self):
+    def test_unknown_role_skipped(self):
+        """Unknown roles (e.g. 'tool') should be skipped, not mapped to user.
+        Silently injecting a tool turn as a user message would corrupt the
+        conversation shape (Grok has no native tool-role concept)."""
+        gate = self._gate()
+        ctx, client, chat = self._patch_modules()
+        with ctx:
+            gate.complete([
+                {"role": "user", "content": "Hi"},
+                {"role": "tool", "content": "tool-output"},
+                {"role": "user", "content": "Bye"},
+            ])
+        # Two user messages appended, tool message skipped.
+        assert chat.append.call_count == 2
+        roles = [c[0][0]["role"] for c in chat.append.call_args_list]
+        assert roles == ["user", "user"]
+
+    def test_unknown_role_only_messages_yields_no_appends(self):
         gate = self._gate()
         ctx, client, chat = self._patch_modules()
         with ctx:
             gate.complete([{"role": "tool", "content": "x"}])
-        arg = chat.append.call_args_list[0][0][0]
-        assert arg["role"] == "user"
+        assert chat.append.call_count == 0
 
     def test_missing_role_defaults_to_user(self):
         gate = self._gate()
@@ -424,37 +440,10 @@ class TestCompleteMessageConversion:
         call_kwargs = client.chat.create.call_args[1]
         assert call_kwargs["temperature"] == 0.5
 
-    def test_client_close_called_on_success(self):
-        gate = self._gate()
-        ctx, client, chat = self._patch_modules()
-        with ctx:
-            gate.complete([{"role": "user", "content": "Hi"}])
-        client.close.assert_called_once()
-
-    def test_client_close_called_on_exception(self):
-        gate = self._gate()
-        xai_sdk, xai_sdk_chat, client_instance, chat_instance = _mock_xai_sdk()
-        chat_instance.sample.side_effect = RuntimeError("boom")
-        with patch.dict("sys.modules", {"xai_sdk": xai_sdk, "xai_sdk.chat": xai_sdk_chat}):
-            with pytest.raises(RuntimeError):
-                gate.complete([{"role": "user", "content": "Hi"}])
-        # client.close() should STILL have been called (finally block)
-        client_instance.close.assert_called_once()
-
-    def test_close_failure_swallowed(self):
-        """If client.close() itself raises, the adapter should not propagate it."""
-        gate = self._gate()
-        xai_sdk, xai_sdk_chat, client_instance, chat_instance = _mock_xai_sdk()
-        client_instance.close.side_effect = RuntimeError("close failed")
-        with patch.dict("sys.modules", {"xai_sdk": xai_sdk, "xai_sdk.chat": xai_sdk_chat}):
-            # Should NOT raise even though close() raises
-            result = gate.complete([{"role": "user", "content": "Hi"}])
-        assert result == "Hello from Grok!"
-
     def test_xai_sdk_import_error(self):
         gate = self._gate()
         # Simulate xai_sdk not being importable
-        with patch.dict("sys.modules", {"xai_sdk": None}):
+        with patch.dict("sys.modules", {"xai_sdk": None, "xai_sdk.chat": None}):
             with pytest.raises(ImportError, match="xai-sdk"):
                 gate.complete([{"role": "user", "content": "Hi"}])
 
@@ -478,13 +467,21 @@ class TestCompleteClientConstruction:
         call_kwargs = xai_sdk.Client.call_args[1]
         assert call_kwargs["api_key"] == "xai-test-key-EXAMPLE"
 
-    def test_client_constructed_once_per_complete(self):
+    def test_client_is_persistent_across_complete_calls(self):
+        """Regression — previously created a new Client per complete()
+        call, paying a gRPC handshake each time. Should now reuse."""
         gate = self._gate()
         xai_sdk, xai_sdk_chat, client_instance, chat_instance = _mock_xai_sdk()
         with patch.dict("sys.modules", {"xai_sdk": xai_sdk, "xai_sdk.chat": xai_sdk_chat}):
             gate.complete([{"role": "user", "content": "Hi"}])
             gate.complete([{"role": "user", "content": "Hi again"}])
-        assert xai_sdk.Client.call_count == 2
+        assert xai_sdk.Client.call_count == 1   # constructed once
+        assert client_instance.chat.create.call_count == 2  # reused for each call
+
+    def test_client_lazy_initialized(self):
+        """Client should not be constructed until first complete() call."""
+        gate = self._gate()
+        assert gate._xai_client is None
 
     def test_chat_create_called(self):
         gate = self._gate()
@@ -499,6 +496,75 @@ class TestCompleteClientConstruction:
         with patch.dict("sys.modules", {"xai_sdk": xai_sdk, "xai_sdk.chat": xai_sdk_chat}):
             gate.complete([{"role": "user", "content": "Hi"}])
         chat_instance.sample.assert_called_once()
+
+    def test_close_releases_client(self):
+        gate = self._gate()
+        xai_sdk, xai_sdk_chat, client_instance, chat_instance = _mock_xai_sdk()
+        with patch.dict("sys.modules", {"xai_sdk": xai_sdk, "xai_sdk.chat": xai_sdk_chat}):
+            gate.complete([{"role": "user", "content": "Hi"}])
+        assert gate._xai_client is not None
+        gate.close()
+        client_instance.close.assert_called_once()
+        assert gate._xai_client is None
+
+    def test_close_idempotent(self):
+        gate = self._gate()
+        # close() on an uninitialised adapter should be a no-op.
+        gate.close()
+        gate.close()   # Second call should also be fine.
+
+    def test_close_swallows_client_close_error(self):
+        """If client.close() raises, the adapter's close() should NOT propagate."""
+        gate = self._gate()
+        xai_sdk, xai_sdk_chat, client_instance, chat_instance = _mock_xai_sdk()
+        client_instance.close.side_effect = RuntimeError("close failed")
+        with patch.dict("sys.modules", {"xai_sdk": xai_sdk, "xai_sdk.chat": xai_sdk_chat}):
+            gate.complete([{"role": "user", "content": "Hi"}])
+        gate.close()   # Must not raise.
+        assert gate._xai_client is None
+
+    def test_context_manager_closes_on_exit(self):
+        gate = self._gate()
+        xai_sdk, xai_sdk_chat, client_instance, chat_instance = _mock_xai_sdk()
+        with patch.dict("sys.modules", {"xai_sdk": xai_sdk, "xai_sdk.chat": xai_sdk_chat}):
+            with gate as g:
+                g.complete([{"role": "user", "content": "Hi"}])
+            # After exit, client should have been closed
+        client_instance.close.assert_called_once()
+        assert gate._xai_client is None
+
+    def test_context_manager_closes_on_exception(self):
+        gate = self._gate()
+        xai_sdk, xai_sdk_chat, client_instance, chat_instance = _mock_xai_sdk()
+        chat_instance.sample.side_effect = RuntimeError("boom")
+        with patch.dict("sys.modules", {"xai_sdk": xai_sdk, "xai_sdk.chat": xai_sdk_chat}):
+            with pytest.raises(RuntimeError):
+                with gate as g:
+                    g.complete([{"role": "user", "content": "Hi"}])
+        # Client still constructed; cleanup still happens.
+        client_instance.close.assert_called_once()
+
+    def test_concurrent_first_calls_construct_client_once(self):
+        """Double-checked locking in _ensure_client must prevent two
+        concurrent first-calls from constructing two clients."""
+        import threading
+        gate = self._gate()
+        xai_sdk, xai_sdk_chat, client_instance, chat_instance = _mock_xai_sdk()
+
+        start = threading.Event()
+        def worker():
+            start.wait()
+            with patch.dict("sys.modules", {"xai_sdk": xai_sdk, "xai_sdk.chat": xai_sdk_chat}):
+                gate.complete([{"role": "user", "content": "Hi"}])
+
+        threads = [threading.Thread(target=worker) for _ in range(8)]
+        for t in threads:
+            t.start()
+        start.set()
+        for t in threads:
+            t.join()
+
+        assert xai_sdk.Client.call_count == 1   # constructed ONCE across 8 threads
 
 
 # ══════════════════════════════════════════════════════════════════════════════

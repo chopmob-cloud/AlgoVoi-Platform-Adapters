@@ -68,6 +68,7 @@ from __future__ import annotations
 import os
 import sys
 import json
+import threading
 from typing import Any, Optional
 
 __version__ = "1.0.0"
@@ -217,12 +218,64 @@ class AlgoVoiXai:
             model:             xAI model ID (default: grok-4)
             resource_id:       Resource identifier used in MPP challenges
         """
-        self._xai_key = xai_key
-        self._model   = model
-        self._gate    = _build_gate(
+        self._xai_key     = xai_key
+        self._model       = model
+        self._xai_client  = None   # Lazy-init on first complete() call — see _ensure_client()
+        self._client_lock = threading.Lock()   # Guards _ensure_client against double-construct on concurrent first calls
+        self._gate        = _build_gate(
             protocol, algovoi_key, tenant_id, payout_address,
             network, amount_microunits, resource_id,
         )
+
+    # ── Client lifecycle ─────────────────────────────────────────────────────
+
+    def _ensure_client(self):
+        """
+        Lazy-create a persistent xai_sdk.Client. xai-sdk uses gRPC, so
+        constructing a Client opens a TLS + TCP channel. Reusing the
+        client across complete() calls avoids that per-request handshake
+        overhead — important for a payment-gated endpoint where every
+        call already does the 4-chain on-chain verification round-trip.
+
+        Thread-safe via double-checked locking: the fast path is a
+        lock-free read of self._xai_client; the slow path acquires
+        self._client_lock and re-checks before constructing, so two
+        concurrent first-calls can't double-construct the client.
+        """
+        if self._xai_client is not None:
+            return self._xai_client
+        with self._client_lock:
+            if self._xai_client is None:
+                try:
+                    from xai_sdk import Client                          # type: ignore
+                except ImportError:
+                    raise ImportError(
+                        "The xai-sdk package is required: pip install xai-sdk"
+                    )
+                self._xai_client = Client(api_key=self._xai_key)
+            return self._xai_client
+
+    def close(self) -> None:
+        """
+        Release the underlying xai_sdk gRPC channel. Safe to call
+        multiple times; exceptions from the client's close() are
+        swallowed (best-effort cleanup). Lock-protected for
+        thread-safety alongside _ensure_client().
+        """
+        with self._client_lock:
+            if self._xai_client is not None:
+                try:
+                    self._xai_client.close()
+                except Exception:
+                    pass
+                self._xai_client = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        return False
 
     # ── Payment check ─────────────────────────────────────────────────────────
 
@@ -254,6 +307,10 @@ class AlgoVoiXai:
             messages:   OpenAI-format message list. System role is passed natively
                         to xai_sdk.chat.system() — no extraction or remapping needed.
                         [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}]
+                        Recognised roles: "system", "user", "assistant". Any other
+                        role (e.g. "tool", "function") is silently skipped — xAI's
+                        Grok doesn't have a native tool-role concept, so silently
+                        mapping to "user" would corrupt the conversation shape.
             model:      Override the default model
             **kwargs:   Additional keyword arguments forwarded to client.chat.create()
 
@@ -261,38 +318,35 @@ class AlgoVoiXai:
             The assistant's reply as a plain string.
         """
         try:
-            from xai_sdk import Client                              # type: ignore
             from xai_sdk.chat import user, system, assistant        # type: ignore
         except ImportError:
             raise ImportError(
                 "The xai-sdk package is required: pip install xai-sdk"
             )
 
-        client = Client(api_key=self._xai_key)
-        try:
-            chat = client.chat.create(
-                model=model or self._model,
-                **kwargs,
-            )
-            for msg in messages:
-                role    = msg.get("role", "user")
-                content = msg.get("content", "")
-                if role == "system":
-                    chat.append(system(content))
-                elif role == "assistant":
-                    chat.append(assistant(content))
-                else:
-                    chat.append(user(content))
+        # Persistent client — see _ensure_client() for rationale.
+        client = self._ensure_client()
 
-            response = chat.sample()
-            # Response.content is the reply text (xai_sdk >=1.0.0).
-            return str(response.content)
-        finally:
-            # Free the gRPC channel promptly; xai_sdk.Client uses gRPC internally.
-            try:
-                client.close()
-            except Exception:
-                pass
+        chat = client.chat.create(
+            model=model or self._model,
+            **kwargs,
+        )
+        for msg in messages:
+            role    = msg.get("role") or "user"   # missing role → user
+            content = msg.get("content", "")
+            if role == "system":
+                chat.append(system(content))
+            elif role == "assistant":
+                chat.append(assistant(content))
+            elif role == "user":
+                chat.append(user(content))
+            # Unknown role (tool / function / etc.) — skip silently. See
+            # docstring for rationale. This matches the Bedrock adapter's
+            # strict whitelist approach.
+
+        response = chat.sample()
+        # Response.content is the reply text (xai_sdk >=1.0.0).
+        return str(response.content)
 
     # ── Flask convenience ─────────────────────────────────────────────────────
 
