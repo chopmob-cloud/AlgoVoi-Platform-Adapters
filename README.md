@@ -204,9 +204,18 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | **OpenCart** | [opencart.md](./opencart.md) | [opencart/](./opencart/) | **Available — hosted + extension** |
 | **Shopware** | [shopware.md](./shopware.md) | [shopware/](./shopware/) | **Available — hosted + extension** |
 | **TikTok Shop** | [tiktok-shop.md](./tiktok-shop.md) | [tiktok-shop/](./tiktok-shop/) | **Available — B2B webhook adapter** |
-| **Drupal Commerce** | [drupal-commerce/README.md](./drupal-commerce/README.md) | [drupal-commerce/](./drupal-commerce/) | **Available — Drupal 10/11 + Commerce 2/3 module (Comet-validated 2026-04-15)** |
-| **Easy Digital Downloads** | [easy-digital-downloads/README.md](./easy-digital-downloads/README.md) | [easy-digital-downloads/](./easy-digital-downloads/) | **Available — EDD 3.2+ WordPress plugin (Comet-validated 2026-04-15)** |
-| **Ghost** | [ghost/README.md](./ghost/README.md) | [ghost/](./ghost/) | **Available — Ghost 5.x paid-membership adapter (Comet-validated 2026-04-15)** |
+
+## CMS integrations
+
+Drop-in payment gateways for major content-management and publishing platforms. All three were shipped together on **15 April 2026** and Comet-validated end-to-end. Each adapter applies the full April 2026 + pass-2 hardening set (cancel-bypass guard, empty-secret HMAC reject, timing-safe compare, 64 KB body cap, https-only outbound, amount sanity, scheme guards, token length caps, mandatory payment cross-check on webhooks).
+
+| Platform | Guide | Files | Engine | Status |
+|----------|-------|-------|--------|--------|
+| **Drupal Commerce** | [drupal-commerce/README.md](./drupal-commerce/README.md) | [drupal-commerce/](./drupal-commerce/) | Drupal 10 / 11 + Commerce 2 / 3 | **Available — OffsitePaymentGatewayBase module, DI-driven, v1.0.0** |
+| **Easy Digital Downloads** | [easy-digital-downloads/README.md](./easy-digital-downloads/README.md) | [easy-digital-downloads/](./easy-digital-downloads/) | EDD 3.2+ WordPress plugin | **Available — digital downloads + licensing + recurring, v1.0.0** |
+| **Ghost** | [ghost/README.md](./ghost/README.md) | [ghost/](./ghost/) | Ghost 5.x (Python, Admin API / JWT) | **Available — grant-on-payment member upgrade, v1.0.0** |
+
+Each adapter folder ships a `README.md` with a how-it-works diagram, quick-start, supported chains, webhook endpoint, security posture table, and dependency list.
 
 ## Regional & international marketplace integrations
 
