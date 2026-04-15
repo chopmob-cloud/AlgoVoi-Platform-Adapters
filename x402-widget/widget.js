@@ -162,7 +162,7 @@ class AlgoVoiX402 extends HTMLElement {
 
   <div class="av-footer">
     <span class="av-footer-left">Instant &middot; On-chain &middot; No chargebacks</span>
-    <span class="av-footer-right"><a href="https://api1.ilovechicken.co.uk" target="_blank" rel="noopener">AlgoVoi</a></span>
+    <span class="av-footer-right"><a href="https://api1.ilovechicken.co.uk/dashboard/" target="_blank" rel="noopener">AlgoVoi</a></span>
   </div>
 </div>`;
   }
