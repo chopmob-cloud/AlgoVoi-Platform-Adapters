@@ -63,6 +63,7 @@ FRAME_MS = 50   # 20 fps — same as AI-adapter GIFs
 
 # ── Fonts ──────────────────────────────────────────────────────────────────
 def _font(size: int) -> ImageFont.FreeTypeFont:
+    """Monospace — used for code editor and annotations."""
     for p in [r"C:\Windows\Fonts\consola.ttf",
               r"C:\Windows\Fonts\cour.ttf",
               r"C:\Windows\Fonts\lucon.ttf",
@@ -72,6 +73,30 @@ def _font(size: int) -> ImageFont.FreeTypeFont:
             except: pass
     return ImageFont.load_default()
 
+def _font_ui(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    """Proportional sans-serif — matches widget's system-ui font stack."""
+    candidates = []
+    if bold:
+        candidates = [
+            r"C:\Windows\Fonts\segoeuib.ttf",   # Segoe UI Bold
+            r"C:\Windows\Fonts\arialbd.ttf",    # Arial Bold
+            r"C:\Windows\Fonts\calibrib.ttf",   # Calibri Bold
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        ]
+    else:
+        candidates = [
+            r"C:\Windows\Fonts\segoeui.ttf",    # Segoe UI
+            r"C:\Windows\Fonts\arial.ttf",      # Arial
+            r"C:\Windows\Fonts\calibri.ttf",    # Calibri
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
+    for p in candidates:
+        if os.path.exists(p):
+            try: return ImageFont.truetype(p, size)
+            except: pass
+    return _font(size)  # fallback to monospace
+
+# Monospace — code editor & annotations
 FONT     = _font(14)
 FONT_B   = _font(15)
 FONT_SM  = _font(12)
@@ -80,6 +105,14 @@ FONT_XL  = _font(24)
 FONT_XXL = _font(30)
 FONT_ANN = _font(13)
 FONT_ANH = _font(14)
+
+# Sans-serif — widget card UI (matches system-ui in the real widget)
+UI_XS   = _font_ui(10)
+UI_SM   = _font_ui(12)
+UI_REG  = _font_ui(14)
+UI_MED  = _font_ui(15, bold=True)
+UI_LG   = _font_ui(18, bold=True)
+UI_XL   = _font_ui(28, bold=True)   # amount value
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 def _new_frame():
@@ -352,71 +385,95 @@ def scene_editor():
 CX, CY, CW, CH = 240, 52, 320, 400
 
 def _card(d, amount="$0.01", state="idle", checkout_url="", err_msg=""):
-    # Shadow
-    for s in range(5, 0, -1):
+    # Drop shadow
+    for s in range(6, 0, -1):
+        shadow_a = int(40 * s / 6)
         d.rounded_rectangle([CX+s, CY+s, CX+CW+s, CY+CH+s],
-                             radius=16, fill=(8,10,15))
-    # Card
+                             radius=16, fill=(8, 10, 15))
+    # Card body
     d.rounded_rectangle([CX, CY, CX+CW, CY+CH], radius=16,
                          fill=CARD_BG, outline=CARD_BORDER, width=1)
-    # Badge
-    d.ellipse([CX+16, CY+18, CX+23, CY+25], fill=BLUE)
-    d.text((CX+28, CY+17), "USDC · MULTI-CHAIN · POWERED BY ALGOVOI",
-           font=FONT_SM, fill=GRAY2)
 
-    # Amount card
-    AX, AY = CX+12, CY+42
-    d.rounded_rectangle([AX, AY, AX+296, AY+76], radius=12,
+    # ── Badge row ──────────────────────────────────────────────────────────
+    # Blue dot with soft glow
+    DOT_X, DOT_Y = CX+18, CY+22
+    d.ellipse([DOT_X-7, DOT_Y-7, DOT_X+7, DOT_Y+7],
+              fill=(59, 130, 246, 60))   # glow halo
+    d.ellipse([DOT_X-4, DOT_Y-4, DOT_X+4, DOT_Y+4], fill=BLUE)
+    # Badge text — wraps like the real widget
+    d.text((DOT_X+11, DOT_Y-7), "USDC · MULTI-CHAIN ·",
+           font=UI_XS, fill=GRAY2)
+    d.text((DOT_X+11, DOT_Y+5), "POWERED BY ALGOVOI",
+           font=UI_XS, fill=GRAY2)
+
+    # ── Amount card ─────────────────────────────────────────────────────────
+    AX, AY = CX+12, CY+46
+    d.rounded_rectangle([AX, AY, AX+296, AY+78], radius=12,
                          fill=BG, outline=CARD_BORDER, width=1)
-    d.text((AX+12, AY+8),  "AMOUNT",  font=FONT_SM, fill=GRAY1)
-    d.text((AX+12, AY+28), amount,    font=FONT_XL,  fill=GREEN)
-    d.text((AX+12, AY+60), "USD · stablecoin", font=FONT_SM, fill=GRAY1)
-    d.text((AX+278, AY+30), "⚡", font=FONT_LG, fill=(45,50,65), anchor="ra")
+    d.text((AX+14, AY+9),  "AMOUNT", font=UI_XS, fill=GRAY1)
+    d.text((AX+14, AY+26), amount,   font=UI_XL,  fill=GREEN)
+    d.text((AX+14, AY+62), "USD · stablecoin", font=UI_SM, fill=GRAY1)
+    # Lightning bolt polygon (replaces ⚡ emoji which most fonts can't render)
+    # Drawn at ~30% opacity matching the real widget's opacity:.3 style
+    lx, ly = AX+270, AY+18
+    bolt = [(lx+6,ly),(lx+2,ly),(lx+4,ly+10),(lx+1,ly+10),(lx-4,ly+22),(lx+2,ly+22),(lx,ly+12),(lx+4,ly+12)]
+    d.polygon(bolt, fill=(55, 62, 80))
 
-    # Chain buttons
+    # ── Chain buttons ───────────────────────────────────────────────────────
+    # Real widget: ALL buttons share one CSS gradient(#3b82f6→#6366f1).
+    # GIF 256-colour palette flattens gradients anyway — use visual midpoint.
+    BTN_COL   = (74, 108, 243)   # perceptual midpoint of #3b82f6→#6366f1
+    BTN_DIM   = (34,  50, 115)   # dimmed for "done" state
+    BTN_LABEL = (255, 255, 255)
+    BTN_DIM_L = DIM
+
     if state in ("idle", "ready", "done", "error"):
-        chains = [("Algorand",BLUE),("VOI",INDIGO),("Stellar",GREEN),("Hedera",(0,165,120))]
-        bw, bh = 140, 38
-        for idx, (label, col) in enumerate(chains):
+        chains = ["Algorand", "VOI", "Stellar", "Hedera"]
+        bw, bh = 140, 40
+        is_done = state == "done"
+        for idx, label in enumerate(chains):
             bx = CX + 12 + (idx % 2) * (bw + 8)
-            by = CY + 134 + (idx // 2) * (bh + 10)
-            dim_col = tuple(int(v*0.45) for v in col)
-            use_col = dim_col if state in ("done",) else col
-            d.rounded_rectangle([bx, by, bx+bw, by+bh], radius=10, fill=use_col)
-            d.text((bx+bw//2, by+bh//2), label, font=FONT_B,
-                   fill=DIM if state=="done" else (255,255,255), anchor="mm")
+            by = CY + 140 + (idx // 2) * (bh + 8)
+            d.rounded_rectangle([bx, by, bx+bw, by+bh], radius=10,
+                                 fill=BTN_DIM if is_done else BTN_COL)
+            d.text((bx+bw//2, by+bh//2), label, font=UI_MED,
+                   fill=BTN_DIM_L if is_done else BTN_LABEL, anchor="mm")
 
-    # Loading state
+    # Loading
     if state == "loading":
-        d.rounded_rectangle([CX+12, CY+134, CX+12+296, CY+172], radius=10, fill=BLUE)
-        d.text((CX+12+148, CY+153), "Creating link…",
-               font=FONT_B, fill=(255,255,255), anchor="mm")
+        d.rounded_rectangle([CX+12, CY+140, CX+12+296, CY+180], radius=10,
+                             fill=BTN_COL)
+        d.text((CX+12+148, CY+160), "Creating link…",
+               font=UI_MED, fill=(255,255,255), anchor="mm")
 
-    # Ready box
+    # Ready checkout box (matches real widget layout)
     if state == "ready":
-        RX, RY, RW, RH = CX+12, CY+220, 296, 90
-        d.rounded_rectangle([RX,RY,RX+RW,RY+RH], radius=10,
+        RX, RY, RW, RH = CX+12, CY+232, 296, 94
+        d.rounded_rectangle([RX, RY, RX+RW, RY+RH], radius=10,
                              fill=BG, outline=CARD_BORDER, width=1)
-        d.text((RX+RW//2, RY+14), "Your secure checkout is ready.",
-               font=FONT_SM, fill=DIM, anchor="mm")
-        d.rounded_rectangle([RX+16,RY+30,RX+RW-16,RY+62], radius=8, fill=BLUE)
-        d.text((RX+RW//2, RY+46), "Complete Payment →",
-               font=FONT_B, fill=(255,255,255), anchor="mm")
-        short = checkout_url[-38:] if len(checkout_url) > 38 else checkout_url
-        d.text((RX+RW//2, RY+76), short, font=FONT_SM, fill=GRAY2, anchor="mm")
+        d.text((RX+RW//2, RY+16), "Your secure checkout is ready.",
+               font=UI_SM, fill=DIM, anchor="mm")
+        d.rounded_rectangle([RX+14, RY+32, RX+RW-14, RY+68], radius=8,
+                             fill=BTN_COL)
+        d.text((RX+RW//2, RY+50), "Complete Payment →",
+               font=UI_MED, fill=(255,255,255), anchor="mm")
+        short = checkout_url[-36:] if len(checkout_url) > 36 else checkout_url
+        d.text((RX+RW//2, RY+80), short, font=UI_XS, fill=GRAY2, anchor="mm")
 
     # Error
     if state == "error":
-        EX2, EY2 = CX+12, CY+224
-        d.rounded_rectangle([EX2, EY2, EX2+296, EY2+32], radius=8,
+        EX2, EY2 = CX+12, CY+236
+        d.rounded_rectangle([EX2, EY2, EX2+296, EY2+34], radius=8,
                              fill=(40,16,16), outline=(120,30,30), width=1)
-        d.text((EX2+10, EY2+10), err_msg or "Something went wrong. Try again.",
-               font=FONT_SM, fill=(239,68,68))
+        d.text((EX2+10, EY2+12), err_msg or "Something went wrong. Try again.",
+               font=UI_SM, fill=(239,68,68))
 
     # Footer
-    d.text((CX+12, CY+CH-20), "Instant · On-chain · No chargebacks",
-           font=FONT_SM, fill=GRAY2)
-    d.text((CX+CW-12, CY+CH-20), "AlgoVoi", font=FONT_SM, fill=BLUE, anchor="ra")
+    d.line([CX+12, CY+CH-36, CX+CW-12, CY+CH-36],
+           fill=CARD_BORDER, width=1)
+    d.text((CX+14, CY+CH-22), "Instant · On-chain · No chargebacks",
+           font=UI_XS, fill=GRAY2)
+    d.text((CX+CW-14, CY+CH-22), "AlgoVoi", font=UI_SM, fill=BLUE, anchor="ra")
 
 def _left_snippet(d):
     """Condensed code snippet shown to the left of the widget card."""
