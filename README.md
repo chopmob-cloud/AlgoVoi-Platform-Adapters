@@ -28,7 +28,7 @@ Included:
 - **Drop-in plugins** for WooCommerce, OpenCart, PrestaShop, and Shopware (tested and deployed)
 - **Native adapters** for PHP, Python, Go, and Rust (zero external dependencies) — all hardened to v1.1.0 on 2026-04-15
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
-- **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, and Cohere (MPP + AP2 + x402, all 4 chains)
+- **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, and xAI/Grok (MPP + AP2 + x402, all 4 chains)
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
 - **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 4 chains
 
@@ -94,7 +94,8 @@ platform-adapters/
 │   ├── claude/           # Payment-gated Anthropic Claude wrappers (MPP + AP2 + x402)
 │   ├── gemini/           # Payment-gated Google Gemini wrappers (MPP + AP2 + x402)
 │   ├── bedrock/          # Payment-gated Amazon Bedrock Converse API wrappers (MPP + AP2 + x402)
-│   └── cohere/           # Payment-gated Cohere ClientV2 wrappers (MPP + AP2 + x402)
+│   ├── cohere/           # Payment-gated Cohere ClientV2 wrappers (MPP + AP2 + x402)
+│   └── xai/              # Payment-gated xAI Grok wrappers (MPP + AP2 + x402)
 ├── xero/                 # Xero invoice payment adapter
 ├── yapily/               # Yapily open banking adapter
 ├── zoho-books/           # Zoho Books invoice adapter
@@ -273,6 +274,7 @@ Drop-in payment gates for AI provider APIs. Each adapter wraps the AI call behin
 | **Google Gemini** | `AlgoVoiGemini` | `pip install google-genai` | MPP, AP2, x402 | [ai-adapters/gemini/](./ai-adapters/gemini/) | **Available** — 75/75 tests (Phase 2 pending billing-enabled key) |
 | **Amazon Bedrock** | `AlgoVoiBedrock` | `pip install boto3` | MPP, AP2, x402 | [ai-adapters/bedrock/](./ai-adapters/bedrock/) | **Available** — 57/57 tests, Converse API (Nova / Claude / Llama / Titan models) |
 | **Cohere** | `AlgoVoiCohere` | `pip install cohere` | MPP, AP2, x402 | [ai-adapters/cohere/](./ai-adapters/cohere/) | **Available** — Phase 1 + 1.5 + 2 PASS 4/4 chains 15 Apr 2026 |
+| **xAI (Grok)** | `AlgoVoiXai` | `pip install xai-sdk` | MPP, AP2, x402 | [ai-adapters/xai/](./ai-adapters/xai/) | **Available** — 65/65 tests + Phase 1 PASS 4/4 chains 15 Apr 2026 |
 
 All adapters support all 4 chains (Algorand, VOI, Hedera, Stellar) and all 3 payment protocols (MPP, AP2, x402).
 
@@ -443,7 +445,34 @@ def chat():
 
 Models: `command-r-plus-08-2024` (default — most capable) · `command-r-08-2024` (balanced) · `command-r7b-12-2024` (fastest)
 
-OpenAI-format messages work across all five platforms — system roles are extracted automatically where required (Claude, Bedrock), Gemini `assistant` roles are mapped to `model` internally, and Cohere accepts the system role natively via `ClientV2.chat()`.
+### xAI (Grok) — Quick start
+
+```python
+from xai_algovoi import AlgoVoiXai
+
+gate = AlgoVoiXai(
+    xai_key           = "xai-...",                  # xAI API key
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",                      # "mpp" | "ap2" | "x402"
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,                      # 0.01 USDC per call
+    model             = "grok-4",
+)
+
+@app.route("/ai/chat", methods=["POST"])
+def chat():
+    body   = request.get_json(silent=True) or {}
+    result = gate.check(dict(request.headers), body)
+    if result.requires_payment:
+        return result.as_flask_response()
+    return jsonify({"content": gate.complete(body["messages"])})
+```
+
+Models: `grok-4` (default — latest, most capable) · `grok-3` · `grok-3-mini` (fast + cheap) · `grok-2-1212` · `grok-2-vision-1212`
+
+OpenAI-format messages work across all six platforms — system roles are extracted automatically where required (Claude, Bedrock), Gemini `assistant` roles are mapped to `model` internally, Cohere and xAI both accept the system role natively via `ClientV2.chat()` / `xai_sdk.chat.system()`.
 
 ---
 
