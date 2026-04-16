@@ -20,6 +20,7 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 | **DSPy** | [dspy/](./dspy/) | `AlgoVoiDSPy` + `AlgoVoiPaymentTool` | Yes — plain callable, `dspy.ReAct`-compatible, `__name__`/`__doc__` set | **Available** — 78/78 tests, Phase 1 9/9 PASS (16 Apr 2026, Comet-validated) |
 | **Vercel AI SDK** | [vercel-ai-sdk/](./vercel-ai-sdk/) | `AlgoVoiVercelAI` + `VercelAIResult` | Yes — `tool()` compatible, `generateText` + `streamText` + `nextHandler` | **Available** — 79/79 tests, Phase 1 12/12 PASS (16 Apr 2026, Comet-validated) — **TypeScript** |
 | **Google A2A** | [a2a/](./a2a/) | `AlgoVoiA2A` + `AlgoVoiPaymentTool` | Yes — `AlgoVoiPaymentTool` callable + full JSON-RPC 2.0 server (`message/send`, `tasks/get`, `tasks/cancel`) + A2A client | **Available** — 84/84 tests, Phase 1 12/12 PASS (16 Apr 2026, Comet-validated) |
+| **LangGraph** | [langgraph/](./langgraph/) | `AlgoVoiLangGraph` + `AlgoVoiPaymentTool` | Yes — `BaseTool` subclass, `ToolNode`-compatible, `create_react_agent`-compatible | **Available** — 77/77 tests, Phase 1 12/12 PASS (16 Apr 2026, Comet-validated) |
 
 ---
 
@@ -389,6 +390,44 @@ tool = gate.as_tool(resource_fn=lambda q: my_kb(q), tool_name="premium_kb")
 ```
 
 See [a2a/README.md](./a2a/README.md) for the full reference.
+
+---
+
+## Quick start (LangGraph)
+
+```python
+from langgraph_algovoi import AlgoVoiLangGraph
+
+gate = AlgoVoiLangGraph(
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",             # "mpp" | "ap2" | "x402"
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,             # 0.01 USDC per call
+)
+
+# Gate a compiled StateGraph
+result = gate.check(headers, body)
+if not result.requires_payment:
+    output = gate.invoke_graph(compiled_graph, {"messages": body["messages"]})
+
+# Streaming
+for chunk in gate.stream_graph(compiled_graph, {"messages": [...]},
+                               stream_mode="updates"):
+    print(chunk)
+
+# Drop into create_react_agent or ToolNode
+from langgraph.prebuilt import create_react_agent
+tool  = gate.as_tool(resource_fn=lambda q: my_kb(q), tool_name="premium_kb")
+agent = create_react_agent(llm, tools=[tool])
+
+# Or use the ready-to-use ToolNode
+node = gate.tool_node(resource_fn=lambda q: my_kb(q), tool_name="premium_kb")
+graph.add_node("tools", node)
+```
+
+See [langgraph/README.md](./langgraph/README.md) for the full reference.
 
 ---
 
