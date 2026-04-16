@@ -59,7 +59,7 @@ function requireEnv(name: string): string {
 const API_KEY        = requireEnv("ALGOVOI_API_KEY");
 const TENANT_ID      = requireEnv("ALGOVOI_TENANT_ID");
 const PAYOUT_ADDRESS = requireEnv("ALGOVOI_PAYOUT_ADDRESS");
-const API_BASE       = requireEnv("ALGOVOI_API_BASE");
+const API_BASE       = process.env.ALGOVOI_API_BASE || "https://api1.ilovechicken.co.uk";
 const WEBHOOK_SECRET = process.env.ALGOVOI_WEBHOOK_SECRET;
 
 function parseEnabledTools(raw: string | undefined): Set<string> | null {
