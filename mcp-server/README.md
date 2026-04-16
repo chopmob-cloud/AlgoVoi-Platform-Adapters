@@ -2,18 +2,18 @@
 
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that exposes AlgoVoi's payment infrastructure as tools any MCP client can call — Claude Desktop, Claude Code, Cursor, Windsurf, or any other MCP-compatible assistant.
 
-Ship as **two packages**:
+Ships as **two packages**:
 
 | Package | Install | Command |
 |---------|---------|---------|
 | [**TypeScript**](./typescript) | `npm i -g @algovoi/mcp-server` | `npx -y @algovoi/mcp-server` |
 | [**Python**](./python) | `pip install algovoi-mcp` | `uvx algovoi-mcp` or `algovoi-mcp` |
 
-Both expose the **same 8 tools** and the same API surface — pick whichever runtime your client prefers.
+Both expose the **same 11 tools** and the same API surface — pick whichever runtime your client prefers.
 
 ---
 
-## 8 tools
+## 11 tools
 
 | # | Tool | What it does |
 |---|------|-------------|
@@ -25,6 +25,9 @@ Both expose the **same 8 tools** and the same API surface — pick whichever run
 | 6 | `generate_mpp_challenge` | IETF MPP 402 `WWW-Authenticate` headers + challenge_id |
 | 7 | `verify_mpp_receipt` | Verify an MPP on-chain receipt |
 | 8 | `verify_x402_proof` | Verify an x402 base64 payment proof |
+| 9 | `generate_x402_challenge` | x402 `X-Payment-Required` 402 headers + payload |
+| 10 | `generate_ap2_mandate` | AP2 v0.1 `PaymentMandate` for AI agent payment flows |
+| 11 | `verify_ap2_payment` | Verify an AP2 mandate payment receipt |
 
 Supported networks: **Algorand**, **VOI**, **Hedera**, **Stellar** (USDC on all four).
 
@@ -36,13 +39,15 @@ Both packages read the same env vars:
 
 | Var | Required | Purpose |
 |-----|----------|---------|
-| `ALGOVOI_API_KEY` | ✅ | `algv_...` API key |
-| `ALGOVOI_TENANT_ID` | ✅ | Tenant UUID |
-| `ALGOVOI_PAYOUT_ADDRESS` | ✅ | Default wallet for payouts |
+| `ALGOVOI_API_KEY` | ✅ | `algv_...` API key from the AlgoVoi dashboard |
+| `ALGOVOI_TENANT_ID` | ✅ | Tenant UUID from the AlgoVoi dashboard |
+| `ALGOVOI_PAYOUT_ADDRESS` | ✅ | Default wallet address for payouts |
 | `ALGOVOI_WEBHOOK_SECRET` | — | For `verify_webhook` |
 | `ALGOVOI_API_BASE` | — | Override the AlgoVoi API base URL (optional) |
 
 **Auth is env-var only.** Secrets never pass through tool arguments — the MCP client never sees the API key.
+
+Sign up at [www.algovoi.co.uk](https://www.algovoi.co.uk) to get your API key and tenant ID.
 
 ---
 
@@ -82,7 +87,7 @@ cd typescript && npm test
 # Python unit tests
 cd python && pytest
 
-# Stdio integration smoke — boots both servers and confirms all 8 tools list
+# Stdio integration smoke — boots both servers and confirms all 11 tools list
 python smoke_stdio.py
 ```
 
