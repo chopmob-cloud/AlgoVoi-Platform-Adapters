@@ -19,7 +19,7 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 | **Pydantic AI** | [pydantic-ai/](./pydantic-ai/) | `AlgoVoiPydanticAI` + `AlgoVoiPaymentTool` | Yes — plain callable `Tool`, deps injection, any provider:model string | **Available** — 77/77 tests (16 Apr 2026) |
 | **DSPy** | [dspy/](./dspy/) | `AlgoVoiDSPy` + `AlgoVoiPaymentTool` | Yes — plain callable, `dspy.ReAct`-compatible, `__name__`/`__doc__` set | **Available** — 78/78 tests, Phase 1 9/9 PASS (16 Apr 2026, Comet-validated) |
 | **Vercel AI SDK** | [vercel-ai-sdk/](./vercel-ai-sdk/) | `AlgoVoiVercelAI` + `VercelAIResult` | Yes — `tool()` compatible, `generateText` + `streamText` + `nextHandler` | **Available** — 79/79 tests, Phase 1 12/12 PASS (16 Apr 2026, Comet-validated) — **TypeScript** |
-| **Google A2A** | [a2a/](./a2a/) | `AlgoVoiA2A` + `AlgoVoiPaymentTool` | Yes — `AlgoVoiPaymentTool` callable + full JSON-RPC 2.0 server (`message/send`, `tasks/get`, `tasks/cancel`) + A2A client | **Available** — 84/84 tests, Phase 1 12/12 PASS (16 Apr 2026) |
+| **Google A2A** | [a2a/](./a2a/) | `AlgoVoiA2A` + `AlgoVoiPaymentTool` | Yes — `AlgoVoiPaymentTool` callable + full JSON-RPC 2.0 server (`message/send`, `tasks/get`, `tasks/cancel`) + A2A client | **Available** — 84/84 tests, Phase 1 12/12 PASS (16 Apr 2026, Comet-validated) |
 
 ---
 

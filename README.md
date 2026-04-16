@@ -182,7 +182,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Pydantic AI (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agent with deps injection, all provider:model strings, pydantic_ai.tools.Tool-compatible — 77/77 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | DSPy (AI agent frameworks) | — (MPP + AP2 + x402; gates any Predict / ChainOfThought / ReAct / compiled program; dspy.context isolation, plain callable tool for ReAct — 78/78 tests, Phase 1 9/9 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | Vercel AI SDK (AI agent frameworks) | — (MPP + AP2 + x402; TypeScript; generateText + streamText + tool() + nextHandler; any @ai-sdk/* provider — 79/79 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
-| Google A2A (AI agent frameworks) | — (MPP + AP2 + x402; JSON-RPC 2.0 server + client; message/send, tasks/get, tasks/cancel; agent card; payment tool — 84/84 tests, Phase 1 12/12 PASS 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
+| Google A2A (AI agent frameworks) | — (MPP + AP2 + x402; JSON-RPC 2.0 server + client; message/send, tasks/get, tasks/cancel; agent card; payment tool — 84/84 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -558,7 +558,7 @@ Gate entire orchestration frameworks behind on-chain payment — not just a sing
 | **Pydantic AI** | `AlgoVoiPydanticAI` + `AlgoVoiPaymentTool` | `pip install pydantic-ai` | MPP, AP2, x402 | [ai-agent-frameworks/pydantic-ai/](./ai-agent-frameworks/pydantic-ai/) | **Available** — 77/77 tests, 16 Apr 2026 |
 | **DSPy** | `AlgoVoiDSPy` + `AlgoVoiPaymentTool` | `pip install dspy` | MPP, AP2, x402 | [ai-agent-frameworks/dspy/](./ai-agent-frameworks/dspy/) | **Available** — 78/78 tests, Phase 1 9/9 PASS 16 Apr 2026, Comet-validated |
 | **Vercel AI SDK** | `AlgoVoiVercelAI` + `VercelAIResult` | `npm i ai zod` | MPP, AP2, x402 | [ai-agent-frameworks/vercel-ai-sdk/](./ai-agent-frameworks/vercel-ai-sdk/) | **Available** — 79/79 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated — **TypeScript** |
-| **Google A2A** | `AlgoVoiA2A` + `AlgoVoiPaymentTool` | `pip install flask` | MPP, AP2, x402 | [ai-agent-frameworks/a2a/](./ai-agent-frameworks/a2a/) | **Available** — 84/84 tests, Phase 1 12/12 PASS 16 Apr 2026 |
+| **Google A2A** | `AlgoVoiA2A` + `AlgoVoiPaymentTool` | `pip install flask` | MPP, AP2, x402 | [ai-agent-frameworks/a2a/](./ai-agent-frameworks/a2a/) | **Available** — 84/84 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated |
 
 ### LangChain — Quick start
 
