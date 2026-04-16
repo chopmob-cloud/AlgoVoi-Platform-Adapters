@@ -811,12 +811,13 @@ class TestFlaskGuard:
         gate = self._make_gate(requires_payment=True)
         flask_mod = MagicMock()
 
-        mock_request          = MagicMock()
-        mock_request.headers  = {}
-        mock_request.get_json = MagicMock(return_value={})
-        flask_mod.request     = mock_request
-        flask_mod.Response    = MagicMock(return_value=MagicMock(status=402))
-        flask_mod.jsonify     = MagicMock()
+        mock_request                = MagicMock()
+        mock_request.headers        = {}
+        mock_request.content_length = None
+        mock_request.get_json       = MagicMock(return_value={})
+        flask_mod.request           = mock_request
+        flask_mod.Response          = MagicMock(return_value=MagicMock(status=402))
+        flask_mod.jsonify           = MagicMock()
 
         with patch.dict("sys.modules", {"flask": flask_mod}):
             gate.flask_guard()
@@ -829,11 +830,12 @@ class TestFlaskGuard:
         gate = self._make_gate(requires_payment=False)
         flask_mod = MagicMock()
 
-        mock_request          = MagicMock()
-        mock_request.headers  = {"Authorization": "Payment X"}
-        mock_request.get_json = MagicMock(return_value={"messages": MESSAGES})
-        flask_mod.request     = mock_request
-        flask_mod.jsonify     = MagicMock(return_value={"content": "ok"})
+        mock_request                = MagicMock()
+        mock_request.headers        = {"Authorization": "Payment X"}
+        mock_request.content_length = None
+        mock_request.get_json       = MagicMock(return_value={"messages": MESSAGES})
+        flask_mod.request           = mock_request
+        flask_mod.jsonify           = MagicMock(return_value={"content": "ok"})
 
         lc_openai_mod, lc_msgs_mod, _, _, _ = _mock_lc_modules("flask reply")
         with patch.dict("sys.modules", {
@@ -849,12 +851,13 @@ class TestFlaskGuard:
         gate = self._make_gate(requires_payment=False)
         flask_mod = MagicMock()
 
-        custom_msgs = [{"role": "user", "content": "via custom key"}]
-        mock_request          = MagicMock()
-        mock_request.headers  = {}
-        mock_request.get_json = MagicMock(return_value={"msgs": custom_msgs})
-        flask_mod.request     = mock_request
-        flask_mod.jsonify     = MagicMock(return_value={})
+        custom_msgs               = [{"role": "user", "content": "via custom key"}]
+        mock_request                = MagicMock()
+        mock_request.headers        = {}
+        mock_request.content_length = None
+        mock_request.get_json       = MagicMock(return_value={"msgs": custom_msgs})
+        flask_mod.request           = mock_request
+        flask_mod.jsonify           = MagicMock(return_value={})
 
         lc_openai_mod, lc_msgs_mod, _, chat_instance, _ = _mock_lc_modules()
         with patch.dict("sys.modules", {
@@ -870,16 +873,33 @@ class TestFlaskGuard:
         gate = self._make_gate(requires_payment=True)
         flask_mod = MagicMock()
 
-        mock_request          = MagicMock()
-        mock_request.headers  = {}
-        mock_request.get_json = MagicMock(return_value=None)
-        flask_mod.request     = mock_request
-        flask_mod.Response    = MagicMock()
+        mock_request                = MagicMock()
+        mock_request.headers        = {}
+        mock_request.content_length = None
+        mock_request.get_json       = MagicMock(return_value=None)
+        flask_mod.request           = mock_request
+        flask_mod.Response          = MagicMock()
 
         with patch.dict("sys.modules", {"flask": flask_mod}):
             gate.flask_guard()
 
         flask_mod.Response.assert_called_once()
+
+    def test_flask_guard_rejects_oversized_body(self):
+        gate = self._make_gate(requires_payment=False)
+        flask_mod = MagicMock()
+
+        mock_request                = MagicMock()
+        mock_request.headers        = {}
+        mock_request.content_length = 2_000_000  # 2 MB — over the 1 MB cap
+        flask_mod.request           = mock_request
+        flask_mod.Response          = MagicMock(return_value=MagicMock(status=413))
+
+        with patch.dict("sys.modules", {"flask": flask_mod}):
+            gate.flask_guard()
+
+        call_kwargs = flask_mod.Response.call_args
+        assert call_kwargs[1]["status"] == 413
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -98,6 +98,10 @@ _SNAKE = {
 
 _ADAPTERS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Maximum request body accepted by flask_guard() — mirrors the body-cap
+# applied across all AlgoVoi adapters (April 2026 security hardening pass).
+_MAX_FLASK_BODY = 1_048_576  # 1 MB
+
 
 def _add_path(subdir: str) -> None:
     p = os.path.join(_ADAPTERS_ROOT, subdir)
@@ -456,6 +460,12 @@ class AlgoVoiLangChain:
         """
         from flask import request, jsonify, Response  # type: ignore
 
+        if request.content_length and request.content_length > _MAX_FLASK_BODY:
+            return Response(
+                '{"error":"Request Too Large"}',
+                status=413,
+                mimetype="application/json",
+            )
         body   = request.get_json(silent=True) or {}
         result = self.check(dict(request.headers), body)
         if result.requires_payment:
