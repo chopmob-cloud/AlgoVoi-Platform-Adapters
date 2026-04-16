@@ -1,15 +1,10 @@
 /**
  * AlgoVoi HTTP client — thin fetch-based wrapper used by the MCP tools.
  *
- * Mirrors the surface of the existing `native-python/algovoi.py`:
- *   - create_payment_link    POST /v1/payment-links
- *   - verify_hosted_return   GET  /checkout/{token}
- *   - extension_checkout     (= create_payment_link + scrape)
- *   - verify_extension       POST /checkout/{token}/verify
- *   - verify_mpp_receipt     GET  /mpp/{resource_id}
- *   - verify_x402_proof      POST /x402/verify
- *
- * Auth is injected automatically from env vars (see index.ts).
+ * Auth is injected automatically from env vars (see index.ts).  External
+ * error messages are generic — they never include the upstream URL, path,
+ * or HTTP status code so that tool-call failures cannot be used to probe
+ * the service's internal structure.
  */
 
 export interface AlgoVoiClientConfig {
@@ -39,30 +34,61 @@ export interface ExtensionPaymentData {
   checkout_url: string;
 }
 
+/**
+ * Lazily install a process-wide undici dispatcher that enforces TLS 1.3 as
+ * the minimum negotiated protocol version (§4.6 of ALGOVOI_MCP.md).
+ *
+ * We do this on first client construction rather than at module load so
+ * that unit tests mocking global.fetch are not affected.
+ */
+let _tlsHardened = false;
+async function hardenTls(): Promise<void> {
+  if (_tlsHardened) return;
+  _tlsHardened = true;
+  try {
+    // @ts-ignore — undici is a runtime optional dep; types not required at build time
+    const { Agent, setGlobalDispatcher } = await import("undici");
+    setGlobalDispatcher(
+      new Agent({
+        connect: { minVersion: "TLSv1.3" },
+      })
+    );
+  } catch {
+    // undici not available (very old Node) — defaults already prefer 1.3.
+  }
+}
+
 export class AlgoVoiClient {
   constructor(private readonly cfg: AlgoVoiClientConfig) {
     if (!cfg.apiBase.startsWith("https://")) {
       throw new Error("AlgoVoi apiBase must be an https:// URL");
     }
+    // Fire-and-forget: harden TLS settings in the background on first use.
+    void hardenTls();
   }
 
   // ── HTTP helpers ──────────────────────────────────────────────────────
 
-  private async post<T = any>(path: string, body: unknown): Promise<T> {
+  private async post<T = any>(
+    path: string,
+    body: unknown,
+    extraHeaders?: Record<string, string>
+  ): Promise<T> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this.cfg.apiKey}`,
+      "X-Tenant-Id": this.cfg.tenantId,
+    };
+    if (extraHeaders) Object.assign(headers, extraHeaders);
     const resp = await fetch(`${this.cfg.apiBase}${path}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.cfg.apiKey}`,
-        "X-Tenant-Id": this.cfg.tenantId,
-      },
+      headers,
       body: JSON.stringify(body),
     });
     if (!resp.ok) {
-      const text = await resp.text().catch(() => "");
-      throw new Error(
-        `AlgoVoi API ${path} returned ${resp.status}: ${text.slice(0, 200)}`
-      );
+      // Do not echo the path, upstream status, or body back to the caller —
+      // keeps tool-call failures from probing internal service structure.
+      throw new Error("AlgoVoi request failed");
     }
     return (await resp.json()) as T;
   }
@@ -76,26 +102,23 @@ export class AlgoVoiClient {
       },
     });
     if (!resp.ok) {
-      const text = await resp.text().catch(() => "");
-      throw new Error(
-        `AlgoVoi API ${path} returned ${resp.status}: ${text.slice(0, 200)}`
-      );
+      // Do not echo the path, upstream status, or body back to the caller —
+      // keeps tool-call failures from probing internal service structure.
+      throw new Error("AlgoVoi request failed");
     }
     return (await resp.json()) as T;
   }
 
   // ── Public surface ────────────────────────────────────────────────────
 
-  /**
-   * Create a hosted-checkout payment link.
-   * @see native-python/algovoi.py::create_payment_link
-   */
+  /** Create a hosted-checkout payment link. */
   async createPaymentLink(args: {
     amount: number;
     currency: string;
     label: string;
     network: string;
     redirectUrl?: string;
+    idempotencyKey?: string;
   }): Promise<CheckoutLink> {
     if (!Number.isFinite(args.amount) || args.amount <= 0) {
       throw new Error("amount must be a positive finite number");
@@ -114,9 +137,15 @@ export class AlgoVoiClient {
       payload.redirect_url = args.redirectUrl;
       payload.expires_in_seconds = 3600;
     }
+    // §6.4 — forward idempotency key to gateway as an HTTP header so
+    // duplicate requests within the gateway's window return the same link.
+    const extra = args.idempotencyKey
+      ? { "Idempotency-Key": args.idempotencyKey }
+      : undefined;
     const resp = await this.post<CheckoutLink & Record<string, unknown>>(
       "/v1/payment-links",
-      payload
+      payload,
+      extra
     );
     if (!resp.checkout_url) {
       throw new Error("API did not return checkout_url");
@@ -129,36 +158,33 @@ export class AlgoVoiClient {
     };
   }
 
-  /**
-   * Verify a hosted-checkout return token.
-   * @see native-python/algovoi.py::verify_hosted_return
-   */
+  /** Verify a hosted-checkout return token. */
   async verifyHostedReturn(token: string): Promise<{
     paid: boolean;
     status: string;
-    raw: Record<string, unknown>;
   }> {
     if (!token || token.length > 200) {
-      return { paid: false, status: "invalid_token", raw: {} };
+      return { paid: false, status: "invalid_token" };
     }
     const safe = encodeURIComponent(token);
     const resp = await fetch(`${this.cfg.apiBase}/checkout/${safe}`);
     if (!resp.ok) {
-      return { paid: false, status: `http_${resp.status}`, raw: {} };
+      return { paid: false, status: `http_${resp.status}` };
     }
-    const data = (await resp.json()) as Record<string, unknown>;
+    let data: Record<string, unknown>;
+    try {
+      data = (await resp.json()) as Record<string, unknown>;
+    } catch {
+      return { paid: false, status: "invalid_response" };
+    }
     const status = String(data.status ?? "unknown");
     return {
       paid: ["paid", "completed", "confirmed"].includes(status),
       status,
-      raw: data,
     };
   }
 
-  /**
-   * Verify an on-chain transaction for a checkout token.
-   * @see native-python/algovoi.py::verify_extension_payment
-   */
+  /** Verify an on-chain transaction for a checkout token. */
   async verifyExtensionPayment(
     token: string,
     txId: string
@@ -183,10 +209,7 @@ export class AlgoVoiClient {
     return data;
   }
 
-  /**
-   * Verify an MPP receipt for a resource.
-   * @see mpp-adapter/mpp.py::MppGate._verify_payment
-   */
+  /** Verify an MPP receipt for a resource. */
   async verifyMppReceipt(
     resourceId: string,
     txId: string,
@@ -199,10 +222,7 @@ export class AlgoVoiClient {
     });
   }
 
-  /**
-   * Verify an x402 payment proof (base64-encoded).
-   * @see ai-adapters/openai/openai_algovoi.py::_X402Gate
-   */
+  /** Verify an x402 payment proof (base64-encoded). */
   async verifyX402Proof(
     proof: string,
     network: string
@@ -211,6 +231,20 @@ export class AlgoVoiClient {
       proof,
       network,
       tenant_id: this.cfg.tenantId,
+    });
+  }
+
+  /** Verify an AP2 payment mandate receipt. */
+  async verifyAp2Payment(
+    mandateId: string,
+    txId: string,
+    network: string
+  ): Promise<Record<string, unknown>> {
+    return this.post("/ap2/verify", {
+      mandate_id: mandateId,
+      tx_id:      txId,
+      network,
+      tenant_id:  this.cfg.tenantId,
     });
   }
 

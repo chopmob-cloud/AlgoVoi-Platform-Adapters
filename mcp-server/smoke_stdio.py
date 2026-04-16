@@ -27,6 +27,9 @@ EXPECTED_TOOLS = {
     "generate_mpp_challenge",
     "verify_mpp_receipt",
     "verify_x402_proof",
+    "generate_x402_challenge",
+    "generate_ap2_mandate",
+    "verify_ap2_payment",
 }
 
 

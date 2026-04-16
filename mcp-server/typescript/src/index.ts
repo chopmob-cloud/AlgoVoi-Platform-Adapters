@@ -2,13 +2,18 @@
 /**
  * AlgoVoi MCP Server (stdio transport).
  *
- * Exposes 8 tools to any MCP client (Claude Desktop, Claude Code, Cursor,
- * Windsurf, etc.) for creating AlgoVoi payment links, verifying payments,
+ * Exposes up to 8 tools to any MCP client (Claude Desktop, Claude Code,
+ * Cursor, Windsurf) for creating AlgoVoi payment links, verifying payments,
  * and generating MPP / x402 challenges.
  *
- * Auth comes from env vars — never from tool arguments. See README.
+ * Runtime pipeline per tool call::
  *
- * Run: `npx @algovoi/mcp-server` (once published) or `node dist/index.js`.
+ *     raw args  →  schemas.parseX   (strict; extra=forbid)
+ *              →  tool function     (business logic)
+ *              →  redact.scrub      (strip secrets, truncate strings)
+ *              →  audit.logCall     (stderr JSON)
+ *
+ * Env-var auth only.  Tool allow-list via `MCP_ENABLED_TOOLS`.
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -19,6 +24,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import { AlgoVoiClient } from "./client.js";
+import { logCall } from "./audit.js";
+import { scrub } from "./redact.js";
+import { PARSERS, ValidationError } from "./schemas.js";
 import {
   createPaymentLink,
   verifyPayment,
@@ -28,6 +36,9 @@ import {
   generateMppChallenge,
   verifyMppReceipt,
   verifyX402Proof,
+  generateX402Challenge,
+  generateAp2Mandate,
+  verifyAp2Payment,
   TOOL_SCHEMAS,
 } from "./tools.js";
 
@@ -45,35 +56,48 @@ function requireEnv(name: string): string {
   return v;
 }
 
-const API_KEY = requireEnv("ALGOVOI_API_KEY");
-const TENANT_ID = requireEnv("ALGOVOI_TENANT_ID");
+const API_KEY        = requireEnv("ALGOVOI_API_KEY");
+const TENANT_ID      = requireEnv("ALGOVOI_TENANT_ID");
 const PAYOUT_ADDRESS = requireEnv("ALGOVOI_PAYOUT_ADDRESS");
-const API_BASE = process.env.ALGOVOI_API_BASE || "https://api1.ilovechicken.co.uk";
+const API_BASE       = requireEnv("ALGOVOI_API_BASE");
 const WEBHOOK_SECRET = process.env.ALGOVOI_WEBHOOK_SECRET;
 
+function parseEnabledTools(raw: string | undefined): Set<string> | null {
+  if (!raw || !raw.trim()) return null;
+  const known  = new Set<string>(TOOL_SCHEMAS.map((t) => t.name));
+  const listed = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  const valid  = listed.filter((n) => known.has(n));
+  const bad    = listed.filter((n) => !known.has(n));
+  if (bad.length > 0) {
+    process.stderr.write(
+      `[algovoi-mcp] warning: MCP_ENABLED_TOOLS contains unknown tools: ${JSON.stringify(bad)} — ignoring\n`
+    );
+  }
+  return new Set(valid);
+}
+
+const ENABLED_TOOLS = parseEnabledTools(process.env.MCP_ENABLED_TOOLS);
+
 const client = new AlgoVoiClient({
-  apiBase: API_BASE,
-  apiKey: API_KEY,
-  tenantId: TENANT_ID,
+  apiBase:       API_BASE,
+  apiKey:        API_KEY,
+  tenantId:      TENANT_ID,
   payoutAddress: PAYOUT_ADDRESS,
 });
 
 // ── MCP server ────────────────────────────────────────────────────────────────
 
 const server = new Server(
-  {
-    name: "algovoi-mcp-server",
-    version: "1.0.0",
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-  }
+  { name: "algovoi-mcp-server", version: "1.0.0" },
+  { capabilities: { tools: {} } }
 );
 
+const visibleSchemas = ENABLED_TOOLS
+  ? TOOL_SCHEMAS.filter((t) => ENABLED_TOOLS.has(t.name))
+  : TOOL_SCHEMAS;
+
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: TOOL_SCHEMAS as unknown as Array<{
+  tools: visibleSchemas as unknown as Array<{
     name: string;
     description: string;
     inputSchema: unknown;
@@ -84,24 +108,44 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: rawArgs } = request.params;
   const args = (rawArgs ?? {}) as Record<string, unknown>;
 
-  try {
-    const result = await dispatch(name, args);
+  if (ENABLED_TOOLS && !ENABLED_TOOLS.has(name)) {
+    logCall({ tool_name: name, args, status: "rejected", duration_ms: 0, error_code: "ToolDisabled" });
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify(result, null, 2),
+          text: JSON.stringify(
+            { error: `tool '${name}' is not enabled (MCP_ENABLED_TOOLS)` },
+            null,
+            2
+          ),
         },
       ],
+      isError: true,
+    };
+  }
+
+  const start = performance.now();
+  try {
+    const result = scrub(await dispatch(name, args));
+    logCall({ tool_name: name, args, status: "ok", duration_ms: performance.now() - start });
+    return {
+      content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const isValidation = err instanceof ValidationError;
+    const duration     = performance.now() - start;
+    const message      = err instanceof Error ? err.message : String(err);
+    logCall({
+      tool_name:   name,
+      args,
+      status:      isValidation ? "rejected" : "error",
+      duration_ms: duration,
+      error_code:  isValidation ? "ValidationError" : (err instanceof Error ? err.name : "Error"),
+    });
     return {
       content: [
-        {
-          type: "text",
-          text: JSON.stringify({ error: message }, null, 2),
-        },
+        { type: "text", text: JSON.stringify({ error: message }, null, 2) },
       ],
       isError: true,
     };
@@ -110,8 +154,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 async function dispatch(
   name: string,
-  args: Record<string, unknown>
+  rawArgs: Record<string, unknown>
 ): Promise<unknown> {
+  const parser = PARSERS[name as keyof typeof PARSERS];
+  if (!parser) {
+    throw new Error(`unknown tool: ${name}`);
+  }
+  const args = parser(rawArgs);
   switch (name) {
     case "create_payment_link":
       return createPaymentLink(client, args as any);
@@ -129,6 +178,12 @@ async function dispatch(
       return verifyMppReceipt(client, args as any);
     case "verify_x402_proof":
       return verifyX402Proof(client, args as any);
+    case "generate_x402_challenge":
+      return generateX402Challenge(client, args as any);
+    case "generate_ap2_mandate":
+      return generateAp2Mandate(client, args as any);
+    case "verify_ap2_payment":
+      return verifyAp2Payment(client, args as any);
     default:
       throw new Error(`unknown tool: ${name}`);
   }
@@ -140,7 +195,8 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   process.stderr.write(
-    `[algovoi-mcp] connected on stdio — ${TOOL_SCHEMAS.length} tools ready, api_base=${API_BASE}\n`
+    `[algovoi-mcp] connected on stdio — ${visibleSchemas.length} tools ready, ` +
+      `webhook_secret=${WEBHOOK_SECRET ? "set" : "unset"}\n`
   );
 }
 
