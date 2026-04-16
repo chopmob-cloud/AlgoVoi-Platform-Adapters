@@ -100,7 +100,8 @@ platform-adapters/
 │   ├── xai/              # Payment-gated xAI Grok wrappers (MPP + AP2 + x402)
 │   └── mistral/          # Payment-gated Mistral AI wrappers (MPP + AP2 + x402)
 ├── ai-agent-frameworks/
-│   └── langchain/        # LangChain gate — any ChatModel, LCEL chain, RAG pipeline, or ReAct agent
+│   ├── langchain/        # LangChain gate — any ChatModel, LCEL chain, RAG pipeline, or ReAct agent
+│   └── llamaindex/       # LlamaIndex gate — QueryEngine, ChatEngine, RAG pipeline, or ReAct agent
 ├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
 ├── easy-digital-downloads/ # EDD 3.2+ WordPress plugin (digital downloads, licensing)
 ├── ghost/                # Ghost 5.x paid-membership grant-on-payment adapter
@@ -165,6 +166,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | MPP Gate | — (100% IETF `draft-ryan-httpauth-payment`: challenge echo, CAIP-2 routing, HMAC IDs, on-chain verification — v2.1.0, 153/153 tests, live smoke-tested all 4 chains 13 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | AP2 Gate | — (payment request + local ed25519 verification) | Algorand, VOI | — |
 | LangChain (AI agent frameworks) | — (MPP + AP2 + x402; gates any ChatModel, LCEL chain, RAG pipeline, or ReAct agent tool — 76/77 tests, Phase 1+2 PASS 5/5 chains 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
+| LlamaIndex (AI agent frameworks) | — (MPP + AP2 + x402; gates LlamaIndex LLM, QueryEngine, ChatEngine, or ReAct agent tool — 80/80 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -532,6 +534,7 @@ Gate entire orchestration frameworks behind on-chain payment — not just a sing
 | Framework | Class | Install | Protocol support | Files | Status |
 |-----------|-------|---------|-----------------|-------|--------|
 | **LangChain** | `AlgoVoiLangChain` + `AlgoVoiPaymentTool` | `pip install langchain-core langchain-openai` | MPP, AP2, x402 | [ai-agent-frameworks/langchain/](./ai-agent-frameworks/langchain/) | **Available** — 76/77 tests + Phase 1+2 PASS 5/5 chains 16 Apr 2026 (Comet-validated) |
+| **LlamaIndex** | `AlgoVoiLlamaIndex` + `AlgoVoiPaymentTool` | `pip install llama-index` | MPP, AP2, x402 | [ai-agent-frameworks/llamaindex/](./ai-agent-frameworks/llamaindex/) | **Available** — 80/80 tests, Comet-validated 16 Apr 2026 |
 
 ### LangChain — Quick start
 
@@ -593,6 +596,57 @@ executor = AgentExecutor(agent=agent, tools=[tool])
 The tool accepts `{"query": "...", "payment_proof": "<base64>"}`. Returns a challenge JSON dict if proof is absent or invalid; calls `resource_fn(query)` and returns the result if verified.
 
 All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/langchain/README.md](./ai-agent-frameworks/langchain/README.md)
+
+### LlamaIndex — Quick start
+
+```python
+from llamaindex_algovoi import AlgoVoiLlamaIndex
+
+gate = AlgoVoiLlamaIndex(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+)
+
+# Gate a LlamaIndex QueryEngine (RAG pipeline)
+result = gate.check(headers, body)
+if not result.requires_payment:
+    answer = gate.query_engine_query(query_engine, body["query"])
+
+# Gate a ChatEngine (multi-turn)
+if not result.requires_payment:
+    reply = gate.chat_engine_chat(chat_engine, body["message"])
+```
+
+**ReAct agent tool** — drop into any LlamaIndex agent:
+
+```python
+from llama_index.core.agent import ReActAgent
+
+tool  = gate.as_tool(resource_fn=my_handler, tool_name="premium_kb")
+agent = ReActAgent.from_tools([tool], llm=llm, verbose=True)
+```
+
+The tool accepts `{"query": "...", "payment_proof": "<base64>"}`. Returns a `ToolOutput` with `.content` (challenge JSON or resource result), `.tool_name`, `.raw_input`, `.raw_output`.
+
+**Bring your own LlamaIndex LLM** (Anthropic, Google, Cohere, Bedrock, etc.):
+
+```python
+from llama_index.llms.anthropic import Anthropic
+
+gate = AlgoVoiLlamaIndex(
+    algovoi_key    = "algv_...",
+    tenant_id      = "...",
+    payout_address = "...",
+    llm            = Anthropic(model="claude-opus-4-5"),
+)
+```
+
+All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/llamaindex/README.md](./ai-agent-frameworks/llamaindex/README.md)
 
 ---
 

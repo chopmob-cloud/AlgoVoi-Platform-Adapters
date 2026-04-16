@@ -11,12 +11,12 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 | Framework | Folder | Class | Agent-native | Status |
 |-----------|--------|-------|-------------|--------|
 | **LangChain** | [langchain/](./langchain/) | `AlgoVoiLangChain` + `AlgoVoiPaymentTool` | Yes — `BaseTool` subclass, ReAct-compatible | **Available** — 76/77 tests, Phase 1 + 2 PASS 5/5 (16 Apr 2026, Comet-validated) |
+| **LlamaIndex** | [llamaindex/](./llamaindex/) | `AlgoVoiLlamaIndex` + `AlgoVoiPaymentTool` | Yes — `BaseTool` + `ToolOutput`, ReAct-compatible | **Available** — 80/80 tests (16 Apr 2026, Comet-validated) |
 
 **Planned** (one at a time):
 
 | Framework | Notes |
 |-----------|-------|
-| **LlamaIndex** | Gate query engines, RAG pipelines, and agent runners |
 | **CrewAI** | Gate multi-agent crew tasks |
 | **AutoGen** | Gate AutoGen conversation flows |
 | **Semantic Kernel** | Gate SK functions and planners (.NET / Python) |
