@@ -30,6 +30,7 @@ Included:
 - **Native adapters** for PHP, Python, Go, and Rust (zero external dependencies) — all hardened to v1.1.0 on 2026-04-15
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
 - **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 4 chains)
+- **AI agent framework adapters** for LangChain — gate LLM-agnostic pipelines, RAG chains, and autonomous agents (MPP + AP2 + x402, all 4 chains)
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
 - **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 4 chains
 
@@ -98,6 +99,8 @@ platform-adapters/
 │   ├── cohere/           # Payment-gated Cohere ClientV2 wrappers (MPP + AP2 + x402)
 │   ├── xai/              # Payment-gated xAI Grok wrappers (MPP + AP2 + x402)
 │   └── mistral/          # Payment-gated Mistral AI wrappers (MPP + AP2 + x402)
+├── ai-agent-frameworks/
+│   └── langchain/        # LangChain gate — any ChatModel, LCEL chain, RAG pipeline, or ReAct agent
 ├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
 ├── easy-digital-downloads/ # EDD 3.2+ WordPress plugin (digital downloads, licensing)
 ├── ghost/                # Ghost 5.x paid-membership grant-on-payment adapter
@@ -161,6 +164,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | x402 AI Agent adapter | — (x402 spec v1: `accepts` array, CAIP-2 networks, microunit amounts, `payload.signature` proof) | Algorand, VOI, Hedera, Stellar | — |
 | MPP Gate | — (100% IETF `draft-ryan-httpauth-payment`: challenge echo, CAIP-2 routing, HMAC IDs, on-chain verification — v2.1.0, 153/153 tests, live smoke-tested all 4 chains 13 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | AP2 Gate | — (payment request + local ed25519 verification) | Algorand, VOI | — |
+| LangChain (AI agent frameworks) | — (MPP + AP2 + x402; gates any ChatModel, LCEL chain, RAG pipeline, or ReAct agent tool — 76/77 tests, Phase 1+2 PASS 5/5 chains 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -518,6 +522,77 @@ def chat():
 Models: `mistral-large-latest` (default — flagship) · `mistral-medium-latest` · `mistral-small-latest` · `codestral-latest` · `open-mistral-nemo` · `pixtral-large-latest`
 
 OpenAI-format messages work across all seven platforms — system roles are extracted automatically where required (Claude, Bedrock), Gemini `assistant` roles are mapped to `model` internally, and Cohere, xAI, and Mistral all accept the system role natively via their respective SDKs.
+
+---
+
+## AI Agent Framework Adapters
+
+Gate entire orchestration frameworks behind on-chain payment — not just a single model provider. These adapters are LLM-agnostic: pass any pre-built ChatModel, LCEL chain, RAG pipeline, or ReAct agent and the payment check wraps the whole thing.
+
+| Framework | Class | Install | Protocol support | Files | Status |
+|-----------|-------|---------|-----------------|-------|--------|
+| **LangChain** | `AlgoVoiLangChain` + `AlgoVoiPaymentTool` | `pip install langchain-core langchain-openai` | MPP, AP2, x402 | [ai-agent-frameworks/langchain/](./ai-agent-frameworks/langchain/) | **Available** — 76/77 tests + Phase 1+2 PASS 5/5 chains 16 Apr 2026 (Comet-validated) |
+
+### LangChain — Quick start
+
+```python
+from langchain_algovoi import AlgoVoiLangChain
+
+gate = AlgoVoiLangChain(
+    openai_key        = "sk-...",          # OpenAI key (or pass llm= to use any ChatModel)
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",             # "mpp" | "ap2" | "x402"
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,             # 0.01 USDC per call
+)
+
+@app.route("/ai/chat", methods=["POST"])
+def chat():
+    body   = request.get_json(silent=True) or {}
+    result = gate.check(dict(request.headers), body)
+    if result.requires_payment:
+        return result.as_flask_response()
+    return jsonify({"content": gate.complete(body["messages"])})
+```
+
+**Bring your own model** — pass any pre-built LangChain ChatModel instead of an OpenAI key:
+
+```python
+from langchain_anthropic import ChatAnthropic
+
+gate = AlgoVoiLangChain(
+    algovoi_key    = "algv_...",
+    tenant_id      = "...",
+    payout_address = "...",
+    llm            = ChatAnthropic(model="claude-opus-4-5"),
+)
+```
+
+**Gate any LCEL chain or RAG pipeline:**
+
+```python
+chain = ChatPromptTemplate.from_template("Answer: {question}") | ChatOpenAI() | StrOutputParser()
+
+result = gate.check(headers, body)
+if not result.requires_payment:
+    output = gate.invoke_chain(chain, {"question": body["question"]})
+```
+
+**Drop into a ReAct agent as a `BaseTool`:**
+
+```python
+tool = gate.as_tool(resource_fn=lambda q: my_handler(q), tool_name="premium_kb")
+
+from langchain.agents import create_react_agent, AgentExecutor
+agent    = create_react_agent(llm, tools=[tool], prompt=prompt)
+executor = AgentExecutor(agent=agent, tools=[tool])
+```
+
+The tool accepts `{"query": "...", "payment_proof": "<base64>"}`. Returns a challenge JSON dict if proof is absent or invalid; calls `resource_fn(query)` and returns the result if verified.
+
+All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/langchain/README.md](./ai-agent-frameworks/langchain/README.md)
 
 ---
 
