@@ -105,7 +105,8 @@ platform-adapters/
 │   ├── crewai/           # CrewAI gate — crew.kickoff() + BaseTool for multi-agent crews
 │   ├── huggingface/      # Hugging Face gate — InferenceClient, transformers pipeline, smolagents tool
 │   ├── autogen/          # AutoGen gate — initiate_chat() + callable tool (0.2.x + 0.4.x)
-│   └── semantic-kernel/  # Semantic Kernel gate — chat completion, KernelFunction, SK plugin
+│   ├── semantic-kernel/  # Semantic Kernel gate — chat completion, KernelFunction, SK plugin
+│   └── pydantic-ai/      # Pydantic AI gate — any Agent, deps injection, provider:model strings
 ├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
 ├── easy-digital-downloads/ # EDD 3.2+ WordPress plugin (digital downloads, licensing)
 ├── ghost/                # Ghost 5.x paid-membership grant-on-payment adapter
@@ -175,6 +176,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Hugging Face (AI agent frameworks) | — (MPP + AP2 + x402; gates InferenceClient.chat_completion(), transformers pipeline, and smolagents Tool — 83/83 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | AutoGen (AI agent frameworks) | — (MPP + AP2 + x402; gates initiate_chat() + callable FunctionTool-compatible tool; llm_config property; 0.2.x + 0.4.x — 86/86 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | Semantic Kernel (AI agent frameworks) | — (MPP + AP2 + x402; gates chat completion, kernel.invoke(), and @kernel_function plugin; asyncio.run() sync wrappers — 76/76 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
+| Pydantic AI (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agent with deps injection, all provider:model strings, pydantic_ai.tools.Tool-compatible — 77/77 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -547,6 +549,7 @@ Gate entire orchestration frameworks behind on-chain payment — not just a sing
 | **Hugging Face** | `AlgoVoiHuggingFace` + `AlgoVoiPaymentTool` | `pip install huggingface-hub smolagents` | MPP, AP2, x402 | [ai-agent-frameworks/huggingface/](./ai-agent-frameworks/huggingface/) | **Available** — 83/83 tests, 16 Apr 2026 |
 | **AutoGen** | `AlgoVoiAutoGen` + `AlgoVoiPaymentTool` | `pip install pyautogen` | MPP, AP2, x402 | [ai-agent-frameworks/autogen/](./ai-agent-frameworks/autogen/) | **Available** — 86/86 tests, 16 Apr 2026 |
 | **Semantic Kernel** | `AlgoVoiSemanticKernel` + `AlgoVoiPaymentPlugin` | `pip install semantic-kernel` | MPP, AP2, x402 | [ai-agent-frameworks/semantic-kernel/](./ai-agent-frameworks/semantic-kernel/) | **Available** — 76/76 tests, 16 Apr 2026 |
+| **Pydantic AI** | `AlgoVoiPydanticAI` + `AlgoVoiPaymentTool` | `pip install pydantic-ai` | MPP, AP2, x402 | [ai-agent-frameworks/pydantic-ai/](./ai-agent-frameworks/pydantic-ai/) | **Available** — 77/77 tests, 16 Apr 2026 |
 
 ### LangChain — Quick start
 
@@ -832,6 +835,46 @@ kernel.add_plugin(plugin, plugin_name="premium_kb")
 The `gate` function accepts `query` and `payment_proof` (base64). Returns challenge JSON if proof absent/invalid; calls `resource_fn(query)` and returns the result if verified.
 
 All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/semantic-kernel/README.md](./ai-agent-frameworks/semantic-kernel/README.md)
+
+### Pydantic AI — Quick start
+
+```python
+from pydanticai_algovoi import AlgoVoiPydanticAI
+
+gate = AlgoVoiPydanticAI(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+    model             = "openai:gpt-4o",     # any Pydantic AI provider:model string
+)
+
+# Gate chat completion
+result = gate.check(headers, body)
+if not result.requires_payment:
+    reply = gate.complete(body["messages"])
+
+# Gate any pre-built Agent (with optional dependency injection)
+from pydantic_ai import Agent
+my_agent = Agent("anthropic:claude-opus-4-5", system_prompt="Be concise.")
+output   = gate.run_agent(my_agent, body["prompt"], deps=my_deps)
+```
+
+**Add as a `pydantic_ai.tools.Tool`:**
+
+```python
+from pydantic_ai.tools import Tool
+
+tool  = gate.as_tool(resource_fn=my_handler, tool_name="premium_kb")
+agent = Agent("openai:gpt-4o", tools=[Tool(tool, name=tool.name, description=tool.description)])
+```
+
+The tool accepts `query` and `payment_proof` (base64). Returns challenge JSON if proof absent/invalid; calls `resource_fn(query)` if verified. Supports all Pydantic AI providers — OpenAI, Anthropic, Google, Groq, Ollama, and any OpenAI-compatible endpoint via `base_url`.
+
+All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/pydantic-ai/README.md](./ai-agent-frameworks/pydantic-ai/README.md)
 
 ---
 

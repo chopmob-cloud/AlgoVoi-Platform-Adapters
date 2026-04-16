@@ -16,6 +16,7 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 | **Hugging Face** | [huggingface/](./huggingface/) | `AlgoVoiHuggingFace` + `AlgoVoiPaymentTool` | Yes — `smolagents.Tool` subclass, `ToolCallingAgent`-compatible | **Available** — 83/83 tests (16 Apr 2026) |
 | **AutoGen** | [autogen/](./autogen/) | `AlgoVoiAutoGen` + `AlgoVoiPaymentTool` | Yes — callable tool, 0.2.x `register_for_execution` + 0.4.x `FunctionTool`-compatible | **Available** — 86/86 tests (16 Apr 2026) |
 | **Semantic Kernel** | [semantic-kernel/](./semantic-kernel/) | `AlgoVoiSemanticKernel` + `AlgoVoiPaymentPlugin` | Yes — `@kernel_function` plugin, auto-invocation compatible | **Available** — 76/76 tests (16 Apr 2026) |
+| **Pydantic AI** | [pydantic-ai/](./pydantic-ai/) | `AlgoVoiPydanticAI` + `AlgoVoiPaymentTool` | Yes — plain callable `Tool`, deps injection, any provider:model string | **Available** — 77/77 tests (16 Apr 2026) |
 
 ---
 
@@ -234,6 +235,42 @@ kernel.add_plugin(plugin, plugin_name="premium_kb")
 ```
 
 See [semantic-kernel/README.md](./semantic-kernel/README.md) for the full reference.
+
+---
+
+## Quick start (Pydantic AI)
+
+```python
+from pydanticai_algovoi import AlgoVoiPydanticAI
+
+gate = AlgoVoiPydanticAI(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+    model             = "openai:gpt-4o",     # any Pydantic AI provider:model string
+)
+
+# Gate chat completion (sync wrapper around async Agent.run())
+result = gate.check(headers, body)
+if not result.requires_payment:
+    reply = gate.complete(body["messages"])
+
+# Gate any pre-built Agent (with optional deps injection)
+from pydantic_ai import Agent
+my_agent = Agent("anthropic:claude-opus-4-5")
+output = gate.run_agent(my_agent, body["prompt"], deps=my_deps)
+
+# Drop into any Agent as a pydantic_ai.tools.Tool
+from pydantic_ai.tools import Tool
+tool  = gate.as_tool(resource_fn=lambda q: my_handler(q), tool_name="premium_kb")
+agent = Agent("openai:gpt-4o", tools=[Tool(tool, name=tool.name, description=tool.description)])
+```
+
+See [pydantic-ai/README.md](./pydantic-ai/README.md) for the full reference.
 
 ---
 
