@@ -1,0 +1,26 @@
+{
+  "name": "vercel-ai-algovoi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AlgoVoi payment gate for the Vercel AI SDK — x402, MPP, AP2 on Algorand, VOI, Hedera, Stellar",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsc",
+    "smoke": "tsx smoke_test_vercel_ai.ts --phase 1",
+    "smoke:live": "tsx smoke_test_vercel_ai.ts --phase 2"
+  },
+  "peerDependencies": {
+    "ai": ">=4.0.0",
+    "zod": ">=3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ai": "^4.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0",
+    "zod": "^3.0.0"
+  }
+}

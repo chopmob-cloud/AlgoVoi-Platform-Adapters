@@ -107,7 +107,8 @@ platform-adapters/
 │   ├── autogen/          # AutoGen gate — initiate_chat() + callable tool (0.2.x + 0.4.x)
 │   ├── semantic-kernel/  # Semantic Kernel gate — chat completion, KernelFunction, SK plugin
 │   ├── pydantic-ai/      # Pydantic AI gate — any Agent, deps injection, provider:model strings
-│   └── dspy/             # DSPy gate — any Predict / ChainOfThought / ReAct / compiled program
+│   ├── dspy/             # DSPy gate — any Predict / ChainOfThought / ReAct / compiled program
+│   └── vercel-ai-sdk/    # Vercel AI SDK gate — generateText, streamText, tool() — TypeScript
 ├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
 ├── easy-digital-downloads/ # EDD 3.2+ WordPress plugin (digital downloads, licensing)
 ├── ghost/                # Ghost 5.x paid-membership grant-on-payment adapter
@@ -179,6 +180,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Semantic Kernel (AI agent frameworks) | — (MPP + AP2 + x402; gates chat completion, kernel.invoke(), and @kernel_function plugin; asyncio.run() sync wrappers — 76/76 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | Pydantic AI (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agent with deps injection, all provider:model strings, pydantic_ai.tools.Tool-compatible — 77/77 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | DSPy (AI agent frameworks) | — (MPP + AP2 + x402; gates any Predict / ChainOfThought / ReAct / compiled program; dspy.context isolation, plain callable tool for ReAct — 78/78 tests, Phase 1 9/9 PASS 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
+| Vercel AI SDK (AI agent frameworks) | — (MPP + AP2 + x402; TypeScript; generateText + streamText + tool() + nextHandler; any @ai-sdk/* provider — 79/79 tests, Phase 1 12/12 PASS 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -553,6 +555,7 @@ Gate entire orchestration frameworks behind on-chain payment — not just a sing
 | **Semantic Kernel** | `AlgoVoiSemanticKernel` + `AlgoVoiPaymentPlugin` | `pip install semantic-kernel` | MPP, AP2, x402 | [ai-agent-frameworks/semantic-kernel/](./ai-agent-frameworks/semantic-kernel/) | **Available** — 76/76 tests, 16 Apr 2026 |
 | **Pydantic AI** | `AlgoVoiPydanticAI` + `AlgoVoiPaymentTool` | `pip install pydantic-ai` | MPP, AP2, x402 | [ai-agent-frameworks/pydantic-ai/](./ai-agent-frameworks/pydantic-ai/) | **Available** — 77/77 tests, 16 Apr 2026 |
 | **DSPy** | `AlgoVoiDSPy` + `AlgoVoiPaymentTool` | `pip install dspy` | MPP, AP2, x402 | [ai-agent-frameworks/dspy/](./ai-agent-frameworks/dspy/) | **Available** — 78/78 tests, Phase 1 9/9 PASS 16 Apr 2026 |
+| **Vercel AI SDK** | `AlgoVoiVercelAI` + `VercelAIResult` | `npm i ai zod` | MPP, AP2, x402 | [ai-agent-frameworks/vercel-ai-sdk/](./ai-agent-frameworks/vercel-ai-sdk/) | **Available** — 79/79 tests, Phase 1 12/12 PASS 16 Apr 2026 — **TypeScript** |
 
 ### LangChain — Quick start
 
@@ -929,6 +932,51 @@ with dspy.context(lm=lm):
 All LLM calls use `dspy.context(lm=...)` — global `dspy.configure()` state is never modified. DSPy's `provider/model` string format is supported for OpenAI, Anthropic, Google, Cohere, Groq, Ollama, and Azure OpenAI.
 
 All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/dspy/README.md](./ai-agent-frameworks/dspy/README.md)
+
+### Vercel AI SDK — Quick start
+
+```typescript
+import { openai } from "@ai-sdk/openai";
+import { AlgoVoiVercelAI } from "./vercel_ai_algovoi";
+
+const gate = new AlgoVoiVercelAI({
+  algovoiKey:       "algv_...",
+  tenantId:         "your-tenant-uuid",
+  payoutAddress:    "YOUR_ALGORAND_ADDRESS",
+  protocol:         "mpp",
+  network:          "algorand-mainnet",
+  amountMicrounits: 10_000,
+  model:            openai("gpt-4o"),   // any @ai-sdk/* provider
+});
+
+// Next.js App Router — one-liner
+export const POST = (req: Request) => gate.nextHandler(req);
+```
+
+**Streaming:**
+
+```typescript
+export async function POST(req: Request) {
+  const body = await req.json();
+  const result = await gate.check(req.headers, body);
+  if (result.requiresPayment) return result.as402Response();
+  return gate.streamText(body.messages).toDataStreamResponse();
+}
+```
+
+**Payment tool for LLM function calling:**
+
+```typescript
+const tool = gate.asTool(
+  async (query) => myPremiumHandler(query),
+  { toolName: "premium_kb", toolDescription: "Access premium knowledge base." }
+);
+// Use in generateText({ tools: { premium_kb: tool } })
+```
+
+Supports any `@ai-sdk/*` provider — OpenAI, Anthropic, Google, Groq, Mistral, Cohere, Ollama, Azure. Uses `node:crypto` for MPP HMAC; requires Node.js runtime (not Edge) for MPP. x402 and AP2 work on Edge runtimes.
+
+All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/vercel-ai-sdk/README.md](./ai-agent-frameworks/vercel-ai-sdk/README.md)
 
 ---
 
