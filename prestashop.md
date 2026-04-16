@@ -167,7 +167,7 @@ Hardened nginx configs for all three storefronts are in `nginx/`:
 |------|------|
 | `nginx/prestashop.conf` | prestashop.ilovechicken.co.uk |
 | `nginx/opencart.conf` | opencart.ilovechicken.co.uk |
-| `nginx/wordpress.conf` | 104.207.130.27 (WooCommerce) |
+| `nginx/wordpress.conf` | WooCommerce storefront |
 
 All three restrict admin access to a single whitelisted IP. Key rules:
 

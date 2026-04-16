@@ -369,7 +369,7 @@ add_header Permissions-Policy "geolocation=(), microphone=(), camera=()";
 
 ## Live test status
 
-Confirmed end-to-end on **2026-04-14** against `api1.ilovechicken.co.uk`, real WooCommerce store at `104.207.130.27` running WooCommerce 10.6.2 / WordPress 6.9.4:
+Confirmed end-to-end on **2026-04-14** against `api1.ilovechicken.co.uk`, real WooCommerce store running WooCommerce 10.6.2 / WordPress 6.9.4:
 
 | Test | Network | Result |
 |------|---------|--------|
