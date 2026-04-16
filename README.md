@@ -101,7 +101,8 @@ platform-adapters/
 │   └── mistral/          # Payment-gated Mistral AI wrappers (MPP + AP2 + x402)
 ├── ai-agent-frameworks/
 │   ├── langchain/        # LangChain gate — any ChatModel, LCEL chain, RAG pipeline, or ReAct agent
-│   └── llamaindex/       # LlamaIndex gate — QueryEngine, ChatEngine, RAG pipeline, or ReAct agent
+│   ├── llamaindex/       # LlamaIndex gate — QueryEngine, ChatEngine, RAG pipeline, or ReAct agent
+│   └── crewai/           # CrewAI gate — crew.kickoff() + BaseTool for multi-agent crews
 ├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
 ├── easy-digital-downloads/ # EDD 3.2+ WordPress plugin (digital downloads, licensing)
 ├── ghost/                # Ghost 5.x paid-membership grant-on-payment adapter
@@ -167,6 +168,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | AP2 Gate | — (payment request + local ed25519 verification) | Algorand, VOI | — |
 | LangChain (AI agent frameworks) | — (MPP + AP2 + x402; gates any ChatModel, LCEL chain, RAG pipeline, or ReAct agent tool — 76/77 tests, Phase 1+2 PASS 5/5 chains 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | LlamaIndex (AI agent frameworks) | — (MPP + AP2 + x402; gates LlamaIndex LLM, QueryEngine, ChatEngine, or ReAct agent tool — 80/80 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
+| CrewAI (AI agent frameworks) | — (MPP + AP2 + x402; gates crew.kickoff() + BaseTool with PaymentToolInput args_schema — 68/68 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -535,6 +537,7 @@ Gate entire orchestration frameworks behind on-chain payment — not just a sing
 |-----------|-------|---------|-----------------|-------|--------|
 | **LangChain** | `AlgoVoiLangChain` + `AlgoVoiPaymentTool` | `pip install langchain-core langchain-openai` | MPP, AP2, x402 | [ai-agent-frameworks/langchain/](./ai-agent-frameworks/langchain/) | **Available** — 76/77 tests + Phase 1+2 PASS 5/5 chains 16 Apr 2026 (Comet-validated) |
 | **LlamaIndex** | `AlgoVoiLlamaIndex` + `AlgoVoiPaymentTool` | `pip install llama-index` | MPP, AP2, x402 | [ai-agent-frameworks/llamaindex/](./ai-agent-frameworks/llamaindex/) | **Available** — 80/80 tests, Comet-validated 16 Apr 2026 |
+| **CrewAI** | `AlgoVoiCrewAI` + `AlgoVoiPaymentTool` | `pip install crewai` | MPP, AP2, x402 | [ai-agent-frameworks/crewai/](./ai-agent-frameworks/crewai/) | **Available** — 68/68 tests, Comet-validated 16 Apr 2026 |
 
 ### LangChain — Quick start
 
@@ -647,6 +650,51 @@ gate = AlgoVoiLlamaIndex(
 ```
 
 All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/llamaindex/README.md](./ai-agent-frameworks/llamaindex/README.md)
+
+### CrewAI — Quick start
+
+```python
+from crewai_algovoi import AlgoVoiCrewAI
+from crewai import Agent, Task, Crew, LLM
+
+gate = AlgoVoiCrewAI(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+)
+
+# Gate a crew.kickoff() call
+result = gate.check(headers, body)
+if not result.requires_payment:
+    output = gate.crew_kickoff(my_crew, inputs={"topic": body["topic"]})
+
+# Or use flask_guard with an inputs extractor
+@app.route("/ai/research", methods=["POST"])
+def research():
+    return gate.flask_guard(my_crew, inputs_fn=lambda b: {"topic": b.get("topic", "")})
+```
+
+**Add AlgoVoiPaymentTool to any CrewAI agent:**
+
+```python
+tool = gate.as_tool(resource_fn=my_handler, tool_name="premium_kb")
+
+researcher = Agent(
+    role      = "Research Analyst",
+    goal      = "Use premium_kb to answer questions.",
+    backstory  = "Expert researcher.",
+    tools     = [tool],
+    llm       = LLM(model="openai/gpt-4o"),
+)
+```
+
+The tool uses `PaymentToolInput` (Pydantic `args_schema`) — the agent generates `{"query": "...", "payment_proof": "<base64>"}`, CrewAI validates it, and `_run(query, payment_proof)` is called directly as kwargs. Any `crewai.LLM` provider (OpenAI, Anthropic, Gemini, Bedrock, Groq, Together AI, …) is supported via the LiteLLM router.
+
+All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/crewai/README.md](./ai-agent-frameworks/crewai/README.md)
 
 ---
 
