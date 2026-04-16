@@ -40,7 +40,7 @@ Both packages read the same env vars:
 | `ALGOVOI_TENANT_ID` | ✅ | Tenant UUID |
 | `ALGOVOI_PAYOUT_ADDRESS` | ✅ | Default wallet for payouts |
 | `ALGOVOI_WEBHOOK_SECRET` | — | For `verify_webhook` |
-| `ALGOVOI_API_BASE` | — | Override the AlgoVoi API base URL (advanced) |
+| `ALGOVOI_API_BASE` | — | Override the AlgoVoi API base URL (optional) |
 
 **Auth is env-var only.** Secrets never pass through tool arguments — the MCP client never sees the API key.
 
