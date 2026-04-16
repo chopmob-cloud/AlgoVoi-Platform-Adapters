@@ -103,7 +103,8 @@ platform-adapters/
 │   ├── langchain/        # LangChain gate — any ChatModel, LCEL chain, RAG pipeline, or ReAct agent
 │   ├── llamaindex/       # LlamaIndex gate — QueryEngine, ChatEngine, RAG pipeline, or ReAct agent
 │   ├── crewai/           # CrewAI gate — crew.kickoff() + BaseTool for multi-agent crews
-│   └── huggingface/      # Hugging Face gate — InferenceClient, transformers pipeline, smolagents tool
+│   ├── huggingface/      # Hugging Face gate — InferenceClient, transformers pipeline, smolagents tool
+│   └── autogen/          # AutoGen gate — initiate_chat() + callable tool (0.2.x + 0.4.x)
 ├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
 ├── easy-digital-downloads/ # EDD 3.2+ WordPress plugin (digital downloads, licensing)
 ├── ghost/                # Ghost 5.x paid-membership grant-on-payment adapter
@@ -171,6 +172,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | LlamaIndex (AI agent frameworks) | — (MPP + AP2 + x402; gates LlamaIndex LLM, QueryEngine, ChatEngine, or ReAct agent tool — 80/80 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | CrewAI (AI agent frameworks) | — (MPP + AP2 + x402; gates crew.kickoff() + BaseTool with PaymentToolInput args_schema — 68/68 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | Hugging Face (AI agent frameworks) | — (MPP + AP2 + x402; gates InferenceClient.chat_completion(), transformers pipeline, and smolagents Tool — 83/83 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
+| AutoGen (AI agent frameworks) | — (MPP + AP2 + x402; gates initiate_chat() + callable FunctionTool-compatible tool; llm_config property; 0.2.x + 0.4.x — 86/86 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -541,6 +543,7 @@ Gate entire orchestration frameworks behind on-chain payment — not just a sing
 | **LlamaIndex** | `AlgoVoiLlamaIndex` + `AlgoVoiPaymentTool` | `pip install llama-index` | MPP, AP2, x402 | [ai-agent-frameworks/llamaindex/](./ai-agent-frameworks/llamaindex/) | **Available** — 80/80 tests, Comet-validated 16 Apr 2026 |
 | **CrewAI** | `AlgoVoiCrewAI` + `AlgoVoiPaymentTool` | `pip install crewai` | MPP, AP2, x402 | [ai-agent-frameworks/crewai/](./ai-agent-frameworks/crewai/) | **Available** — 68/68 tests, Comet-validated 16 Apr 2026 |
 | **Hugging Face** | `AlgoVoiHuggingFace` + `AlgoVoiPaymentTool` | `pip install huggingface-hub smolagents` | MPP, AP2, x402 | [ai-agent-frameworks/huggingface/](./ai-agent-frameworks/huggingface/) | **Available** — 83/83 tests, 16 Apr 2026 |
+| **AutoGen** | `AlgoVoiAutoGen` + `AlgoVoiPaymentTool` | `pip install pyautogen` | MPP, AP2, x402 | [ai-agent-frameworks/autogen/](./ai-agent-frameworks/autogen/) | **Available** — 86/86 tests, 16 Apr 2026 |
 
 ### LangChain — Quick start
 
@@ -741,6 +744,54 @@ agent.run("Use premium_kb to answer my question.")
 The tool accepts `query` and `payment_proof` (base64) as kwargs. Returns challenge JSON if proof absent/invalid; calls `resource_fn(query)` and returns the result if verified. Works with any `smolagents` agent type (`ToolCallingAgent`, `CodeAgent`, custom).
 
 All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/huggingface/README.md](./ai-agent-frameworks/huggingface/README.md)
+
+### AutoGen — Quick start
+
+```python
+from autogen_algovoi import AlgoVoiAutoGen
+
+gate = AlgoVoiAutoGen(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+)
+
+# Build agents from gate.llm_config
+from autogen import AssistantAgent, UserProxyAgent
+assistant  = AssistantAgent("assistant",  llm_config=gate.llm_config)
+user_proxy = UserProxyAgent("user_proxy", human_input_mode="NEVER",
+                             max_consecutive_auto_reply=3,
+                             code_execution_config=False)
+
+# Gate a conversation
+result = gate.check(headers, body)
+if not result.requires_payment:
+    output = gate.initiate_chat(assistant, user_proxy, body["message"], max_turns=5)
+```
+
+**Callable tool — AutoGen 0.2.x:**
+
+```python
+tool = gate.as_tool(resource_fn=my_handler, tool_name="premium_kb")
+
+@user_proxy.register_for_execution()
+@assistant.register_for_llm(description=tool.description, name=tool.name)
+def premium_kb(query: str, payment_proof: str = "") -> str:
+    return tool(query=query, payment_proof=payment_proof)
+```
+
+**AutoGen 0.4.x `FunctionTool`:**
+
+```python
+from autogen_core.tools import FunctionTool
+fn_tool = FunctionTool(tool, description=tool.description, name=tool.name)
+```
+
+All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/autogen/README.md](./ai-agent-frameworks/autogen/README.md)
 
 ---
 

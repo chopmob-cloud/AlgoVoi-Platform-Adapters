@@ -14,12 +14,12 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 | **LlamaIndex** | [llamaindex/](./llamaindex/) | `AlgoVoiLlamaIndex` + `AlgoVoiPaymentTool` | Yes — `BaseTool` + `ToolOutput`, ReAct-compatible | **Available** — 80/80 tests (16 Apr 2026, Comet-validated) |
 | **CrewAI** | [crewai/](./crewai/) | `AlgoVoiCrewAI` + `AlgoVoiPaymentTool` | Yes — `BaseTool` with `PaymentToolInput` args_schema | **Available** — 68/68 tests (16 Apr 2026, Comet-validated) |
 | **Hugging Face** | [huggingface/](./huggingface/) | `AlgoVoiHuggingFace` + `AlgoVoiPaymentTool` | Yes — `smolagents.Tool` subclass, `ToolCallingAgent`-compatible | **Available** — 83/83 tests (16 Apr 2026) |
+| **AutoGen** | [autogen/](./autogen/) | `AlgoVoiAutoGen` + `AlgoVoiPaymentTool` | Yes — callable tool, 0.2.x `register_for_execution` + 0.4.x `FunctionTool`-compatible | **Available** — 86/86 tests (16 Apr 2026) |
 
 **Planned** (one at a time):
 
 | Framework | Notes |
 |-----------|-------|
-| **AutoGen** | Gate AutoGen conversation flows |
 | **Semantic Kernel** | Gate SK functions and planners (.NET / Python) |
 
 ---
@@ -157,6 +157,51 @@ agent.run("Use premium_kb to answer my question.")
 ```
 
 See [huggingface/README.md](./huggingface/README.md) for the full reference.
+
+---
+
+## Quick start (AutoGen)
+
+```python
+from autogen_algovoi import AlgoVoiAutoGen
+
+gate = AlgoVoiAutoGen(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+    model             = "gpt-4o",
+)
+
+# Build agents from gate.llm_config
+from autogen import AssistantAgent, UserProxyAgent
+assistant  = AssistantAgent("assistant",  llm_config=gate.llm_config)
+user_proxy = UserProxyAgent("user_proxy", human_input_mode="NEVER",
+                             max_consecutive_auto_reply=3,
+                             code_execution_config=False)
+
+# Gate a conversation
+result = gate.check(headers, body)
+if not result.requires_payment:
+    output = gate.initiate_chat(assistant, user_proxy, body["message"], max_turns=5)
+
+# Drop a callable tool into agents (0.2.x)
+tool = gate.as_tool(resource_fn=lambda q: my_handler(q), tool_name="premium_kb")
+
+@user_proxy.register_for_execution()
+@assistant.register_for_llm(description=tool.description, name=tool.name)
+def premium_kb(query: str, payment_proof: str = "") -> str:
+    return tool(query=query, payment_proof=payment_proof)
+
+# AutoGen 0.4.x — wrap with FunctionTool
+from autogen_core.tools import FunctionTool
+fn_tool = FunctionTool(tool, description=tool.description, name=tool.name)
+```
+
+See [autogen/README.md](./autogen/README.md) for the full reference.
 
 ---
 
