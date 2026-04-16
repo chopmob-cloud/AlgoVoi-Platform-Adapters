@@ -31,6 +31,7 @@ Included:
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
 - **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 4 chains)
 - **AI agent framework adapters** for LangChain, LlamaIndex, CrewAI, Hugging Face, AutoGen, Semantic Kernel, Pydantic AI, DSPy, Vercel AI SDK, Google A2A, LangGraph, and Agno — gate LLM-agnostic pipelines, RAG chains, multi-agent crews, and autonomous agents (MPP + AP2 + x402, all 4 chains)
+- **MCP server** (`@algovoi/mcp-server` on npm, `algovoi-mcp` on PyPI) — exposes 8 AlgoVoi tools to Claude Desktop / Claude Code / Cursor / Windsurf so any MCP-aware AI assistant can create payment links, verify payments, and issue MPP/x402 challenges directly
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
 - **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 4 chains
 
@@ -57,6 +58,7 @@ platform-adapters/
 ├── ap2-adapter/          # AP2 server middleware (Python)
 ├── shopify-app/          # Private — Shopify payment app (Cloudflare Pages, not distributed)
 ├── x402-widget/          # Embeddable payment widget (Web Component)
+├── mcp-server/           # MCP server — @algovoi/mcp-server (npm) + algovoi-mcp (PyPI), 8 tools for Claude/Cursor
 │
 │   — Live-tested Python webhook adapters (4-chain verified 2026-04-14) —
 ├── allegro/              # Allegro marketplace (Poland / CEE)
@@ -187,6 +189,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Google A2A (AI agent frameworks) | — (MPP + AP2 + x402; JSON-RPC 2.0 server + client; message/send, tasks/get, tasks/cancel; agent card; payment tool — 84/84 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | LangGraph (AI agent frameworks) | — (MPP + AP2 + x402; gates compiled StateGraph invoke/stream; AlgoVoiPaymentTool is BaseTool subclass, ToolNode-compatible, create_react_agent-compatible; flask_guard + flask_agent convenience wrappers — 77/77 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | Agno (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agno Agent via pre_hooks, ASGI middleware for AgentOS, run_agent/arun_agent wrappers, flask_guard + flask_agent; AgnoPaymentRequired exception — 88/88 tests, Phase 1 13/13 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
+| MCP server (`@algovoi/mcp-server` + `algovoi-mcp`) | — (TypeScript + Python stdio MCP servers for Claude Desktop / Claude Code / Cursor / Windsurf; 8 tools: create_payment_link, verify_payment, prepare_extension_payment, verify_webhook, list_networks, generate_mpp_challenge, verify_mpp_receipt, verify_x402_proof; env-var auth only — 34 TS + 36 Py unit tests, stdio smoke verified 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
