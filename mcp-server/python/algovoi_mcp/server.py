@@ -2,9 +2,15 @@
 AlgoVoi MCP server — exposes 8 tools via stdio transport to any MCP client
 (Claude Desktop, Claude Code, Cursor, Windsurf).
 
-Uses the modern `mcp.server.lowlevel.Server` API — the same surface the
-official SDK's FastMCP and decorator-based servers compile down to — so this
-module stays readable even without the FastMCP DSL.
+Runtime pipeline (per tool call)::
+
+    raw dict args
+       ├─► schemas.py    (Pydantic v2 strict validation)   §4.1
+       ├─► tool_*()      (business logic; returns dict)
+       ├─► redact.scrub  (strip secrets + truncate strings) §4.2/4.4
+       └─► audit.log_call (structured JSON on stderr)       §10
+
+Sections cited above refer to ALGOVOI_MCP.md.
 """
 
 from __future__ import annotations
@@ -15,72 +21,95 @@ import hmac as _hmac
 import json
 import os
 import secrets
+import sys
 import time
+from time import monotonic
 from typing import Any, Optional
 
 import mcp.types as mcp_types
 from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
+from pydantic import BaseModel, ValidationError
 
+from .audit import log_call
 from .client import AlgoVoiClient
+from .idempotency import IdempotencyCache
 from .networks import CAIP2, NETWORK_INFO, NETWORKS, PROTOCOLS
+from .redact import scrub
+from .schemas import (
+    CreatePaymentLinkInput,
+    GenerateAp2MandateInput,
+    GenerateMppChallengeInput,
+    GenerateX402ChallengeInput,
+    ListNetworksInput,
+    PrepareExtensionPaymentInput,
+    SCHEMAS_BY_TOOL,
+    VerifyAp2PaymentInput,
+    VerifyMppReceiptInput,
+    VerifyPaymentInput,
+    VerifyWebhookInput,
+    VerifyX402ProofInput,
+)
 
-MAX_TOKEN_LEN    = 200
-MAX_TX_ID_LEN    = 200
 MAX_WEBHOOK_BODY = 64 * 1024
 
+# Process-wide idempotency cache — stdio server runs per-client, so this is
+# per Claude Desktop / Cursor session.
+_IDEMPOTENCY = IdempotencyCache()
 
-# ── Tool implementations ──────────────────────────────────────────────────────
 
-def tool_create_payment_link(client: AlgoVoiClient, args: dict) -> dict:
-    network = args.get("network")
-    if network not in NETWORKS:
-        raise ValueError(f"network must be one of {list(NETWORKS)} — got {network!r}")
+# ── Tool implementations (accept validated Pydantic models) ───────────────────
+
+def tool_create_payment_link(client: AlgoVoiClient, args: CreatePaymentLinkInput) -> dict:
+    # §6.4 — cached replay for the same idempotency key
+    if args.idempotency_key:
+        cached = _IDEMPOTENCY.get(args.idempotency_key)
+        if cached is not None:
+            return cached
+
     link = client.create_payment_link(
-        amount       = args["amount"],
-        currency     = args["currency"],
-        label        = args["label"],
-        network      = network,
-        redirect_url = args.get("redirect_url"),
+        amount          = args.amount,
+        currency        = args.currency,
+        label           = args.label,
+        network         = args.network,
+        redirect_url    = args.redirect_url,
+        idempotency_key = args.idempotency_key,
     )
-    return {
+    result = {
         "checkout_url":      link["checkout_url"],
         "token":             client.extract_token(link["checkout_url"]),
         "chain":             link.get("chain", "algorand-mainnet"),
         "amount_microunits": int(link.get("amount_microunits", 0)),
-        "amount_display":    f"{float(args['amount']):.2f} {args['currency'].upper()}",
+        "amount_display":    f"{args.amount:.2f} {args.currency.upper()}",
     }
+    if args.idempotency_key:
+        _IDEMPOTENCY.set(args.idempotency_key, result)
+    return result
 
 
-def tool_verify_payment(client: AlgoVoiClient, args: dict) -> dict:
-    token = args.get("token", "")
-    if not token or len(token) > MAX_TOKEN_LEN:
-        raise ValueError(f"token must be a non-empty string up to {MAX_TOKEN_LEN} chars")
-    tx_id = args.get("tx_id")
-    if tx_id:
-        if len(tx_id) > MAX_TX_ID_LEN:
-            raise ValueError(f"tx_id must be ≤ {MAX_TX_ID_LEN} chars")
-        resp = client.verify_extension_payment(token, tx_id)
+def tool_verify_payment(client: AlgoVoiClient, args: VerifyPaymentInput) -> dict:
+    if args.tx_id:
+        resp = client.verify_extension_payment(args.token, args.tx_id)
+        verified = resp.get("success") is True
         return {
-            "paid":   resp.get("success") is True,
-            "status": "verified" if resp.get("success") else "unverified",
-            "error":  resp.get("error"),
-            "raw":    resp,
+            "paid":   verified,
+            "status": "verified" if verified else "unverified",
+            "error":  resp.get("error") if not verified else None,
         }
-    return client.verify_hosted_return(token)
+    hosted = client.verify_hosted_return(args.token)
+    return {"paid": hosted["paid"], "status": hosted["status"]}
 
 
-def tool_prepare_extension_payment(client: AlgoVoiClient, args: dict) -> dict:
-    network = args.get("network")
-    if network not in ("algorand_mainnet", "voi_mainnet"):
-        raise ValueError('extension payments require network "algorand_mainnet" or "voi_mainnet"')
+def tool_prepare_extension_payment(
+    client: AlgoVoiClient, args: PrepareExtensionPaymentInput
+) -> dict:
     link = client.create_payment_link(
-        amount   = args["amount"],
-        currency = args["currency"],
-        label    = args["label"],
-        network  = network,
+        amount   = args.amount,
+        currency = args.currency,
+        label    = args.label,
+        network  = args.network,
     )
-    info = NETWORK_INFO[network]
+    info = NETWORK_INFO[args.network]
     return {
         "token":             client.extract_token(link["checkout_url"]),
         "checkout_url":      link["checkout_url"],
@@ -95,31 +124,33 @@ def tool_prepare_extension_payment(client: AlgoVoiClient, args: dict) -> dict:
     }
 
 
-def tool_verify_webhook(webhook_secret_env: Optional[str], args: dict) -> dict:
-    secret = args.get("webhook_secret") or webhook_secret_env
+def tool_verify_webhook(
+    webhook_secret_env: Optional[str], args: VerifyWebhookInput
+) -> dict:
+    # webhook_secret never flows through tool arguments — only env var.
+    secret = webhook_secret_env
     if not secret:
-        return {"valid": False, "payload": None,
-                "error": "webhook_secret not configured in env or passed as argument"}
-    raw_body  = args.get("raw_body", "")
-    signature = args.get("signature", "")
-    if not signature or not isinstance(signature, str):
-        return {"valid": False, "payload": None, "error": "missing signature"}
-    body_bytes = raw_body.encode("utf-8") if isinstance(raw_body, str) else bytes(raw_body)
+        return {
+            "valid":   False,
+            "payload": None,
+            "error":   "webhook_secret not configured (ALGOVOI_WEBHOOK_SECRET env var)",
+        }
+    body_bytes = args.raw_body.encode("utf-8")
     if len(body_bytes) > MAX_WEBHOOK_BODY:
         return {"valid": False, "payload": None, "error": "body exceeds 64 KiB cap"}
 
     expected = base64.b64encode(
         _hmac.new(secret.encode(), body_bytes, hashlib.sha256).digest()
     ).decode()
-    if not _hmac.compare_digest(expected, signature):
+    if not _hmac.compare_digest(expected, args.signature):
         return {"valid": False, "payload": None, "error": "signature mismatch"}
     try:
-        return {"valid": True, "payload": json.loads(raw_body), "error": None}
+        return {"valid": True, "payload": json.loads(args.raw_body), "error": None}
     except json.JSONDecodeError:
         return {"valid": False, "payload": None, "error": "body is not valid JSON"}
 
 
-def tool_list_networks(args: dict) -> dict:
+def tool_list_networks(_: ListNetworksInput) -> dict:
     return {
         "networks":  [{"key": k, **v} for k, v in NETWORK_INFO.items()],
         "protocols": list(PROTOCOLS),
@@ -127,16 +158,11 @@ def tool_list_networks(args: dict) -> dict:
     }
 
 
-def tool_generate_mpp_challenge(client: AlgoVoiClient, args: dict) -> dict:
-    resource_id       = args["resource_id"]
-    amount_microunits = int(args["amount_microunits"])
-    nets              = args.get("networks") or ["algorand_mainnet"]
-    expires_in        = int(args.get("expires_in_seconds", 300))
-
-    for n in nets:
-        if n not in NETWORKS:
-            raise ValueError(f"unsupported network in networks[]: {n}")
-
+def tool_generate_mpp_challenge(
+    client: AlgoVoiClient, args: GenerateMppChallengeInput
+) -> dict:
+    nets       = list(args.networks or ["algorand_mainnet"])
+    expires_in = args.expires_in_seconds or 300
     expires_at = time.strftime(
         "%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + expires_in)
     )
@@ -147,7 +173,7 @@ def tool_generate_mpp_challenge(client: AlgoVoiClient, args: dict) -> dict:
             "network":  CAIP2[n],
             "asset":    NETWORK_INFO[n]["asset_id"],
             "receiver": client.payout_address,
-            "amount":   str(amount_microunits),
+            "amount":   str(args.amount_microunits),
             "decimals": NETWORK_INFO[n]["decimals"],
         }
         for n in nets
@@ -156,17 +182,18 @@ def tool_generate_mpp_challenge(client: AlgoVoiClient, args: dict) -> dict:
     request_b64 = base64.b64encode(
         json.dumps({
             "intent":   "charge",
-            "resource": resource_id,
+            "resource": args.resource_id,
             "accepts":  accepts,
             "expires":  expires_at,
         }).encode()
     ).decode()
 
-    # Challenge ID = truncated HMAC of (tenant | resource | expires) with a
-    # per-challenge random key — mirrors MppGate's id-construction pattern.
+    # Challenge ID: HMAC(random_key, tenant|resource|expires)[:16]
     id_key    = secrets.token_hex(16)
-    id_input  = f"{client.tenant_id}|{resource_id}|{expires_at}"
-    challenge_id = _hmac.new(id_key.encode(), id_input.encode(), hashlib.sha256).hexdigest()[:16]
+    id_input  = f"{client.tenant_id}|{args.resource_id}|{expires_at}"
+    challenge_id = _hmac.new(
+        id_key.encode(), id_input.encode(), hashlib.sha256
+    ).hexdigest()[:16]
 
     www_authenticate = (
         f'Payment realm="AlgoVoi", id="{challenge_id}", method="algovoi", '
@@ -179,8 +206,8 @@ def tool_generate_mpp_challenge(client: AlgoVoiClient, args: dict) -> dict:
     return {
         "status_code": 402,
         "headers": {
-            "WWW-Authenticate":    www_authenticate,
-            "X-Payment-Required":  x_payment_required,
+            "WWW-Authenticate":   www_authenticate,
+            "X-Payment-Required": x_payment_required,
         },
         "challenge_id": challenge_id,
         "accepts":      accepts,
@@ -192,36 +219,119 @@ def tool_generate_mpp_challenge(client: AlgoVoiClient, args: dict) -> dict:
     }
 
 
-def tool_verify_mpp_receipt(client: AlgoVoiClient, args: dict) -> dict:
-    resource_id = args.get("resource_id")
-    tx_id       = args.get("tx_id")
-    network     = args.get("network")
-    if not resource_id or not tx_id:
-        raise ValueError("resource_id and tx_id are required")
-    if network not in NETWORKS:
-        raise ValueError(f"unsupported network: {network}")
-    resp = client.verify_mpp_receipt(resource_id, tx_id, network)
+def tool_verify_mpp_receipt(
+    client: AlgoVoiClient, args: VerifyMppReceiptInput
+) -> dict:
+    resp = client.verify_mpp_receipt(args.resource_id, args.tx_id, args.network)
+    return {"verified": bool(resp.get("verified") or resp.get("valid"))}
+
+
+def tool_verify_x402_proof(
+    client: AlgoVoiClient, args: VerifyX402ProofInput
+) -> dict:
+    resp = client.verify_x402_proof(args.resource_id, args.tx_id, args.network)
+    return {"verified": bool(resp.get("verified") or resp.get("valid"))}
+
+
+# ── 9. generate_x402_challenge ────────────────────────────────────────────────
+
+def tool_generate_x402_challenge(
+    client: AlgoVoiClient, args: GenerateX402ChallengeInput
+) -> dict:
+    network    = args.network or "algorand_mainnet"
+    net_info   = NETWORK_INFO[network]
+    expires_in = args.expires_in_seconds or 300
+    expires_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + expires_in))
+
+    payload = {
+        "version":           "1",
+        "scheme":            "exact",
+        "networkId":         CAIP2[network],
+        "maxAmountRequired": str(args.amount_microunits),
+        "resource":          args.resource,
+        "description":       args.description or "",
+        "mimeType":          "application/json",
+        "payTo":             client.payout_address,
+        "maxTimeoutSeconds": expires_in,
+        "asset":             net_info["asset_id"],
+        "decimals":          net_info["decimals"],
+        "extra":             {},
+    }
+    x_payment_required = base64.b64encode(json.dumps(payload).encode()).decode()
+
     return {
-        "verified": bool(resp.get("verified") or resp.get("valid")),
-        "raw":      resp,
+        "status_code": 402,
+        "headers": {
+            "X-Payment-Required": x_payment_required,
+        },
+        "payload": payload,
+        "expires": expires_at,
+        "note": (
+            "Return this 402 response from your API. The client must pay on-chain "
+            "and re-send with X-Payment: <base64-proof>, then verify with verify_x402_proof."
+        ),
     }
 
 
-def tool_verify_x402_proof(client: AlgoVoiClient, args: dict) -> dict:
-    proof   = args.get("proof")
-    network = args.get("network")
-    if not proof:
-        raise ValueError("proof is required (base64-encoded x402 payment payload)")
-    if network not in NETWORKS:
-        raise ValueError(f"unsupported network: {network}")
-    resp = client.verify_x402_proof(proof, network)
+# ── 10. generate_ap2_mandate ──────────────────────────────────────────────────
+
+def tool_generate_ap2_mandate(
+    client: AlgoVoiClient, args: GenerateAp2MandateInput
+) -> dict:
+    network    = args.network or "algorand_mainnet"
+    net_info   = NETWORK_INFO[network]
+    expires_in = args.expires_in_seconds or 300
+    expires_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + expires_in))
+
+    id_key     = secrets.token_hex(16)
+    id_input   = f"{client.tenant_id}|{args.resource_id}|{expires_at}"
+    mandate_id = _hmac.new(
+        id_key.encode(), id_input.encode(), hashlib.sha256
+    ).hexdigest()[:16]
+
+    mandate = {
+        "version":    "0.1",
+        "type":       "PaymentMandate",
+        "mandate_id": mandate_id,
+        "payee": {
+            "address":  client.payout_address,
+            "network":  CAIP2[network],
+            "asset_id": net_info["asset_id"],
+        },
+        "amount": {
+            "value":    str(args.amount_microunits),
+            "decimals": net_info["decimals"],
+        },
+        "resource":    args.resource_id,
+        "description": args.description or "",
+        "expires":     expires_at,
+        "protocol":    "algovoi-ap2/0.1",
+    }
+    mandate_b64 = base64.b64encode(json.dumps(mandate).encode()).decode()
+
     return {
-        "verified": bool(resp.get("verified") or resp.get("valid")),
-        "raw":      resp,
+        "mandate_id":  mandate_id,
+        "mandate":     mandate,
+        "mandate_b64": mandate_b64,
+        "expires":     expires_at,
+        "note": (
+            "Include mandate_b64 in the AP2-Payment-Required header. "
+            "The paying agent submits on-chain, then call verify_ap2_payment "
+            "with the mandate_id and tx_id."
+        ),
     }
 
 
-# ── Tool schemas (mirrors typescript/src/tools.ts) ────────────────────────────
+# ── 11. verify_ap2_payment ────────────────────────────────────────────────────
+
+def tool_verify_ap2_payment(
+    client: AlgoVoiClient, args: VerifyAp2PaymentInput
+) -> dict:
+    resp = client.verify_ap2_payment(args.payment_id, args.tx_id, args.network)
+    return {"verified": bool(resp.get("verified") or resp.get("valid"))}
+
+
+# ── Tool schemas (MCP wire format — JSON Schema) ──────────────────────────────
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -234,13 +344,15 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "amount":   {"type": "number",  "description": "Payment amount in fiat units (e.g. 5.00 for $5.00)."},
-                "currency": {"type": "string",  "description": "ISO currency code — e.g. USD, GBP, EUR."},
-                "label":    {"type": "string",  "description": 'Short order label (e.g. "Order #123").'},
-                "network":  {"type": "string",  "enum": list(NETWORKS), "description": "Preferred blockchain network."},
-                "redirect_url": {"type": "string", "description": "https URL to return the customer to after payment (optional)."},
+                "amount":          {"type": "number",  "description": "Payment amount in fiat units (e.g. 5.00 for $5.00)."},
+                "currency":        {"type": "string",  "description": "ISO currency code — e.g. USD, GBP, EUR."},
+                "label":           {"type": "string",  "description": 'Short order label (e.g. "Order #123").'},
+                "network":         {"type": "string",  "enum": list(NETWORKS), "description": "Preferred blockchain network."},
+                "redirect_url":    {"type": "string", "description": "https URL to return the customer to after payment (optional)."},
+                "idempotency_key": {"type": "string", "description": "16–64 char token — duplicate calls within 24h return the same checkout URL."},
             },
-            "required": ["amount", "currency", "label", "network"],
+            "required":             ["amount", "currency", "label", "network"],
+            "additionalProperties": False,
         },
     },
     {
@@ -256,7 +368,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "token": {"type": "string", "description": "Short token returned by create_payment_link."},
                 "tx_id": {"type": "string", "description": "Optional on-chain transaction ID to verify against the token."},
             },
-            "required": ["token"],
+            "required":             ["token"],
+            "additionalProperties": False,
         },
     },
     {
@@ -274,15 +387,16 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "label":    {"type": "string"},
                 "network":  {"type": "string", "enum": ["algorand_mainnet", "voi_mainnet"]},
             },
-            "required": ["amount", "currency", "label", "network"],
+            "required":             ["amount", "currency", "label", "network"],
+            "additionalProperties": False,
         },
     },
     {
         "name": "verify_webhook",
         "description": (
             "Verify an AlgoVoi webhook HMAC-SHA256 signature. Returns {valid: true, payload: "
-            "<parsed-json>} if the signature matches the configured webhook secret. Never passes "
-            "the secret through the transcript."
+            "<parsed-json>} if the signature matches the server's configured webhook secret "
+            "(ALGOVOI_WEBHOOK_SECRET env var — never passed as a tool argument)."
         ),
         "inputSchema": {
             "type": "object",
@@ -290,7 +404,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "raw_body":  {"type": "string", "description": "Raw webhook POST body as a UTF-8 string."},
                 "signature": {"type": "string", "description": "Base64 signature from the X-AlgoVoi-Signature header."},
             },
-            "required": ["raw_body", "signature"],
+            "required":             ["raw_body", "signature"],
+            "additionalProperties": False,
         },
     },
     {
@@ -299,7 +414,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "List the blockchain networks AlgoVoi supports, with asset IDs, decimals, and "
             "CAIP-2 identifiers. Offline tool — no API call."
         ),
-        "inputSchema": {"type": "object", "properties": {}},
+        "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
     {
         "name": "generate_mpp_challenge",
@@ -320,7 +435,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 },
                 "expires_in_seconds": {"type": "integer", "description": "Challenge TTL; default 300."},
             },
-            "required": ["resource_id", "amount_microunits"],
+            "required":             ["resource_id", "amount_microunits"],
+            "additionalProperties": False,
         },
     },
     {
@@ -337,81 +453,224 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "tx_id":       {"type": "string"},
                 "network":     {"type": "string", "enum": list(NETWORKS)},
             },
-            "required": ["resource_id", "tx_id", "network"],
+            "required":             ["resource_id", "tx_id", "network"],
+            "additionalProperties": False,
         },
     },
     {
         "name": "verify_x402_proof",
         "description": (
-            "Verify a base64-encoded x402 payment proof against a given network — returns "
-            "{verified: true} if the proof corresponds to a confirmed on-chain transfer to the "
-            "tenant's payout address."
+            "Verify an x402 on-chain payment for a resource — returns {verified: true} if the "
+            "transaction paid the correct amount to the tenant's payout address on the given network."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
-                "proof":   {"type": "string", "description": "Base64 payment payload from X-Payment header."},
-                "network": {"type": "string", "enum": list(NETWORKS)},
+                "resource_id": {"type": "string", "description": "Resource identifier the payment was for."},
+                "tx_id":       {"type": "string", "description": "On-chain transaction ID submitted by the paying client."},
+                "network":     {"type": "string", "enum": list(NETWORKS)},
             },
-            "required": ["proof", "network"],
+            "required":             ["resource_id", "tx_id", "network"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "generate_x402_challenge",
+        "description": (
+            "Generate an x402 (spec v1) 402 Payment Required response for gating a resource. "
+            "Returns the X-Payment-Required header value and full payload. The client must pay "
+            "on-chain and re-send with X-Payment: <base64-proof>, then verify with verify_x402_proof."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "resource":          {"type": "string",  "description": "Resource URL or identifier being gated."},
+                "amount_microunits": {"type": "integer", "description": "Amount in asset micro-units (1 USDC = 1_000_000)."},
+                "network":           {"type": "string",  "enum": list(NETWORKS), "description": "Network to accept. Defaults to algorand_mainnet."},
+                "expires_in_seconds": {"type": "integer", "description": "Challenge TTL in seconds; default 300."},
+                "description":       {"type": "string",  "description": "Optional human-readable description shown in the payment prompt."},
+            },
+            "required":             ["resource", "amount_microunits"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "generate_ap2_mandate",
+        "description": (
+            "Generate an AP2 v0.1 PaymentMandate for agent-to-agent payment. Returns the mandate "
+            "object and its base64 encoding for the AP2-Payment-Required header. After the paying "
+            "agent submits on-chain, call verify_ap2_payment to confirm."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "resource_id":       {"type": "string",  "description": "Logical resource or task identifier."},
+                "amount_microunits": {"type": "integer", "description": "Amount in asset micro-units (1 USDC = 1_000_000)."},
+                "network":           {"type": "string",  "enum": list(NETWORKS), "description": "Network to accept. Defaults to algorand_mainnet."},
+                "expires_in_seconds": {"type": "integer", "description": "Mandate TTL in seconds; default 300."},
+                "description":       {"type": "string",  "description": "Optional description of the resource or task."},
+            },
+            "required":             ["resource_id", "amount_microunits"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "verify_ap2_payment",
+        "description": (
+            "Confirm an AP2 on-chain payment — returns {verified: true} if the transaction "
+            "satisfies the mandate's amount and recipient. Call after the paying agent submits on-chain."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "payment_id": {"type": "string", "description": "payment_id (mandate_id) returned by generate_ap2_mandate."},
+                "tx_id":      {"type": "string", "description": "On-chain transaction ID submitted by the paying agent."},
+                "network":    {"type": "string", "enum": list(NETWORKS)},
+            },
+            "required":             ["payment_id", "tx_id", "network"],
+            "additionalProperties": False,
         },
     },
 ]
 
 
-# ── Server factory ────────────────────────────────────────────────────────────
+# ── Tool filtering (MCP_ENABLED_TOOLS env var) ────────────────────────────────
 
-def build_server(client: AlgoVoiClient, webhook_secret_env: Optional[str]) -> Server:
-    """Construct an MCP ``Server`` with all 8 tools wired up."""
-    server = Server("algovoi-mcp-server")
+def _parse_enabled_tools(raw: Optional[str]) -> Optional[set[str]]:
+    """Parse the comma-separated allow-list. ``None`` / empty = all tools."""
+    if not raw or not raw.strip():
+        return None
+    names = {t.strip() for t in raw.split(",") if t.strip()}
+    known = {t["name"] for t in TOOL_SCHEMAS}
+    unknown = names - known
+    if unknown:
+        sys.stderr.write(
+            f"[algovoi-mcp] warning: MCP_ENABLED_TOOLS contains unknown "
+            f"tools: {sorted(unknown)} — ignoring\n"
+        )
+    return names & known
 
-    @server.list_tools()
-    async def _list_tools() -> list[mcp_types.Tool]:
-        return [
-            mcp_types.Tool(
-                name=t["name"],
-                description=t["description"],
-                inputSchema=t["inputSchema"],
-            )
-            for t in TOOL_SCHEMAS
-        ]
 
-    @server.call_tool()
-    async def _call_tool(name: str, arguments: dict) -> list[mcp_types.TextContent]:
-        try:
-            result = _dispatch(client, webhook_secret_env, name, arguments or {})
-            payload = json.dumps(result, indent=2, default=str)
-            return [mcp_types.TextContent(type="text", text=payload)]
-        except Exception as exc:
-            err = json.dumps({"error": str(exc)}, indent=2)
-            return [mcp_types.TextContent(type="text", text=err)]
-
-    return server
-
+# ── Dispatch (validate → run → redact → audit) ────────────────────────────────
 
 def _dispatch(
     client: AlgoVoiClient,
     webhook_secret_env: Optional[str],
     name: str,
-    args: dict,
+    raw_args: dict,
 ) -> dict:
+    """Validate args against the schema, run the tool, and redact output."""
+    schema_cls = SCHEMAS_BY_TOOL.get(name)
+    if schema_cls is None:
+        raise ValueError(f"unknown tool: {name}")
+
+    args: BaseModel = schema_cls.model_validate(raw_args)
+
     if name == "create_payment_link":
-        return tool_create_payment_link(client, args)
-    if name == "verify_payment":
-        return tool_verify_payment(client, args)
-    if name == "prepare_extension_payment":
-        return tool_prepare_extension_payment(client, args)
-    if name == "verify_webhook":
-        return tool_verify_webhook(webhook_secret_env, args)
-    if name == "list_networks":
-        return tool_list_networks(args)
-    if name == "generate_mpp_challenge":
-        return tool_generate_mpp_challenge(client, args)
-    if name == "verify_mpp_receipt":
-        return tool_verify_mpp_receipt(client, args)
-    if name == "verify_x402_proof":
-        return tool_verify_x402_proof(client, args)
-    raise ValueError(f"unknown tool: {name}")
+        result = tool_create_payment_link(client, args)         # type: ignore[arg-type]
+    elif name == "verify_payment":
+        result = tool_verify_payment(client, args)              # type: ignore[arg-type]
+    elif name == "prepare_extension_payment":
+        result = tool_prepare_extension_payment(client, args)   # type: ignore[arg-type]
+    elif name == "verify_webhook":
+        result = tool_verify_webhook(webhook_secret_env, args)  # type: ignore[arg-type]
+    elif name == "list_networks":
+        result = tool_list_networks(args)                       # type: ignore[arg-type]
+    elif name == "generate_mpp_challenge":
+        result = tool_generate_mpp_challenge(client, args)      # type: ignore[arg-type]
+    elif name == "verify_mpp_receipt":
+        result = tool_verify_mpp_receipt(client, args)          # type: ignore[arg-type]
+    elif name == "verify_x402_proof":
+        result = tool_verify_x402_proof(client, args)              # type: ignore[arg-type]
+    elif name == "generate_x402_challenge":
+        result = tool_generate_x402_challenge(client, args)        # type: ignore[arg-type]
+    elif name == "generate_ap2_mandate":
+        result = tool_generate_ap2_mandate(client, args)           # type: ignore[arg-type]
+    elif name == "verify_ap2_payment":
+        result = tool_verify_ap2_payment(client, args)             # type: ignore[arg-type]
+    else:
+        raise ValueError(f"unknown tool: {name}")
+
+    # §4.2 / §4.4 — redact sensitive keys + truncate long strings
+    return scrub(result)
+
+
+# ── Server factory ────────────────────────────────────────────────────────────
+
+def build_server(
+    client: AlgoVoiClient,
+    webhook_secret_env: Optional[str],
+    enabled_tools: Optional[set[str]] = None,
+) -> Server:
+    """Construct an MCP ``Server`` with the permitted subset of tools."""
+    server  = Server("algovoi-mcp-server")
+    allowed = enabled_tools if enabled_tools is not None else {t["name"] for t in TOOL_SCHEMAS}
+    schemas = [t for t in TOOL_SCHEMAS if t["name"] in allowed]
+
+    @server.list_tools()
+    async def _list_tools() -> list[mcp_types.Tool]:
+        return [
+            mcp_types.Tool(
+                name        = t["name"],
+                description = t["description"],
+                inputSchema = t["inputSchema"],
+            )
+            for t in schemas
+        ]
+
+    @server.call_tool()
+    async def _call_tool(name: str, arguments: dict) -> list[mcp_types.TextContent]:
+        if name not in allowed:
+            err = json.dumps(
+                {"error": f"tool '{name}' is not enabled (MCP_ENABLED_TOOLS)"},
+                indent=2,
+            )
+            log_call(
+                tool_name   = name,
+                args        = arguments or {},
+                status      = "rejected",
+                duration_ms = 0.0,
+                error_code  = "ToolDisabled",
+            )
+            return [mcp_types.TextContent(type="text", text=err)]
+
+        start = monotonic()
+        try:
+            result = _dispatch(client, webhook_secret_env, name, arguments or {})
+            log_call(
+                tool_name   = name,
+                args        = arguments or {},
+                status      = "ok",
+                duration_ms = (monotonic() - start) * 1000,
+            )
+            payload = json.dumps(result, indent=2, default=str)
+            return [mcp_types.TextContent(type="text", text=payload)]
+        except ValidationError as exc:
+            log_call(
+                tool_name   = name,
+                args        = arguments or {},
+                status      = "rejected",
+                duration_ms = (monotonic() - start) * 1000,
+                error_code  = "ValidationError",
+            )
+            err = json.dumps(
+                {"error": "invalid arguments", "detail": exc.errors()},
+                indent=2,
+                default=str,
+            )
+            return [mcp_types.TextContent(type="text", text=err)]
+        except Exception as exc:
+            log_call(
+                tool_name   = name,
+                args        = arguments or {},
+                status      = "error",
+                duration_ms = (monotonic() - start) * 1000,
+                error_code  = type(exc).__name__,
+            )
+            err = json.dumps({"error": str(exc)}, indent=2)
+            return [mcp_types.TextContent(type="text", text=err)]
+
+    return server
 
 
 # ── Stdio entry ───────────────────────────────────────────────────────────────
@@ -423,6 +682,7 @@ async def run_stdio() -> None:
     payout_address = _require_env("ALGOVOI_PAYOUT_ADDRESS")
     api_base       = os.environ.get("ALGOVOI_API_BASE", "https://api1.ilovechicken.co.uk")
     webhook_secret = os.environ.get("ALGOVOI_WEBHOOK_SECRET")
+    enabled_tools  = _parse_enabled_tools(os.environ.get("MCP_ENABLED_TOOLS"))
 
     client = AlgoVoiClient(
         api_base       = api_base,
@@ -430,12 +690,12 @@ async def run_stdio() -> None:
         tenant_id      = tenant_id,
         payout_address = payout_address,
     )
-    server = build_server(client, webhook_secret)
+    server = build_server(client, webhook_secret, enabled_tools)
 
-    import sys
+    count = len(enabled_tools) if enabled_tools is not None else len(TOOL_SCHEMAS)
     sys.stderr.write(
-        f"[algovoi-mcp] connected on stdio — {len(TOOL_SCHEMAS)} tools ready, "
-        f"api_base={api_base}\n"
+        f"[algovoi-mcp] connected on stdio — {count} tools ready, "
+        f"webhook_secret={'set' if webhook_secret else 'unset'}\n"
     )
 
     async with stdio_server() as (read, write):
@@ -445,7 +705,6 @@ async def run_stdio() -> None:
 def _require_env(name: str) -> str:
     v = os.environ.get(name, "").strip()
     if not v:
-        import sys
         sys.stderr.write(
             f"\n[algovoi-mcp] missing required env var: {name}\n"
             "Set ALGOVOI_API_KEY, ALGOVOI_TENANT_ID, and ALGOVOI_PAYOUT_ADDRESS.\n\n"

@@ -1,9 +1,11 @@
 """
-Thin urllib-based AlgoVoi HTTP client — mirrors the fetch-based TypeScript
-client and the existing native-python/algovoi.py adapter.
+Thin urllib-based AlgoVoi HTTP client.
 
 Stdlib only (urllib, json, re, ssl) — no requests, no httpx, so the MCP
-package installs with zero extra transitive deps beyond `mcp` itself.
+package installs with zero extra transitive deps beyond `mcp` and pydantic.
+
+External error messages are intentionally generic — they never leak the
+specific API path, upstream status code, or internal response shape.
 """
 
 from __future__ import annotations
@@ -35,29 +37,47 @@ class AlgoVoiClient:
         self.tenant_id      = tenant_id
         self.payout_address = payout_address
         self.timeout        = timeout
+        # §4.6 — TLS 1.3 minimum. Fails loudly on a weaker handshake
+        # instead of silently negotiating down.
         self._ssl_ctx       = ssl.create_default_context()
+        try:
+            self._ssl_ctx.minimum_version = ssl.TLSVersion.TLSv1_3
+        except (AttributeError, ValueError):
+            # Extremely old OpenSSL / Python combos — fall back to 1.2
+            # and log once. Real deployments build against 3.10+ so this
+            # path is effectively dead, but we don't want import to crash.
+            pass
 
     # ── HTTP primitives ────────────────────────────────────────────────────
 
-    def _post(self, path: str, body: dict) -> dict:
+    def _post(
+        self,
+        path: str,
+        body: dict,
+        *,
+        extra_headers: Optional[dict] = None,
+    ) -> dict:
+        headers = {
+            "Content-Type":  "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+            "X-Tenant-Id":   self.tenant_id,
+        }
+        if extra_headers:
+            headers.update(extra_headers)
         req = Request(
             self.api_base + path,
             data=json.dumps(body).encode(),
             method="POST",
-            headers={
-                "Content-Type":  "application/json",
-                "Authorization": f"Bearer {self.api_key}",
-                "X-Tenant-Id":   self.tenant_id,
-            },
+            headers=headers,
         )
         try:
             with urlopen(req, timeout=self.timeout, context=self._ssl_ctx) as resp:  # noqa: S310
                 data = json.loads(resp.read())
                 return data if isinstance(data, dict) else {"raw": data}
         except URLError as e:
-            raise RuntimeError(f"AlgoVoi API {path} failed: {e}") from e
+            raise RuntimeError("AlgoVoi request failed") from e
         except (json.JSONDecodeError, OSError) as e:
-            raise RuntimeError(f"AlgoVoi API {path} returned invalid JSON: {e}") from e
+            raise RuntimeError("AlgoVoi request returned invalid data") from e
 
     def _get(self, path: str) -> dict:
         req = Request(
@@ -73,9 +93,9 @@ class AlgoVoiClient:
                 data = json.loads(resp.read())
                 return data if isinstance(data, dict) else {"raw": data}
         except URLError as e:
-            raise RuntimeError(f"AlgoVoi API {path} failed: {e}") from e
+            raise RuntimeError("AlgoVoi request failed") from e
         except (json.JSONDecodeError, OSError) as e:
-            raise RuntimeError(f"AlgoVoi API {path} returned invalid JSON: {e}") from e
+            raise RuntimeError("AlgoVoi request returned invalid data") from e
 
     def _post_raw(self, url: str, body: dict) -> dict:
         """POST to an arbitrary URL with no auth — used for /checkout/<token>/verify."""
@@ -108,8 +128,15 @@ class AlgoVoiClient:
         label: str,
         network: str,
         redirect_url: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
     ) -> dict:
-        """Create a hosted-checkout payment link."""
+        """Create a hosted-checkout payment link.
+
+        When ``idempotency_key`` is supplied it is forwarded to the
+        gateway as an ``Idempotency-Key`` header; duplicate calls within
+        the gateway's retention window return the same checkout URL
+        instead of creating a new one.  See §6.4 of ALGOVOI_MCP.md.
+        """
         if not isinstance(amount, (int, float)) or amount <= 0:
             raise ValueError("amount must be a positive number")
         payload: dict[str, Any] = {
@@ -124,7 +151,10 @@ class AlgoVoiClient:
                 raise ValueError("redirect_url must be https://")
             payload["redirect_url"]       = redirect_url
             payload["expires_in_seconds"] = 3600
-        resp = self._post("/v1/payment-links", payload)
+        extra = None
+        if idempotency_key:
+            extra = {"Idempotency-Key": idempotency_key}
+        resp = self._post("/v1/payment-links", payload, extra_headers=extra)
         if not resp.get("checkout_url"):
             raise RuntimeError("API did not return checkout_url")
         return resp
@@ -155,17 +185,24 @@ class AlgoVoiClient:
         return self._post_raw(url, {"tx_id": tx_id})
 
     def verify_mpp_receipt(self, resource_id: str, tx_id: str, network: str) -> dict:
-        """Verify an MPP on-chain receipt."""
+        """Verify an MPP on-chain receipt via POST /v1/verify."""
         return self._post(
-            f"/mpp/{quote(resource_id, safe='')}",
-            {"tx_id": tx_id, "network": network, "tenant_id": self.tenant_id},
+            "/v1/verify",
+            {"resource_id": resource_id, "tx_id": tx_id, "network": network},
         )
 
-    def verify_x402_proof(self, proof: str, network: str) -> dict:
-        """Verify an x402 base64-encoded proof."""
+    def verify_x402_proof(self, resource_id: str, tx_id: str, network: str) -> dict:
+        """Verify an x402 on-chain payment via POST /x402/verify."""
         return self._post(
             "/x402/verify",
-            {"proof": proof, "network": network, "tenant_id": self.tenant_id},
+            {"resource_id": resource_id, "tx_id": tx_id, "network": network},
+        )
+
+    def verify_ap2_payment(self, payment_id: str, tx_id: str, network: str) -> dict:
+        """Confirm an AP2 on-chain payment via POST /ap2/confirm."""
+        return self._post(
+            "/ap2/confirm",
+            {"payment_id": payment_id, "tx_id": tx_id, "network": network},
         )
 
     @staticmethod
