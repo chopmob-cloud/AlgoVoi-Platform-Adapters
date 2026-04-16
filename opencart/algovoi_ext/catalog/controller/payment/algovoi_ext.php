@@ -121,11 +121,11 @@ class AlgovoiExt extends \Opencart\System\Engine\Controller {
         $memo     = '';
 
         if ($html) {
-            if (preg_match('/<div[^>]+id=["\']addr["\'][^>]*>([A-Z2-7]{58})</', $html, $m)) {
+            if (preg_match('/onclick="copyText\(\'([A-Z2-7]{58})\'/', $html, $m)) {
                 $receiver = $m[1];
             }
-            if (preg_match('/<div[^>]+id=["\']memo["\'][^>]*>(algovoi:[^<]+)</', $html, $m)) {
-                $memo = trim($m[1]);
+            if (preg_match('/onclick="copyText\(\'(algovoi:[A-Za-z0-9_-]+)\'/', $html, $m)) {
+                $memo = $m[1];
             }
         }
 

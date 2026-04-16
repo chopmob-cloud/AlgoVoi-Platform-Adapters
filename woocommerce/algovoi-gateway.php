@@ -124,10 +124,12 @@ function algovoi_parse_checkout($url, $api_base = '') {
     $r = wp_remote_get($url, array('timeout' => 15, 'sslverify' => true));
     if (is_wp_error($r) || wp_remote_retrieve_response_code($r) !== 200) return null;
     $html = wp_remote_retrieve_body($r);
-    if (!preg_match('/<div[^>]+id=["\']addr["\'][^>]*>([A-Z2-7]{58})</', $html, $m)) return null;
+    // Match: onclick="copyText('ADDR58CHARS', this)" — address is the first 58-char base32 value
+    if (!preg_match('/onclick="copyText\(\'([A-Z2-7]{58})\'/', $html, $m)) return null;
     $receiver = $m[1];
-    if (!preg_match('/<div[^>]+id=["\']memo["\'][^>]*>(algovoi:[^<]+)</', $html, $m)) return null;
-    $memo = trim($m[1]);
+    // Match: onclick="copyText('algovoi:TOKEN', this)"
+    if (!preg_match('/onclick="copyText\(\'(algovoi:[A-Za-z0-9_-]+)\'/', $html, $m)) return null;
+    $memo = $m[1];
     return array('receiver' => $receiver, 'memo' => $memo);
 }
 
