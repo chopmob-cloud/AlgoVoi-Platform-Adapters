@@ -680,7 +680,7 @@ async def run_stdio() -> None:
     api_key        = _require_env("ALGOVOI_API_KEY")
     tenant_id      = _require_env("ALGOVOI_TENANT_ID")
     payout_address = _require_env("ALGOVOI_PAYOUT_ADDRESS")
-    api_base       = os.environ.get("ALGOVOI_API_BASE", "https://api1.ilovechicken.co.uk")
+    api_base       = _require_env("ALGOVOI_API_BASE")
     webhook_secret = os.environ.get("ALGOVOI_WEBHOOK_SECRET")
     enabled_tools  = _parse_enabled_tools(os.environ.get("MCP_ENABLED_TOOLS"))
 

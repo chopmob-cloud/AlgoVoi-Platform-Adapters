@@ -40,7 +40,7 @@ Both packages read the same env vars:
 | `ALGOVOI_TENANT_ID` | ✅ | Tenant UUID |
 | `ALGOVOI_PAYOUT_ADDRESS` | ✅ | Default wallet for payouts |
 | `ALGOVOI_WEBHOOK_SECRET` | — | For `verify_webhook` |
-| `ALGOVOI_API_BASE` | — | Defaults to `https://api1.ilovechicken.co.uk` |
+| `ALGOVOI_API_BASE` | — | Override the AlgoVoi API base URL (advanced) |
 
 **Auth is env-var only.** Secrets never pass through tool arguments — the MCP client never sees the API key.
 
@@ -76,29 +76,15 @@ Config file locations:
 ## Testing
 
 ```bash
-# TypeScript unit tests (34 cases)
+# TypeScript unit tests
 cd typescript && npm test
 
-# Python unit tests (36 cases)
+# Python unit tests
 cd python && pytest
 
 # Stdio integration smoke — boots both servers and confirms all 8 tools list
 python smoke_stdio.py
 ```
-
-Expected: `34 passed`, `36 passed`, and `All stdio smoke tests passed`.
-
----
-
-## Tool surface and underlying REST endpoints
-
-Every tool wraps the same HTTP API that the existing Python / PHP / Go / Rust adapters use — see the corresponding files for the canonical implementations:
-
-- [`native-python/algovoi.py`](../native-python/algovoi.py) — `create_payment_link`, `verify_hosted_return`, `extension_checkout`, `verify_webhook`
-- [`mpp-adapter/mpp.py`](../mpp-adapter/mpp.py) — `generate_mpp_challenge`, `verify_mpp_receipt`
-- [`ai-adapters/openai/openai_algovoi.py`](../ai-adapters/openai/openai_algovoi.py) — `verify_x402_proof`
-
-The MCP server is a thin wrapper — no on-chain logic is duplicated.
 
 ---
 
