@@ -17,8 +17,8 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 | **AutoGen** | [autogen/](./autogen/) | `AlgoVoiAutoGen` + `AlgoVoiPaymentTool` | Yes — callable tool, 0.2.x `register_for_execution` + 0.4.x `FunctionTool`-compatible | **Available** — 86/86 tests (16 Apr 2026) |
 | **Semantic Kernel** | [semantic-kernel/](./semantic-kernel/) | `AlgoVoiSemanticKernel` + `AlgoVoiPaymentPlugin` | Yes — `@kernel_function` plugin, auto-invocation compatible | **Available** — 76/76 tests (16 Apr 2026) |
 | **Pydantic AI** | [pydantic-ai/](./pydantic-ai/) | `AlgoVoiPydanticAI` + `AlgoVoiPaymentTool` | Yes — plain callable `Tool`, deps injection, any provider:model string | **Available** — 77/77 tests (16 Apr 2026) |
-| **DSPy** | [dspy/](./dspy/) | `AlgoVoiDSPy` + `AlgoVoiPaymentTool` | Yes — plain callable, `dspy.ReAct`-compatible, `__name__`/`__doc__` set | **Available** — 78/78 tests, Phase 1 9/9 PASS (16 Apr 2026) |
-| **Vercel AI SDK** | [vercel-ai-sdk/](./vercel-ai-sdk/) | `AlgoVoiVercelAI` + `VercelAIResult` | Yes — `tool()` compatible, `generateText` + `streamText` + `nextHandler` | **Available** — 79/79 tests, Phase 1 12/12 PASS (16 Apr 2026) — **TypeScript** |
+| **DSPy** | [dspy/](./dspy/) | `AlgoVoiDSPy` + `AlgoVoiPaymentTool` | Yes — plain callable, `dspy.ReAct`-compatible, `__name__`/`__doc__` set | **Available** — 78/78 tests, Phase 1 9/9 PASS (16 Apr 2026, Comet-validated) |
+| **Vercel AI SDK** | [vercel-ai-sdk/](./vercel-ai-sdk/) | `AlgoVoiVercelAI` + `VercelAIResult` | Yes — `tool()` compatible, `generateText` + `streamText` + `nextHandler` | **Available** — 79/79 tests, Phase 1 12/12 PASS (16 Apr 2026, Comet-validated) — **TypeScript** |
 
 ---
 
