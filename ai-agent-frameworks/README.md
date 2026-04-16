@@ -21,6 +21,7 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 | **Vercel AI SDK** | [vercel-ai-sdk/](./vercel-ai-sdk/) | `AlgoVoiVercelAI` + `VercelAIResult` | Yes — `tool()` compatible, `generateText` + `streamText` + `nextHandler` | **Available** — 79/79 tests, Phase 1 12/12 PASS (16 Apr 2026, Comet-validated) — **TypeScript** |
 | **Google A2A** | [a2a/](./a2a/) | `AlgoVoiA2A` + `AlgoVoiPaymentTool` | Yes — `AlgoVoiPaymentTool` callable + full JSON-RPC 2.0 server (`message/send`, `tasks/get`, `tasks/cancel`) + A2A client | **Available** — 84/84 tests, Phase 1 12/12 PASS (16 Apr 2026, Comet-validated) |
 | **LangGraph** | [langgraph/](./langgraph/) | `AlgoVoiLangGraph` + `AlgoVoiPaymentTool` | Yes — `BaseTool` subclass, `ToolNode`-compatible, `create_react_agent`-compatible | **Available** — 77/77 tests, Phase 1 12/12 PASS (16 Apr 2026, Comet-validated) |
+| **Agno** | [agno/](./agno/) | `AlgoVoiAgno` + `AgnoPaymentRequired` | Yes — `pre_hooks` factory, ASGI middleware for AgentOS, `run_agent` + `arun_agent` wrappers | **Available** — 88/88 tests, Phase 1 13/13 PASS (16 Apr 2026, Comet-validated) |
 
 ---
 
@@ -428,6 +429,58 @@ graph.add_node("tools", node)
 ```
 
 See [langgraph/README.md](./langgraph/README.md) for the full reference.
+
+---
+
+## Quick start (Agno)
+
+```python
+from agno_algovoi import AlgoVoiAgno, AgnoPaymentRequired
+
+gate = AlgoVoiAgno(
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",             # "mpp" | "ap2" | "x402"
+    network           = "algorand-mainnet",
+    amount_microunits = 10_000,            # 0.01 USDC per call
+)
+
+# Pattern 1 — explicit check + agent.run()
+from agno.agent import Agent
+from agno.models.openai import OpenAIChat
+agent = Agent(model=OpenAIChat(id="gpt-4o"))
+
+result = gate.check(headers, body)
+if not result.requires_payment:
+    output = agent.run(body["message"])
+
+# Pattern 2 — run_agent() combined wrapper
+try:
+    output = gate.run_agent(agent, body["message"],
+                            headers=dict(request.headers))
+    return jsonify({"response": output.content})
+except AgnoPaymentRequired as exc:
+    return exc.result.as_flask_response()   # 402
+
+# Pattern 3 — Agno pre-hook (hooks into Agno's native lifecycle)
+hook = gate.make_pre_hook(headers=dict(request.headers))
+gated = Agent(model=OpenAIChat(id="gpt-4o"), pre_hooks=[hook])
+gated.run(body["message"])   # raises AgnoPaymentRequired if unpaid
+
+# Pattern 4 — FastAPI / AgentOS middleware (gates all routes)
+from agno.os import AgentOS
+agent_os = AgentOS(agents=[agent])
+app = agent_os.get_app()
+gate.fastapi_middleware(app)   # all routes now require payment
+
+# Pattern 5 — Flask one-liner
+@app.route("/ask", methods=["POST"])
+def ask():
+    return gate.flask_agent(agent)
+```
+
+See [agno/README.md](./agno/README.md) for the full reference.
 
 ---
 
