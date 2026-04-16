@@ -15,12 +15,7 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 | **CrewAI** | [crewai/](./crewai/) | `AlgoVoiCrewAI` + `AlgoVoiPaymentTool` | Yes — `BaseTool` with `PaymentToolInput` args_schema | **Available** — 68/68 tests (16 Apr 2026, Comet-validated) |
 | **Hugging Face** | [huggingface/](./huggingface/) | `AlgoVoiHuggingFace` + `AlgoVoiPaymentTool` | Yes — `smolagents.Tool` subclass, `ToolCallingAgent`-compatible | **Available** — 83/83 tests (16 Apr 2026) |
 | **AutoGen** | [autogen/](./autogen/) | `AlgoVoiAutoGen` + `AlgoVoiPaymentTool` | Yes — callable tool, 0.2.x `register_for_execution` + 0.4.x `FunctionTool`-compatible | **Available** — 86/86 tests (16 Apr 2026) |
-
-**Planned** (one at a time):
-
-| Framework | Notes |
-|-----------|-------|
-| **Semantic Kernel** | Gate SK functions and planners (.NET / Python) |
+| **Semantic Kernel** | [semantic-kernel/](./semantic-kernel/) | `AlgoVoiSemanticKernel` + `AlgoVoiPaymentPlugin` | Yes — `@kernel_function` plugin, auto-invocation compatible | **Available** — 76/76 tests (16 Apr 2026) |
 
 ---
 
@@ -202,6 +197,43 @@ fn_tool = FunctionTool(tool, description=tool.description, name=tool.name)
 ```
 
 See [autogen/README.md](./autogen/README.md) for the full reference.
+
+---
+
+## Quick start (Semantic Kernel)
+
+```python
+from semantic_kernel_algovoi import AlgoVoiSemanticKernel
+
+gate = AlgoVoiSemanticKernel(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+    model             = "gpt-4o",
+)
+
+# Gate SK chat completion
+result = gate.check(headers, body)
+if not result.requires_payment:
+    reply = gate.complete(body["messages"])
+
+# Gate any KernelFunction
+from semantic_kernel import Kernel
+kernel = Kernel()
+# ... add services ...
+fn     = kernel.plugins["MyPlugin"]["my_function"]
+output = gate.invoke_function(kernel, fn, input=body["text"])
+
+# Add as a plugin with @kernel_function
+plugin = gate.as_plugin(resource_fn=lambda q: my_handler(q), plugin_name="premium_kb")
+kernel.add_plugin(plugin, plugin_name="premium_kb")
+```
+
+See [semantic-kernel/README.md](./semantic-kernel/README.md) for the full reference.
 
 ---
 
