@@ -17,6 +17,7 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 | **AutoGen** | [autogen/](./autogen/) | `AlgoVoiAutoGen` + `AlgoVoiPaymentTool` | Yes — callable tool, 0.2.x `register_for_execution` + 0.4.x `FunctionTool`-compatible | **Available** — 86/86 tests (16 Apr 2026) |
 | **Semantic Kernel** | [semantic-kernel/](./semantic-kernel/) | `AlgoVoiSemanticKernel` + `AlgoVoiPaymentPlugin` | Yes — `@kernel_function` plugin, auto-invocation compatible | **Available** — 76/76 tests (16 Apr 2026) |
 | **Pydantic AI** | [pydantic-ai/](./pydantic-ai/) | `AlgoVoiPydanticAI` + `AlgoVoiPaymentTool` | Yes — plain callable `Tool`, deps injection, any provider:model string | **Available** — 77/77 tests (16 Apr 2026) |
+| **DSPy** | [dspy/](./dspy/) | `AlgoVoiDSPy` + `AlgoVoiPaymentTool` | Yes — plain callable, `dspy.ReAct`-compatible, `__name__`/`__doc__` set | **Available** — 78/78 tests, Phase 1 9/9 PASS (16 Apr 2026) |
 
 ---
 
@@ -271,6 +272,43 @@ agent = Agent("openai:gpt-4o", tools=[Tool(tool, name=tool.name, description=too
 ```
 
 See [pydantic-ai/README.md](./pydantic-ai/README.md) for the full reference.
+
+---
+
+## Quick start (DSPy)
+
+```python
+from dspy_algovoi import AlgoVoiDSPy
+
+gate = AlgoVoiDSPy(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+    model             = "openai/gpt-4o",   # DSPy provider/model string (slash, not colon)
+)
+
+# Gate any DSPy module or compiled program
+import dspy
+
+class QA(dspy.Signature):
+    """Answer the question."""
+    question: str = dspy.InputField()
+    answer:   str = dspy.OutputField()
+
+result = gate.check(headers, body)
+if not result.requires_payment:
+    answer = gate.run_module(dspy.ChainOfThought(QA), question=body["question"])
+
+# Drop into a ReAct agent as a plain callable tool
+tool  = gate.as_tool(resource_fn=lambda q: my_handler(q), tool_name="premium_kb")
+react = dspy.ReAct(QA, tools=[tool])
+```
+
+See [dspy/README.md](./dspy/README.md) for the full reference.
 
 ---
 

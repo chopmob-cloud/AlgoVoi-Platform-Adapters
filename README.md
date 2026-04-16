@@ -106,7 +106,8 @@ platform-adapters/
 │   ├── huggingface/      # Hugging Face gate — InferenceClient, transformers pipeline, smolagents tool
 │   ├── autogen/          # AutoGen gate — initiate_chat() + callable tool (0.2.x + 0.4.x)
 │   ├── semantic-kernel/  # Semantic Kernel gate — chat completion, KernelFunction, SK plugin
-│   └── pydantic-ai/      # Pydantic AI gate — any Agent, deps injection, provider:model strings
+│   ├── pydantic-ai/      # Pydantic AI gate — any Agent, deps injection, provider:model strings
+│   └── dspy/             # DSPy gate — any Predict / ChainOfThought / ReAct / compiled program
 ├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
 ├── easy-digital-downloads/ # EDD 3.2+ WordPress plugin (digital downloads, licensing)
 ├── ghost/                # Ghost 5.x paid-membership grant-on-payment adapter
@@ -177,6 +178,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | AutoGen (AI agent frameworks) | — (MPP + AP2 + x402; gates initiate_chat() + callable FunctionTool-compatible tool; llm_config property; 0.2.x + 0.4.x — 86/86 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | Semantic Kernel (AI agent frameworks) | — (MPP + AP2 + x402; gates chat completion, kernel.invoke(), and @kernel_function plugin; asyncio.run() sync wrappers — 76/76 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | Pydantic AI (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agent with deps injection, all provider:model strings, pydantic_ai.tools.Tool-compatible — 77/77 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
+| DSPy (AI agent frameworks) | — (MPP + AP2 + x402; gates any Predict / ChainOfThought / ReAct / compiled program; dspy.context isolation, plain callable tool for ReAct — 78/78 tests, Phase 1 9/9 PASS 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -550,6 +552,7 @@ Gate entire orchestration frameworks behind on-chain payment — not just a sing
 | **AutoGen** | `AlgoVoiAutoGen` + `AlgoVoiPaymentTool` | `pip install pyautogen` | MPP, AP2, x402 | [ai-agent-frameworks/autogen/](./ai-agent-frameworks/autogen/) | **Available** — 86/86 tests, 16 Apr 2026 |
 | **Semantic Kernel** | `AlgoVoiSemanticKernel` + `AlgoVoiPaymentPlugin` | `pip install semantic-kernel` | MPP, AP2, x402 | [ai-agent-frameworks/semantic-kernel/](./ai-agent-frameworks/semantic-kernel/) | **Available** — 76/76 tests, 16 Apr 2026 |
 | **Pydantic AI** | `AlgoVoiPydanticAI` + `AlgoVoiPaymentTool` | `pip install pydantic-ai` | MPP, AP2, x402 | [ai-agent-frameworks/pydantic-ai/](./ai-agent-frameworks/pydantic-ai/) | **Available** — 77/77 tests, 16 Apr 2026 |
+| **DSPy** | `AlgoVoiDSPy` + `AlgoVoiPaymentTool` | `pip install dspy` | MPP, AP2, x402 | [ai-agent-frameworks/dspy/](./ai-agent-frameworks/dspy/) | **Available** — 78/78 tests, Phase 1 9/9 PASS 16 Apr 2026 |
 
 ### LangChain — Quick start
 
@@ -875,6 +878,57 @@ agent = Agent("openai:gpt-4o", tools=[Tool(tool, name=tool.name, description=too
 The tool accepts `query` and `payment_proof` (base64). Returns challenge JSON if proof absent/invalid; calls `resource_fn(query)` if verified. Supports all Pydantic AI providers — OpenAI, Anthropic, Google, Groq, Ollama, and any OpenAI-compatible endpoint via `base_url`.
 
 All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/pydantic-ai/README.md](./ai-agent-frameworks/pydantic-ai/README.md)
+
+### DSPy — Quick start
+
+```python
+from dspy_algovoi import AlgoVoiDSPy
+
+gate = AlgoVoiDSPy(
+    openai_key        = "sk-...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+    model             = "openai/gpt-4o",   # DSPy provider/model string (slash, not colon)
+)
+
+# Gate any DSPy module
+import dspy
+
+class QA(dspy.Signature):
+    """Answer the question."""
+    question: str = dspy.InputField()
+    answer:   str = dspy.OutputField()
+
+result = gate.check(headers, body)
+if not result.requires_payment:
+    answer = gate.run_module(dspy.ChainOfThought(QA), question=body["question"])
+```
+
+**Gate a compiled DSPy program:**
+
+```python
+# Works with any compiled / optimised DSPy program (Predict, ChainOfThought, ReAct, MIPROv2…)
+result = gate.run_module(my_compiled_program, question=body["question"])
+```
+
+**Drop into a ReAct agent as a plain callable tool:**
+
+```python
+tool  = gate.as_tool(resource_fn=my_handler, tool_name="premium_kb")
+react = dspy.ReAct(QA, tools=[tool])
+
+lm = gate._ensure_lm()
+with dspy.context(lm=lm):
+    out = react(question=body["question"])
+```
+
+All LLM calls use `dspy.context(lm=...)` — global `dspy.configure()` state is never modified. DSPy's `provider/model` string format is supported for OpenAI, Anthropic, Google, Cohere, Groq, Ollama, and Azure OpenAI.
+
+All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/dspy/README.md](./ai-agent-frameworks/dspy/README.md)
 
 ---
 
