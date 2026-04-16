@@ -13,6 +13,7 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 | **LangChain** | [langchain/](./langchain/) | `AlgoVoiLangChain` + `AlgoVoiPaymentTool` | Yes — `BaseTool` subclass, ReAct-compatible | **Available** — 76/77 tests, Phase 1 + 2 PASS 5/5 (16 Apr 2026, Comet-validated) |
 | **LlamaIndex** | [llamaindex/](./llamaindex/) | `AlgoVoiLlamaIndex` + `AlgoVoiPaymentTool` | Yes — `BaseTool` + `ToolOutput`, ReAct-compatible | **Available** — 80/80 tests (16 Apr 2026, Comet-validated) |
 | **CrewAI** | [crewai/](./crewai/) | `AlgoVoiCrewAI` + `AlgoVoiPaymentTool` | Yes — `BaseTool` with `PaymentToolInput` args_schema | **Available** — 68/68 tests (16 Apr 2026, Comet-validated) |
+| **Hugging Face** | [huggingface/](./huggingface/) | `AlgoVoiHuggingFace` + `AlgoVoiPaymentTool` | Yes — `smolagents.Tool` subclass, `ToolCallingAgent`-compatible | **Available** — 83/83 tests (16 Apr 2026) |
 
 **Planned** (one at a time):
 
@@ -20,7 +21,6 @@ Unlike the single-provider AI Platform Adapters (`ai-adapters/`), these adapters
 |-----------|-------|
 | **AutoGen** | Gate AutoGen conversation flows |
 | **Semantic Kernel** | Gate SK functions and planners (.NET / Python) |
-| **Hugging Face `transformers`** | Gate inference pipelines and `InferenceClient` calls |
 
 ---
 
@@ -119,6 +119,44 @@ agent = create_react_agent(llm, tools=[tool], prompt=prompt)
 ```
 
 See [langchain/README.md](./langchain/README.md) for the full reference.
+
+---
+
+## Quick start (Hugging Face)
+
+```python
+from huggingface_algovoi import AlgoVoiHuggingFace
+
+gate = AlgoVoiHuggingFace(
+    hf_token          = "hf_...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+    model             = "meta-llama/Meta-Llama-3-8B-Instruct",
+)
+
+# Gate InferenceClient
+result = gate.check(headers, body)
+if not result.requires_payment:
+    reply = gate.complete(body["messages"])
+
+# Gate a transformers pipeline
+from transformers import pipeline
+pipe = pipeline("text-generation", model="HuggingFaceH4/zephyr-7b-beta", token="hf_...")
+if not result.requires_payment:
+    answer = gate.inference_pipeline(pipe, body["messages"])
+
+# Drop into a smolagents ToolCallingAgent
+from smolagents import ToolCallingAgent, InferenceClientModel
+tool  = gate.as_tool(resource_fn=lambda q: my_handler(q), tool_name="premium_kb")
+agent = ToolCallingAgent(tools=[tool], model=InferenceClientModel(...))
+agent.run("Use premium_kb to answer my question.")
+```
+
+See [huggingface/README.md](./huggingface/README.md) for the full reference.
 
 ---
 

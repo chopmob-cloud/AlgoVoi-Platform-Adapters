@@ -102,7 +102,8 @@ platform-adapters/
 ├── ai-agent-frameworks/
 │   ├── langchain/        # LangChain gate — any ChatModel, LCEL chain, RAG pipeline, or ReAct agent
 │   ├── llamaindex/       # LlamaIndex gate — QueryEngine, ChatEngine, RAG pipeline, or ReAct agent
-│   └── crewai/           # CrewAI gate — crew.kickoff() + BaseTool for multi-agent crews
+│   ├── crewai/           # CrewAI gate — crew.kickoff() + BaseTool for multi-agent crews
+│   └── huggingface/      # Hugging Face gate — InferenceClient, transformers pipeline, smolagents tool
 ├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
 ├── easy-digital-downloads/ # EDD 3.2+ WordPress plugin (digital downloads, licensing)
 ├── ghost/                # Ghost 5.x paid-membership grant-on-payment adapter
@@ -169,6 +170,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | LangChain (AI agent frameworks) | — (MPP + AP2 + x402; gates any ChatModel, LCEL chain, RAG pipeline, or ReAct agent tool — 76/77 tests, Phase 1+2 PASS 5/5 chains 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | LlamaIndex (AI agent frameworks) | — (MPP + AP2 + x402; gates LlamaIndex LLM, QueryEngine, ChatEngine, or ReAct agent tool — 80/80 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | CrewAI (AI agent frameworks) | — (MPP + AP2 + x402; gates crew.kickoff() + BaseTool with PaymentToolInput args_schema — 68/68 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
+| Hugging Face (AI agent frameworks) | — (MPP + AP2 + x402; gates InferenceClient.chat_completion(), transformers pipeline, and smolagents Tool — 83/83 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -538,6 +540,7 @@ Gate entire orchestration frameworks behind on-chain payment — not just a sing
 | **LangChain** | `AlgoVoiLangChain` + `AlgoVoiPaymentTool` | `pip install langchain-core langchain-openai` | MPP, AP2, x402 | [ai-agent-frameworks/langchain/](./ai-agent-frameworks/langchain/) | **Available** — 76/77 tests + Phase 1+2 PASS 5/5 chains 16 Apr 2026 (Comet-validated) |
 | **LlamaIndex** | `AlgoVoiLlamaIndex` + `AlgoVoiPaymentTool` | `pip install llama-index` | MPP, AP2, x402 | [ai-agent-frameworks/llamaindex/](./ai-agent-frameworks/llamaindex/) | **Available** — 80/80 tests, Comet-validated 16 Apr 2026 |
 | **CrewAI** | `AlgoVoiCrewAI` + `AlgoVoiPaymentTool` | `pip install crewai` | MPP, AP2, x402 | [ai-agent-frameworks/crewai/](./ai-agent-frameworks/crewai/) | **Available** — 68/68 tests, Comet-validated 16 Apr 2026 |
+| **Hugging Face** | `AlgoVoiHuggingFace` + `AlgoVoiPaymentTool` | `pip install huggingface-hub smolagents` | MPP, AP2, x402 | [ai-agent-frameworks/huggingface/](./ai-agent-frameworks/huggingface/) | **Available** — 83/83 tests, 16 Apr 2026 |
 
 ### LangChain — Quick start
 
@@ -695,6 +698,49 @@ researcher = Agent(
 The tool uses `PaymentToolInput` (Pydantic `args_schema`) — the agent generates `{"query": "...", "payment_proof": "<base64>"}`, CrewAI validates it, and `_run(query, payment_proof)` is called directly as kwargs. Any `crewai.LLM` provider (OpenAI, Anthropic, Gemini, Bedrock, Groq, Together AI, …) is supported via the LiteLLM router.
 
 All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/crewai/README.md](./ai-agent-frameworks/crewai/README.md)
+
+### Hugging Face — Quick start
+
+```python
+from huggingface_algovoi import AlgoVoiHuggingFace
+
+gate = AlgoVoiHuggingFace(
+    hf_token          = "hf_...",
+    algovoi_key       = "algv_...",
+    tenant_id         = "your-tenant-uuid",
+    payout_address    = "YOUR_ALGORAND_ADDRESS",
+    protocol          = "mpp",
+    network           = "algorand-mainnet",
+    amount_microunits = 10000,
+    model             = "meta-llama/Meta-Llama-3-8B-Instruct",
+)
+
+# Gate InferenceClient.chat_completion()
+result = gate.check(headers, body)
+if not result.requires_payment:
+    reply = gate.complete(body["messages"])
+
+# Gate a transformers pipeline
+from transformers import pipeline
+pipe = pipeline("text-generation", model="HuggingFaceH4/zephyr-7b-beta", token="hf_...")
+if not result.requires_payment:
+    answer = gate.inference_pipeline(pipe, body["messages"])
+```
+
+**Drop into a smolagents `ToolCallingAgent`:**
+
+```python
+from smolagents import ToolCallingAgent, InferenceClientModel
+
+tool  = gate.as_tool(resource_fn=my_handler, tool_name="premium_kb")
+model = InferenceClientModel(model_id="meta-llama/Meta-Llama-3-8B-Instruct")
+agent = ToolCallingAgent(tools=[tool], model=model)
+agent.run("Use premium_kb to answer my question.")
+```
+
+The tool accepts `query` and `payment_proof` (base64) as kwargs. Returns challenge JSON if proof absent/invalid; calls `resource_fn(query)` and returns the result if verified. Works with any `smolagents` agent type (`ToolCallingAgent`, `CodeAgent`, custom).
+
+All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/huggingface/README.md](./ai-agent-frameworks/huggingface/README.md)
 
 ---
 
