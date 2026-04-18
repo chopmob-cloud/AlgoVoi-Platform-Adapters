@@ -31,6 +31,7 @@ Included:
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
 - **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 4 chains)
 - **AI agent framework adapters** for LangChain, LlamaIndex, CrewAI, Hugging Face, AutoGen, Semantic Kernel, Pydantic AI, DSPy, Vercel AI SDK, Google A2A, LangGraph, and Agno — gate LLM-agnostic pipelines, RAG chains, multi-agent crews, and autonomous agents (MPP + AP2 + x402, all 4 chains)
+- **No-code / automation adapters** for Zapier, Make (Integromat), and n8n — drop-in Python classes that bridge AlgoVoi payment flows into any no-code workflow, with webhook verification, MPP + x402 + AP2 challenge generation, and all 16 networks
 - **MCP server** (`@algovoi/mcp-server` / `algovoi-mcp`) — exposes 11 AlgoVoi tools natively inside Claude Desktop, Claude Code, Cursor, and Windsurf via the Model Context Protocol
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
 - **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 4 chains
@@ -113,6 +114,10 @@ platform-adapters/
 │   ├── a2a/              # Google A2A gate — JSON-RPC 2.0 server + client, agent card, task store
 │   ├── langgraph/        # LangGraph gate — StateGraph invoke/stream, ToolNode, create_react_agent
 │   └── agno/             # Agno gate — pre_hooks, ASGI middleware (AgentOS), run_agent + arun_agent
+├── no-code/              # No-code / automation adapters (Zapier, Make, n8n) — v1.0.0, 225 tests
+│   ├── zapier/           #   AlgoVoiZapier — ZapierActionResult, webhook bridge, action handlers
+│   ├── make/             #   AlgoVoiMake — Make bundle dict, module handlers
+│   └── n8n/              #   AlgoVoiN8n — n8n item dict, operation handlers
 ├── mcp-server/           # MCP server — 11 AlgoVoi tools for Claude Desktop / Claude Code / Cursor / Windsurf
 │   ├── typescript/       #   @algovoi/mcp-server (npm) — `npx -y @algovoi/mcp-server`
 │   └── python/           #   algovoi-mcp (PyPI) — `uvx algovoi-mcp`
@@ -191,6 +196,9 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Google A2A (AI agent frameworks) | — (MPP + AP2 + x402; JSON-RPC 2.0 server + client; message/send, tasks/get, tasks/cancel; agent card; payment tool — 84/84 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | LangGraph (AI agent frameworks) | — (MPP + AP2 + x402; gates compiled StateGraph invoke/stream; AlgoVoiPaymentTool is BaseTool subclass, ToolNode-compatible, create_react_agent-compatible; flask_guard + flask_agent convenience wrappers — 77/77 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | Agno (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agno Agent via pre_hooks, ASGI middleware for AgentOS, run_agent/arun_agent wrappers, flask_guard + flask_agent; AgnoPaymentRequired exception — 88/88 tests, Phase 1 13/13 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
+| Zapier (no-code) | — (webhook bridge + action handlers: create_payment_link, verify_payment, list_networks, generate_challenge MPP/x402/AP2; ZapierActionResult return type — 77/77 tests, Phase 1+2 PASS 17 Apr 2026, Comet-validated) | 16 networks (8 mainnet + 8 testnet) | — |
+| Make / Integromat (no-code) | — (module handlers: create_payment_link, verify_payment, list_networks, generate_challenge MPP/x402/AP2; Make bundle dict return type — 71/71 tests, Phase 1+2 PASS 17 Apr 2026, Comet-validated) | 16 networks (8 mainnet + 8 testnet) | — |
+| n8n (no-code) | — (operation handlers: create_payment_link, verify_payment, list_networks, generate MPP/x402/AP2 challenges; n8n item dict return type — 77/77 tests, Phase 1+2 PASS 17 Apr 2026, Comet-validated) | 16 networks (8 mainnet + 8 testnet) | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -1027,6 +1035,142 @@ tool = gate.as_tool(lambda q: fetch_kb(q), tool_name="premium_kb")
 ```
 
 All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/a2a/README.md](./ai-agent-frameworks/a2a/README.md)
+
+---
+
+## No-Code / Automation Adapters
+
+Drop-in Python classes that bridge AlgoVoi crypto payment flows into Zapier, Make (Integromat), and n8n — the three leading no-code / low-code automation platforms. Each adapter is a single file with zero external dependencies (stdlib HTTP only), mirrors the native Python adapter pattern, and applies the full April 2026 + pass-2 security hardening.
+
+All three adapters were shipped on **17 April 2026** and are Comet-validated end-to-end.
+
+| Platform | Class | Return format | Files | Tests | Status |
+|----------|-------|---------------|-------|-------|--------|
+| **Zapier** | `AlgoVoiZapier` | `ZapierActionResult` dataclass | [no-code/zapier/](./no-code/zapier/) | 77 | **Available** — Phase 1+2 PASS |
+| **Make (Integromat)** | `AlgoVoiMake` | Make bundle dict | [no-code/make/](./no-code/make/) | 71 | **Available** — Phase 1+2 PASS |
+| **n8n** | `AlgoVoiN8n` | n8n item dict | [no-code/n8n/](./no-code/n8n/) | 77 | **Available** — Phase 1+2 PASS |
+
+**Total: 225/225 tests · 21/21 smoke checks (Phase 1) · 3/3 live create_payment_link + verify_payment (Phase 2)**
+
+Supported across all 16 networks (8 mainnet + 8 testnet) on Algorand, VOI, Hedera, and Stellar. All three adapters support MPP, x402, and AP2 challenge generation.
+
+### Zapier — Quick start
+
+```python
+from zapier_algovoi import AlgoVoiZapier
+
+handler = AlgoVoiZapier(
+    algovoi_key    = "algv_...",
+    tenant_id      = "your-tenant-uuid",
+    payout_algorand= "YOUR_ALGORAND_ADDRESS",
+    webhook_secret = "whsec_...",                          # optional
+    zapier_hook_url= "https://hooks.zapier.com/hooks/catch/XXXX/YYYY/",  # optional
+)
+
+# Create a payment link (Zapier action)
+result = handler.action_create_payment_link({
+    "amount":   5.00,
+    "currency": "USD",
+    "label":    "Premium access",
+    "network":  "algorand_mainnet",
+})
+# result.success, result.data["checkout_url"], result.data["token"]
+
+# Verify payment status
+result = handler.action_verify_payment({"token": "tok_..."})
+# result.data["paid"] → True/False, result.data["status"] → "active"|"paid"|...
+
+# Receive and forward an AlgoVoi webhook to a Zapier Catch Hook
+result = handler.receive_and_forward(raw_body=..., signature=...)
+
+# Generate MPP / x402 / AP2 challenge
+result = handler.action_generate_challenge({
+    "protocol":          "mpp",        # "mpp" | "x402" | "ap2"
+    "resource_id":       "/api/premium",
+    "amount_microunits": 10_000,
+    "network":           "algorand_mainnet",
+})
+```
+
+### Make (Integromat) — Quick start
+
+```python
+from make_algovoi import AlgoVoiMake
+
+handler = AlgoVoiMake(
+    algovoi_key     = "algv_...",
+    tenant_id       = "your-tenant-uuid",
+    payout_algorand = "YOUR_ALGORAND_ADDRESS",
+    payout_stellar  = "G...",    # optional — add any chain
+)
+
+# Create a payment link (Make module)
+bundle = handler.module_create_payment_link({
+    "amount":   10.00,
+    "currency": "USD",
+    "label":    "API access — 30 days",
+    "network":  "stellar_mainnet",
+})
+# bundle["data"]["checkout_url"], bundle["data"]["token"]
+# on error: bundle["error"]["message"], bundle["error"]["code"]
+
+# Verify payment
+bundle = handler.module_verify_payment({"token": "tok_..."})
+# bundle["data"]["paid"], bundle["data"]["status"]
+
+# Generate challenge (MPP / x402 / AP2)
+bundle = handler.module_generate_challenge({
+    "protocol":          "x402",
+    "resource_id":       "/api/v1/data",
+    "amount_microunits": 500_000,
+    "network":           "stellar_mainnet",
+})
+
+# Receive AlgoVoi webhook
+bundle = handler.receive_webhook(raw_body=..., signature=...)
+```
+
+### n8n — Quick start
+
+```python
+from n8n_algovoi import AlgoVoiN8n
+
+handler = AlgoVoiN8n(
+    algovoi_key   = "algv_...",
+    tenant_id     = "your-tenant-uuid",
+    payout_hedera = "0.0.XXXXX",   # set whichever chains you support
+)
+
+# Create a payment link (n8n Code node operation)
+item = handler.execute_create_payment_link({
+    "amount":   2.50,
+    "currency": "USD",
+    "label":    "Agent service call",
+    "network":  "hedera_mainnet",
+})
+# item["json"]["success"], item["json"]["checkout_url"], item["json"]["token"]
+
+# Verify payment
+item = handler.execute_verify_payment({"token": "tok_..."})
+# item["json"]["paid"], item["json"]["status"]
+
+# Generate challenges
+item = handler.execute_generate_mpp_challenge({
+    "resource_id": "/api/premium", "amount_microunits": 10_000, "network": "algorand_mainnet"
+})
+item = handler.execute_generate_x402_challenge({
+    "resource_id": "/api/data",    "amount_microunits": 500_000, "network": "algorand_mainnet"
+})
+item = handler.execute_generate_ap2_mandate({
+    "resource_id": "/service",     "amount_microunits": 2_000_000, "network": "voi_mainnet"
+})
+
+# Receive and verify an AlgoVoi webhook
+item = handler.receive_webhook(raw_body=..., signature=...)
+item = handler.execute_verify_webhook_signature({"raw_body": ..., "signature": ...})
+```
+
+Full reference: [no-code/README.md](./no-code/README.md)
 
 ---
 
