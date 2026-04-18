@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -50,15 +50,15 @@ export class AlgoVoi implements INodeType {
 		displayName: 'AlgoVoi',
 		name: 'algoVoi',
 		icon: 'file:algovoi.svg',
-		group: ['finance'],
+		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
 		description:
 			'Accept crypto payments on Algorand, VOI, Hedera & Stellar. ' +
 			'Create checkout links, verify payments, and generate MPP/x402/AP2 challenges.',
 		defaults: { name: 'AlgoVoi' },
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'algoVoiApi', required: true }],
 		requestDefaults: {
 			headers: { Accept: 'application/json', 'Content-Type': 'application/json' },

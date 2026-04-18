@@ -3,18 +3,18 @@
 const API_BASE = 'https://api1.ilovechicken.co.uk';
 
 const SUPPORTED_NETWORKS = [
-  { value: 'algorand_mainnet',      label: 'Algorand — USDC' },
-  { value: 'voi_mainnet',           label: 'VOI — aUSDC' },
-  { value: 'hedera_mainnet',        label: 'Hedera — USDC' },
-  { value: 'stellar_mainnet',       label: 'Stellar — USDC' },
-  { value: 'algorand_mainnet_algo', label: 'Algorand — ALGO (native)' },
-  { value: 'voi_mainnet_voi',       label: 'VOI — VOI (native)' },
-  { value: 'hedera_mainnet_hbar',   label: 'Hedera — HBAR (native)' },
-  { value: 'stellar_mainnet_xlm',   label: 'Stellar — XLM (native)' },
-  { value: 'algorand_testnet',      label: 'Algorand Testnet — USDC' },
-  { value: 'voi_testnet',           label: 'VOI Testnet — aUSDC' },
-  { value: 'hedera_testnet',        label: 'Hedera Testnet — USDC' },
-  { value: 'stellar_testnet',       label: 'Stellar Testnet — USDC' },
+  { value: 'algorand_mainnet',      label: 'Algorand — USDC',          sample: 'algorand_mainnet' },
+  { value: 'voi_mainnet',           label: 'VOI — aUSDC',              sample: 'voi_mainnet' },
+  { value: 'hedera_mainnet',        label: 'Hedera — USDC',            sample: 'hedera_mainnet' },
+  { value: 'stellar_mainnet',       label: 'Stellar — USDC',           sample: 'stellar_mainnet' },
+  { value: 'algorand_mainnet_algo', label: 'Algorand — ALGO (native)', sample: 'algorand_mainnet_algo' },
+  { value: 'voi_mainnet_voi',       label: 'VOI — VOI (native)',        sample: 'voi_mainnet_voi' },
+  { value: 'hedera_mainnet_hbar',   label: 'Hedera — HBAR (native)',   sample: 'hedera_mainnet_hbar' },
+  { value: 'stellar_mainnet_xlm',   label: 'Stellar — XLM (native)',   sample: 'stellar_mainnet_xlm' },
+  { value: 'algorand_testnet',      label: 'Algorand Testnet — USDC',  sample: 'algorand_testnet' },
+  { value: 'voi_testnet',           label: 'VOI Testnet — aUSDC',      sample: 'voi_testnet' },
+  { value: 'hedera_testnet',        label: 'Hedera Testnet — USDC',    sample: 'hedera_testnet' },
+  { value: 'stellar_testnet',       label: 'Stellar Testnet — USDC',   sample: 'stellar_testnet' },
 ];
 
 const perform = async (z, bundle) => {
@@ -64,7 +64,6 @@ module.exports = {
     description:
       'Creates a hosted AlgoVoi checkout link. Share it via email, SMS, or social media — ' +
       'the customer pays with their crypto wallet, no account required.',
-    important: true,
   },
 
   operation: {
