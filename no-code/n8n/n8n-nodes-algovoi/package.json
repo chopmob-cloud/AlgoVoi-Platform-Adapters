@@ -1,0 +1,53 @@
+{
+  "name": "n8n-nodes-algovoi",
+  "version": "1.0.0",
+  "description": "n8n community node for AlgoVoi — accept crypto payments on Algorand, VOI, Hedera & Stellar",
+  "keywords": [
+    "n8n-community-node-package",
+    "crypto",
+    "payments",
+    "algorand",
+    "hedera",
+    "stellar",
+    "usdc"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters",
+  "author": {
+    "name": "AlgoVoi",
+    "email": "hello@algovoi.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters.git",
+    "directory": "no-code/n8n/n8n-nodes-algovoi"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && npm run copy:icons",
+    "copy:icons": "copyfiles -u 3 nodes/**/*.svg dist/nodes",
+    "dev": "tsc --watch",
+    "lint": "eslint nodes credentials --ext .ts",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "nodes",
+    "credentials"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/AlgoVoiApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/AlgoVoi/AlgoVoi.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "copyfiles": "^2.4.1",
+    "n8n-workflow": "^1.0.0",
+    "typescript": "^5.0.0"
+  }
+}
