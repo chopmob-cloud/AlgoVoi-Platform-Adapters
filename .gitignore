@@ -54,8 +54,10 @@ cloud/dashboard/node_modules/
 cloud/dashboard/.env.local
 cloud/dashboard/.env.production
 
-# Cloud — server-specific deployment files
+# Cloud — server-specific / non-app files
 cloud/DEPLOY.md
+cloud/ALGOVOI_CLOUD_PLAN.md
+cloud/docker-compose.yml
 cloud/ssh_deploy.py
 cloud/gateway/__pycache__/
 cloud/gateway/.env
