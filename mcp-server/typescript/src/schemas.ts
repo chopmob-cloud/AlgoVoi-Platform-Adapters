@@ -23,7 +23,10 @@ export class ValidationError extends Error {
   }
 }
 
-const EXT_NETWORKS = new Set<string>(["algorand_mainnet", "voi_mainnet"]);
+const EXT_NETWORKS = new Set<string>([
+  "algorand_mainnet", "voi_mainnet", "algorand_mainnet_algo", "voi_mainnet_voi",
+  "algorand_testnet", "voi_testnet", "algorand_testnet_algo", "voi_testnet_voi",
+]);
 
 // ── shared helpers ────────────────────────────────────────────────────────────
 
@@ -175,7 +178,8 @@ export interface PrepareExtensionPaymentInput {
   amount: number;
   currency: string;
   label: string;
-  network: "algorand_mainnet" | "voi_mainnet";
+  network: "algorand_mainnet" | "voi_mainnet" | "algorand_mainnet_algo" | "voi_mainnet_voi"
+         | "algorand_testnet" | "voi_testnet" | "algorand_testnet_algo" | "voi_testnet_voi";
 }
 
 export interface VerifyWebhookInput {
@@ -239,7 +243,10 @@ export function parsePrepareExtensionPayment(
 ): PrepareExtensionPaymentInput {
   const obj = expectObject(raw);
   assertKeys(obj, ["amount", "currency", "label", "network"]);
-  const net = requireEnum(obj, "network", ["algorand_mainnet", "voi_mainnet"] as const)!;
+  const net = requireEnum(obj, "network", [
+    "algorand_mainnet", "voi_mainnet", "algorand_mainnet_algo", "voi_mainnet_voi",
+    "algorand_testnet", "voi_testnet", "algorand_testnet_algo", "voi_testnet_voi",
+  ] as const)!;
   return {
     amount:   requireNumber(obj, "amount",  { gt: 0, le: 10_000_000 })!,
     currency: requireString(obj, "currency", { min: 3, max: 3 })!,

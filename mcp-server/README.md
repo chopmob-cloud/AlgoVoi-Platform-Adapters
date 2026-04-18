@@ -41,9 +41,15 @@ Both packages read the same env vars:
 |-----|----------|---------|
 | `ALGOVOI_API_KEY` | ✅ | `algv_...` API key from the AlgoVoi dashboard |
 | `ALGOVOI_TENANT_ID` | ✅ | Tenant UUID from the AlgoVoi dashboard |
-| `ALGOVOI_PAYOUT_ADDRESS` | ✅ | Default wallet address for payouts |
+| `ALGOVOI_PAYOUT_ALGORAND` | ✅* | Algorand payout wallet address |
+| `ALGOVOI_PAYOUT_VOI` | ✅* | VOI payout wallet address |
+| `ALGOVOI_PAYOUT_HEDERA` | ✅* | Hedera payout account (e.g. `0.0.123456`) |
+| `ALGOVOI_PAYOUT_STELLAR` | ✅* | Stellar payout address (`G...`) |
+| `ALGOVOI_PAYOUT_ADDRESS` | — | Universal fallback if per-chain vars are not set |
 | `ALGOVOI_WEBHOOK_SECRET` | — | For `verify_webhook` |
 | `ALGOVOI_API_BASE` | — | Override the AlgoVoi API base URL (optional) |
+
+**\*** At least one per-chain address (or `ALGOVOI_PAYOUT_ADDRESS` as fallback) is required. Per-chain vars take priority when set.
 
 **Auth is env-var only.** Secrets never pass through tool arguments — the MCP client never sees the API key.
 
@@ -62,7 +68,10 @@ Sign up at [www.algovoi.co.uk](https://www.algovoi.co.uk) to get your API key an
       "env": {
         "ALGOVOI_API_KEY": "algv_...",
         "ALGOVOI_TENANT_ID": "...",
-        "ALGOVOI_PAYOUT_ADDRESS": "..."
+        "ALGOVOI_PAYOUT_ALGORAND": "<your-algorand-address>",
+        "ALGOVOI_PAYOUT_VOI":      "<your-voi-address>",
+        "ALGOVOI_PAYOUT_HEDERA":   "0.0.<your-account>",
+        "ALGOVOI_PAYOUT_STELLAR":  "G<your-stellar-address>"
       }
     }
   }

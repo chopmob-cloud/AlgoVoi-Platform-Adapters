@@ -201,7 +201,7 @@ class AlgoVoi:
         if not token:
             return False
 
-        url = f"{self.api_base}/checkout/{quote(token, safe='')}"
+        url = f"{self.api_base}/checkout/{quote(token, safe='')}/status"
         if not url.startswith("https://"):
             return False
         try:

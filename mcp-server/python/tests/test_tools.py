@@ -38,10 +38,15 @@ from algovoi_mcp.schemas import (
 
 def make_client(**overrides) -> AlgoVoiClient:
     defaults = dict(
-        api_base       = "https://api1.example.test",
-        api_key        = "algv_test",
-        tenant_id      = "tenant-test",
-        payout_address = "PAYOUT_ADDR_TEST",
+        api_base         = "https://api1.example.test",
+        api_key          = "algv_test",
+        tenant_id        = "tenant-test",
+        payout_addresses = {
+            "algorand_mainnet": "PAYOUT_ADDR_TEST",
+            "voi_mainnet":      "PAYOUT_ADDR_TEST",
+            "hedera_mainnet":   "PAYOUT_ADDR_TEST",
+            "stellar_mainnet":  "PAYOUT_ADDR_TEST",
+        },
     )
     defaults.update(overrides)
     c = AlgoVoiClient(**defaults)
@@ -423,9 +428,9 @@ class TestVerifyWebhook:
 # ── list_networks (2 tests) ───────────────────────────────────────────────────
 
 class TestListNetworks:
-    def test_four_networks(self):
+    def test_sixteen_networks(self):
         out = server.tool_list_networks(ListNetworksInput())
-        assert len(out["networks"]) == 4
+        assert len(out["networks"]) == 16
 
     def test_caip2_and_asset_id(self):
         out = server.tool_list_networks(ListNetworksInput())
@@ -515,20 +520,22 @@ class TestVerifyMppReceipt:
 
 class TestVerifyX402Proof:
     def test_verified_passthrough(self):
+        import base64, json
         c = make_client()
         c.verify_x402_proof = MagicMock(return_value={"verified": True})  # type: ignore[assignment]
+        proof = base64.b64encode(json.dumps({"tx_id": "TX1"}).encode()).decode()
         out = server.tool_verify_x402_proof(
-            c, VerifyX402ProofInput(resource_id="my-resource", tx_id="TX1", network="algorand_mainnet")
+            c, VerifyX402ProofInput(proof=proof, network="algorand_mainnet")
         )
         assert out["verified"] is True
 
-    def test_empty_resource_id_rejected_by_schema(self):
+    def test_empty_proof_rejected_by_schema(self):
         with pytest.raises(ValidationError):
-            VerifyX402ProofInput(resource_id="", tx_id="TX1", network="algorand_mainnet")
+            VerifyX402ProofInput(proof="", network="algorand_mainnet")
 
     def test_bad_network_rejected_by_schema(self):
         with pytest.raises(ValidationError):
-            VerifyX402ProofInput(resource_id="res", tx_id="TX1", network="bitcoin")      # type: ignore[arg-type]
+            VerifyX402ProofInput(proof="abc", network="bitcoin")      # type: ignore[arg-type]
 
 
 # ── Dispatcher & MCP_ENABLED_TOOLS (5 tests) ──────────────────────────────────
@@ -542,7 +549,7 @@ class TestDispatcher:
     def test_list_networks_via_dispatch(self):
         c = make_client()
         out = server._dispatch(c, None, "list_networks", {})
-        assert len(out["networks"]) == 4
+        assert len(out["networks"]) == 16
 
     def test_dispatch_redacts(self):
         c = make_client()
@@ -591,8 +598,10 @@ class TestClientTLS:
     def test_ssl_minimum_version_is_tlsv1_3(self):
         import ssl
         c = AlgoVoiClient(
-            api_base       = "https://api1.example.test",
-            api_key        = "k", tenant_id="t", payout_address="p",
+            api_base         = "https://api1.example.test",
+            api_key          = "k",
+            tenant_id        = "t",
+            payout_addresses = {"algorand_mainnet": "p"},
         )
         assert c._ssl_ctx.minimum_version == ssl.TLSVersion.TLSv1_3
 
@@ -673,14 +682,14 @@ class TestVerifyAp2Payment:
         c = make_client()
         c.verify_ap2_payment = MagicMock(return_value={"verified": True})  # type: ignore[assignment]
         out = server.tool_verify_ap2_payment(
-            c, VerifyAp2PaymentInput(payment_id="a" * 16, tx_id="TX1", network="algorand_mainnet")
+            c, VerifyAp2PaymentInput(mandate_id="a" * 16, tx_id="TX1", network="algorand_mainnet")
         )
         assert out["verified"] is True
 
-    def test_empty_payment_id_rejected_by_schema(self):
+    def test_empty_mandate_id_rejected_by_schema(self):
         with pytest.raises(ValidationError):
-            VerifyAp2PaymentInput(payment_id="", tx_id="TX1", network="algorand_mainnet")
+            VerifyAp2PaymentInput(mandate_id="", tx_id="TX1", network="algorand_mainnet")
 
     def test_bad_network_rejected_by_schema(self):
         with pytest.raises(ValidationError):
-            VerifyAp2PaymentInput(payment_id="a" * 16, tx_id="TX1", network="bitcoin")  # type: ignore[arg-type]
+            VerifyAp2PaymentInput(mandate_id="a" * 16, tx_id="TX1", network="bitcoin")  # type: ignore[arg-type]

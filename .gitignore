@@ -41,3 +41,7 @@ sage-business-cloud/*.py
 zoho-books/*.py
 wave/*.py
 myob/*.py
+
+# MCP server build artifacts (dist/ and node_modules/ covered by per-dir .gitignore)
+mcp-server/typescript/*.tgz
+mcp-server/python/*.egg-info/
