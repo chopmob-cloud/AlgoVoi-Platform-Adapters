@@ -180,7 +180,7 @@ class TestWebhookModule:
 
 class TestCreatePaymentLink:
     def _ok_resp(self):
-        return {"checkout_url": "https://pay.algovoi.com/checkout/tok999", "amount_microunits": 10_000_000}
+        return {"checkout_url": "https://api1.ilovechicken.co.uk/checkout/tok999", "amount_microunits": 10_000_000}
 
     def test_success_returns_data(self):
         h = make_make_handler()

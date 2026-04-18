@@ -10,7 +10,7 @@ Phase 1 -- Challenge render (no live API needed)
 Phase 2 -- Full on-chain round-trip
     Requires:
       ALGOVOI_KEY, TENANT_ID, PAYOUT_ADDRESS env vars
-      Live AlgoVoi gateway (gateway.algovoi.com)
+      Live AlgoVoi gateway (api1.ilovechicken.co.uk)
 
 Usage:
     # Phase 1 only (CI-safe):
@@ -355,7 +355,7 @@ def run_phase2() -> int:
                 "resource_id": "ai-function",
             }).encode()
             req = urllib.request.Request(
-                "https://gateway.algovoi.com/v1/test/issue-proof",
+                "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
                 data=proof_payload,
                 headers={
                     "Content-Type": "application/json",
@@ -397,7 +397,7 @@ def run_phase2() -> int:
             "resource_id": "ai-function",
         }).encode()
         req = urllib.request.Request(
-            "https://gateway.algovoi.com/v1/test/issue-proof",
+            "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
             data=proof_payload,
             headers={
                 "Content-Type": "application/json",

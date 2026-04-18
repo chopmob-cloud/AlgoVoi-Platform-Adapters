@@ -142,7 +142,7 @@ import httpx
 def handle_pay_command(chat_id: str, amount_usd: float, order_ref: str):
     # Create AlgoVoi checkout link
     checkout = httpx.post(
-        f"https://api.algovoi.com/checkout/{TENANT_ID}",
+        f"https://api1.ilovechicken.co.uk/checkout/{TENANT_ID}",
         headers={"Authorization": f"Bearer {TENANT_API_KEY}"},
         json={
             "amount_fiat": amount_usd,

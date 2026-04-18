@@ -351,7 +351,7 @@ class CdiscountAlgoVoi:
         payload = json.dumps({
             "trackingNumber": tx_id[:64],
             "carrierName": "AlgoVoi",
-            "trackingUrl": f"https://algovoi.com/tx/{tx_id[:40]}",
+            "trackingUrl": f"https://www.algovoi.co.uk/tx/{tx_id[:40]}",
         }).encode()
 
         req = Request(url, data=payload, method="POST", headers=self._octopia_headers())

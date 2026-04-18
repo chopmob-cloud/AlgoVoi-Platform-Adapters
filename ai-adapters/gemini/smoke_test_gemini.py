@@ -88,15 +88,15 @@ def show_challenges():
     print("\n-- MPP challenges ------------------------------------------")
     for net in networks:
         result = _mpp_gate(net).check({})
-        _, status, headers = result.as_flask_response()
-        www_auth = next((v for k, v in headers.items() if k.lower() == "www-authenticate"), "")
+        status, headers, _ = result.as_wsgi_response()
+        www_auth = next((v for k, v in headers if k.lower() == "www-authenticate"), "")
         print(f"  {net:20s}  {status}  {www_auth[:80]}")
 
     print("\n-- AP2 CartMandate challenges ------------------------------")
     for net in networks:
         result = _ap2_gate(net).check({}, {})
-        _, status, headers = result.as_flask_response()
-        cart = next((v for k, v in headers.items() if k.lower() == "x-ap2-cart-mandate"), "")
+        status, headers, _ = result.as_wsgi_response()
+        cart = next((v for k, v in headers if k.lower() == "x-ap2-cart-mandate"), "")
         print(f"  {net:20s}  {status}  CartMandate={cart[:40]}...")
 
     print("\n[PASS] All 8 challenges returned 402 correctly")

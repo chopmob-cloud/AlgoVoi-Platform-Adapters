@@ -171,7 +171,7 @@ Content-Type: application/json
 {
   "trackingNumber": "<algovoi-tx-id>",
   "carrierName": "AlgoVoi",
-  "trackingUrl": "https://algovoi.com/tx/<algovoi-tx-id>"
+  "trackingUrl": "https://www.algovoi.co.uk/tx/<algovoi-tx-id>"
 }
 ```
 
