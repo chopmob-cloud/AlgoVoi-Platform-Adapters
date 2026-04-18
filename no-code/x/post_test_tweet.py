@@ -19,21 +19,45 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from x_algovoi import AlgoVoiX
 
-REQUIRED = ["X_API_KEY", "X_API_KEY_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_TOKEN_SECRET"]
-missing  = [k for k in REQUIRED if not os.environ.get(k)]
+def _load_keys_txt() -> dict:
+    """Read X credentials from keys.txt in the repo root (supports both naming conventions)."""
+    creds: dict = {}
+    keys_path = os.path.join(os.path.dirname(__file__), "..", "..", "keys.txt")
+    try:
+        with open(keys_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if "=" in line and not line.startswith("#"):
+                    k, _, v = line.partition("=")
+                    creds[k.strip()] = v.strip()
+    except FileNotFoundError:
+        pass
+    # Normalise: X_API_SECRET → X_API_KEY_SECRET, X_ACCESS_SECRET → X_ACCESS_TOKEN_SECRET
+    if "X_API_SECRET" in creds and "X_API_KEY_SECRET" not in creds:
+        creds["X_API_KEY_SECRET"] = creds["X_API_SECRET"]
+    if "X_ACCESS_SECRET" in creds and "X_ACCESS_TOKEN_SECRET" not in creds:
+        creds["X_ACCESS_TOKEN_SECRET"] = creds["X_ACCESS_SECRET"]
+    return creds
+
+# Merge: env vars take priority over keys.txt
+_file_creds = _load_keys_txt()
+CREDS = {k: os.environ.get(k) or _file_creds.get(k, "") for k in
+         ["X_API_KEY", "X_API_KEY_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_TOKEN_SECRET"]}
+
+missing = [k for k, v in CREDS.items() if not v]
 if missing:
-    print(f"ERROR: missing env vars: {', '.join(missing)}")
-    print(__doc__)
+    print(f"ERROR: missing credentials: {', '.join(missing)}")
+    print("Set them as env vars or add to keys.txt (X_API_KEY=..., X_API_SECRET=..., etc.)")
     sys.exit(1)
 
 x = AlgoVoiX(
     algovoi_key=             os.environ.get("ALGOVOI_API_KEY", "algv_" + "x" * 40),
     tenant_id=               os.environ.get("ALGOVOI_TENANT_ID", "00000000-0000-0000-0000-000000000000"),
     payout_algorand=         "ZVLRVYQSLJNVFMOIOKT35XH5SNQG45IVFMLLRFLHDQJQA5TO5H3SO4TVDQ",
-    x_api_key=               os.environ["X_API_KEY"],
-    x_api_key_secret=        os.environ["X_API_KEY_SECRET"],
-    x_access_token=          os.environ["X_ACCESS_TOKEN"],
-    x_access_token_secret=   os.environ["X_ACCESS_TOKEN_SECRET"],
+    x_api_key=               CREDS["X_API_KEY"],
+    x_api_key_secret=        CREDS["X_API_KEY_SECRET"],
+    x_access_token=          CREDS["X_ACCESS_TOKEN"],
+    x_access_token_secret=   CREDS["X_ACCESS_TOKEN_SECRET"],
 )
 
 TWEET = (
