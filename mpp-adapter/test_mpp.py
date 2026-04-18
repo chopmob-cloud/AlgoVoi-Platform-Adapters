@@ -58,10 +58,10 @@ def main():
     # 1. Version and constants
     print("\n1. Version and constants")
     import mpp as mpp_mod
-    test("version is 2.1.0", mpp_mod.__version__ == "2.1.0")
+    test("version is 2.2.0", mpp_mod.__version__ == "2.2.0")
     test("INTENT is 'charge'", INTENT == "charge")
     test("INTENT constant in source", '"charge"' in src)
-    test("4 networks defined in NETWORKS", len(MppGate.NETWORKS) == 4)
+    test("8 networks defined in NETWORKS", len(MppGate.NETWORKS) == 8)
 
     # 2. No credentials -> challenge issued
     print("\n2. No credentials -> 402 challenge")
@@ -276,9 +276,10 @@ def main():
     test("default challenge_ttl is 300", gate_defaults.challenge_ttl == 300)
     test("default realm is 'API Access'", gate_defaults.realm == "API Access")
 
-    # 20. Network and indexer config — all 4 chains
-    print("\n20. Network and indexer config — all 4 chains")
-    test("4 networks defined", len(MppGate.NETWORKS) == 4)
+    # 20. Network and indexer config — all 4 chains × 2 tokens
+    print("\n20. Network and indexer config — all 4 chains × 2 tokens (8 total)")
+    test("8 networks defined", len(MppGate.NETWORKS) == 8)
+    # Stablecoin networks
     test("algorand-mainnet in INDEXERS", "algorand-mainnet" in MppGate.INDEXERS)
     test("algorand_mainnet in INDEXERS", "algorand_mainnet" in MppGate.INDEXERS)
     test("voi-mainnet in INDEXERS", "voi-mainnet" in MppGate.INDEXERS)
@@ -287,11 +288,47 @@ def main():
     test("hedera_mainnet in INDEXERS", "hedera_mainnet" in MppGate.INDEXERS)
     test("stellar-mainnet in INDEXERS", "stellar-mainnet" in MppGate.INDEXERS)
     test("stellar_mainnet in INDEXERS", "stellar_mainnet" in MppGate.INDEXERS)
-    test("algorand asset_id is 31566704", MppGate.NETWORKS["algorand_mainnet"]["asset_id"] == 31566704)
-    test("voi asset_id is 302190", MppGate.NETWORKS["voi_mainnet"]["asset_id"] == 302190)
-    test("hedera asset_id is 0.0.456858", MppGate.NETWORKS["hedera_mainnet"]["asset_id"] == "0.0.456858")
-    test("stellar asset_id contains GA5ZS issuer",
+    # Native token networks in INDEXERS
+    test("algorand_mainnet_algo in INDEXERS", "algorand_mainnet_algo" in MppGate.INDEXERS)
+    test("voi_mainnet_voi in INDEXERS", "voi_mainnet_voi" in MppGate.INDEXERS)
+    test("hedera_mainnet_hbar in INDEXERS", "hedera_mainnet_hbar" in MppGate.INDEXERS)
+    test("stellar_mainnet_xlm in INDEXERS", "stellar_mainnet_xlm" in MppGate.INDEXERS)
+    # Stablecoin asset IDs
+    test("algorand USDC asset_id is 31566704", MppGate.NETWORKS["algorand_mainnet"]["asset_id"] == 31566704)
+    test("voi aUSDC asset_id is 302190", MppGate.NETWORKS["voi_mainnet"]["asset_id"] == 302190)
+    test("hedera USDC asset_id is 0.0.456858", MppGate.NETWORKS["hedera_mainnet"]["asset_id"] == "0.0.456858")
+    test("stellar USDC contains GA5ZS issuer",
          "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN" in MppGate.NETWORKS["stellar_mainnet"]["asset_id"])
+    # Native token asset_id == None
+    test("ALGO asset_id is None", MppGate.NETWORKS["algorand_mainnet_algo"]["asset_id"] is None)
+    test("VOI asset_id is None", MppGate.NETWORKS["voi_mainnet_voi"]["asset_id"] is None)
+    test("HBAR asset_id is None", MppGate.NETWORKS["hedera_mainnet_hbar"]["asset_id"] is None)
+    test("XLM asset_id is None", MppGate.NETWORKS["stellar_mainnet_xlm"]["asset_id"] is None)
+    # Native flag
+    test("algorand_mainnet native=False", MppGate.NETWORKS["algorand_mainnet"]["native"] is False)
+    test("algorand_mainnet_algo native=True", MppGate.NETWORKS["algorand_mainnet_algo"]["native"] is True)
+    test("voi_mainnet native=False", MppGate.NETWORKS["voi_mainnet"]["native"] is False)
+    test("voi_mainnet_voi native=True", MppGate.NETWORKS["voi_mainnet_voi"]["native"] is True)
+    test("hedera_mainnet native=False", MppGate.NETWORKS["hedera_mainnet"]["native"] is False)
+    test("hedera_mainnet_hbar native=True", MppGate.NETWORKS["hedera_mainnet_hbar"]["native"] is True)
+    test("stellar_mainnet native=False", MppGate.NETWORKS["stellar_mainnet"]["native"] is False)
+    test("stellar_mainnet_xlm native=True", MppGate.NETWORKS["stellar_mainnet_xlm"]["native"] is True)
+    # Tickers
+    test("ALGO ticker", MppGate.NETWORKS["algorand_mainnet_algo"]["ticker"] == "ALGO")
+    test("VOI ticker", MppGate.NETWORKS["voi_mainnet_voi"]["ticker"] == "VOI")
+    test("HBAR ticker", MppGate.NETWORKS["hedera_mainnet_hbar"]["ticker"] == "HBAR")
+    test("XLM ticker", MppGate.NETWORKS["stellar_mainnet_xlm"]["ticker"] == "XLM")
+    # Decimals
+    test("HBAR decimals=8", MppGate.NETWORKS["hedera_mainnet_hbar"]["decimals"] == 8)
+    test("XLM decimals=7", MppGate.NETWORKS["stellar_mainnet_xlm"]["decimals"] == 7)
+    test("ALGO decimals=6", MppGate.NETWORKS["algorand_mainnet_algo"]["decimals"] == 6)
+    test("VOI decimals=6", MppGate.NETWORKS["voi_mainnet_voi"]["decimals"] == 6)
+    # Indexer routing correct for native keys
+    test("ALGO indexer is algonode", "algonode.cloud" in MppGate.INDEXERS["algorand_mainnet_algo"])
+    test("VOI indexer is nodely.dev", "nodely.dev" in MppGate.INDEXERS["voi_mainnet_voi"])
+    test("HBAR indexer is mirrornode", "mirrornode.hedera.com" in MppGate.INDEXERS["hedera_mainnet_hbar"])
+    test("XLM indexer is horizon", "horizon.stellar.org" in MppGate.INDEXERS["stellar_mainnet_xlm"])
+    # USDC indexers unchanged
     test("algorand indexer is algonode", "algonode.cloud" in MppGate.INDEXERS["algorand-mainnet"])
     test("voi indexer is nodely.dev", "nodely.dev" in MppGate.INDEXERS["voi-mainnet"])
     test("hedera indexer is mirrornode", "mirrornode.hedera.com" in MppGate.INDEXERS["hedera-mainnet"])
@@ -533,6 +570,123 @@ def main():
     test("CAIP-2 voi:mainnet routes to nodely indexer (verification error)",
          "verification" in (result_voi_caip.error or "").lower(),
          f"error={result_voi_caip.error}")
+
+    # 32. Native token challenge — asset field is "native", ticker present
+    print("\n32. Native token challenge — ALGO/VOI/HBAR/XLM")
+    for net_key, expected_ticker, expected_network in [
+        ("algorand_mainnet_algo", "ALGO", "algorand-mainnet"),
+        ("voi_mainnet_voi",       "VOI",  "voi-mainnet"),
+        ("hedera_mainnet_hbar",   "HBAR", "hedera-mainnet"),
+        ("stellar_mainnet_xlm",   "XLM",  "stellar-mainnet"),
+    ]:
+        gate_n = MppGate(
+            api_base="https://api1.ilovechicken.co.uk",
+            api_key="test_key",
+            tenant_id="test_tenant",
+            resource_id=f"native-{net_key}",
+            amount_microunits=10000,
+            networks=[net_key],
+            payout_address="TEST_ADDR",
+        )
+        result_n = gate_n.check({})
+        test(f"{net_key}: challenge issued", result_n.requires_payment and result_n.challenge is not None)
+        if result_n.challenge:
+            accepts_n = result_n.challenge.accepts
+            test(f"{net_key}: 1 entry in accepts", len(accepts_n) == 1)
+            if accepts_n:
+                entry = accepts_n[0]
+                test(f"{net_key}: network is {expected_network}", entry.get("network") == expected_network)
+                test(f"{net_key}: asset is 'native'", entry.get("asset") == "native")
+                test(f"{net_key}: ticker is {expected_ticker}", entry.get("ticker") == expected_ticker)
+                test(f"{net_key}: amount is '10000'", entry.get("amount") == "10000")
+                test(f"{net_key}: payTo present", bool(entry.get("payTo")))
+
+    # 33. Native token verification routing — fake TXs reach correct indexer
+    print("\n33. Native token verification routing — fake TX hits indexer (not routing error)")
+    gate_algo_n = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="algo-native-route",
+        amount_microunits=10000,
+        networks=["algorand_mainnet_algo"],
+        payout_address="TEST_ADDR",
+    )
+    fake_algo_native = b64j({"network": "algorand-mainnet", "payload": {"txId": "FAKE_ALGO_NATIVE_TX"}})
+    result_algo_n = gate_algo_n.check({"Authorization": f"Payment {fake_algo_native}"})
+    test("ALGO native: verification failed (not routing error)", "verification" in (result_algo_n.error or "").lower())
+
+    gate_voi_n = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="voi-native-route",
+        amount_microunits=10000,
+        networks=["voi_mainnet_voi"],
+        payout_address="TEST_ADDR",
+    )
+    fake_voi_native = b64j({"network": "voi-mainnet", "payload": {"txId": "FAKE_VOI_NATIVE_TX"}})
+    result_voi_n = gate_voi_n.check({"Authorization": f"Payment {fake_voi_native}"})
+    test("VOI native: verification failed (not routing error)", "verification" in (result_voi_n.error or "").lower())
+
+    gate_hbar = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="hbar-route",
+        amount_microunits=10000,
+        networks=["hedera_mainnet_hbar"],
+        payout_address="0.0.1317927",
+    )
+    fake_hbar = b64j({"network": "hedera-mainnet", "payload": {"txId": "0.0.99-9999999999-000000001"}})
+    result_hbar = gate_hbar.check({"Authorization": f"Payment {fake_hbar}"})
+    test("HBAR native: verification failed (not routing error)", "verification" in (result_hbar.error or "").lower())
+
+    gate_xlm = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="xlm-route",
+        amount_microunits=10000,
+        networks=["stellar_mainnet_xlm"],
+        payout_address="GD45SH4TC4TMJOJWJJSLGAXODAIO36POCACT2MWS7I6CTJORMFKEP3HR",
+    )
+    fake_xlm = b64j({"network": "stellar-mainnet", "payload": {"txId": "0" * 64}})
+    result_xlm = gate_xlm.check({"Authorization": f"Payment {fake_xlm}"})
+    test("XLM native: verification failed (not routing error)", "verification" in (result_xlm.error or "").lower())
+
+    # 34. 8-network gate challenge
+    print("\n34. 8-network gate challenge (all chains × all tokens)")
+    gate8 = MppGate(
+        api_base="https://api1.ilovechicken.co.uk",
+        api_key="test_key",
+        tenant_id="test_tenant",
+        resource_id="all-8-chains",
+        amount_microunits=10000,
+        networks=[
+            "algorand_mainnet", "algorand_mainnet_algo",
+            "voi_mainnet",      "voi_mainnet_voi",
+            "hedera_mainnet",   "hedera_mainnet_hbar",
+            "stellar_mainnet",  "stellar_mainnet_xlm",
+        ],
+        payout_address="TEST_ADDR",
+    )
+    result8 = gate8.check({})
+    test("8-network gate issues challenge", result8.requires_payment and result8.challenge is not None)
+    if result8.challenge:
+        accepts8 = result8.challenge.accepts
+        test("8 entries in accepts", len(accepts8) == 8, f"got {len(accepts8)}")
+        native_entries  = [a for a in accepts8 if a.get("asset") == "native"]
+        usdc_entries    = [a for a in accepts8 if a.get("asset") != "native"]
+        test("4 native asset entries", len(native_entries) == 4, f"got {len(native_entries)}")
+        test("4 stablecoin asset entries", len(usdc_entries) == 4, f"got {len(usdc_entries)}")
+        tickers = {a.get("ticker") for a in accepts8}
+        test("USDC ticker in 8-chain accepts", "USDC" in tickers)
+        test("aUSDC ticker in 8-chain accepts", "aUSDC" in tickers)
+        test("ALGO ticker in 8-chain accepts", "ALGO" in tickers)
+        test("VOI ticker in 8-chain accepts", "VOI" in tickers)
+        test("HBAR ticker in 8-chain accepts", "HBAR" in tickers)
+        test("XLM ticker in 8-chain accepts", "XLM" in tickers)
 
     # Summary
     print("\n" + "=" * 55)
