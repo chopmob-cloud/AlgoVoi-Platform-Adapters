@@ -54,10 +54,11 @@ cloud/dashboard/node_modules/
 cloud/dashboard/.env.local
 cloud/dashboard/.env.production
 
-# Cloud gateway
+# Cloud — server-specific deployment files
+cloud/DEPLOY.md
+cloud/ssh_deploy.py
 cloud/gateway/__pycache__/
 cloud/gateway/.env
-cloud/ssh_deploy.py
 
 # No-code node_modules, build artifacts and lock files
 no-code/zapier/zapier-app/node_modules/
