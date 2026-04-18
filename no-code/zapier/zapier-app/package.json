@@ -1,0 +1,19 @@
+{
+  "name": "algovoi",
+  "version": "1.0.0",
+  "description": "Accept crypto payments on Algorand, VOI, Hedera & Stellar — verified on-chain, no banks.",
+  "main": "index.js",
+  "scripts": {
+    "test": "zapier test"
+  },
+  "dependencies": {
+    "zapier-platform-core": "16.4.0"
+  },
+  "devDependencies": {},
+  "keywords": ["crypto", "payments", "algorand", "hedera", "stellar", "usdc"],
+  "author": "AlgoVoi <hello@algovoi.com>",
+  "license": "BUSL-1.1",
+  "zapier": {
+    "appTemplate": "trigger-with-rest-hooks"
+  }
+}

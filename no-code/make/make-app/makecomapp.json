@@ -1,0 +1,305 @@
+{
+  "name": "AlgoVoi",
+  "label": "AlgoVoi",
+  "version": "1.0.0",
+  "description": "Accept crypto payments on Algorand, VOI, Hedera & Stellar. Create hosted checkout links, verify on-chain payments, and trigger scenarios on payment events — no banks, no card processors.",
+  "categories": ["payment"],
+  "color": "#0070e0",
+  "audience": "public",
+  "connection": {
+    "label": "AlgoVoi connection",
+    "type": "basic",
+    "parameters": [
+      {
+        "name":     "api_key",
+        "type":     "text",
+        "label":    "API Key",
+        "required": true,
+        "sensitive": true,
+        "help":     "Your AlgoVoi API key (starts with algv_). Find it at app.algovoi.com → Settings → API Keys."
+      },
+      {
+        "name":     "tenant_id",
+        "type":     "text",
+        "label":    "Tenant ID",
+        "required": true,
+        "help":     "Your AlgoVoi tenant UUID. Find it at app.algovoi.com → Settings."
+      },
+      {
+        "name":  "payout_algorand",
+        "type":  "text",
+        "label": "Payout Address — Algorand",
+        "help":  "Algorand wallet address for ALGO / USDC payouts (58-char base32). Required for Algorand networks."
+      },
+      {
+        "name":  "payout_voi",
+        "type":  "text",
+        "label": "Payout Address — VOI",
+        "help":  "VOI wallet address for VOI / aUSDC payouts."
+      },
+      {
+        "name":  "payout_hedera",
+        "type":  "text",
+        "label": "Payout Address — Hedera",
+        "help":  "Hedera account ID for HBAR / USDC payouts (e.g. 0.0.123456)."
+      },
+      {
+        "name":  "payout_stellar",
+        "type":  "text",
+        "label": "Payout Address — Stellar",
+        "help":  "Stellar public key for XLM / USDC payouts (starts with G)."
+      },
+      {
+        "name":      "webhook_secret",
+        "type":      "text",
+        "label":     "Webhook Secret",
+        "sensitive": true,
+        "help":      "AlgoVoi webhook signing secret for HMAC-SHA256 verification. Found in AlgoVoi Dashboard → Settings → Webhooks."
+      },
+      {
+        "name":    "api_base",
+        "type":    "text",
+        "label":   "API Base URL",
+        "default": "https://api1.ilovechicken.co.uk",
+        "help":    "AlgoVoi API base URL. Leave as default unless instructed otherwise."
+      }
+    ],
+    "communication": {
+      "url":    "{{connection.api_base}}/v1/verify?token=_auth_test_",
+      "method": "GET",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{connection.api_key}}" },
+        { "name": "X-Tenant-Id",   "value": "{{connection.tenant_id}}" }
+      ],
+      "response": {
+        "error": {
+          "type": "StatusCodeError",
+          "filter": {
+            "condition": "{{response.statusCode}}",
+            "operator":  "number:equal",
+            "value":     "401"
+          }
+        }
+      }
+    }
+  },
+  "modules": [
+    {
+      "name":        "createPaymentLink",
+      "label":       "Create Payment Link",
+      "description": "Creates a hosted AlgoVoi checkout URL. Share it with a customer — they pay with their crypto wallet, no account required.",
+      "typeId":      "action",
+      "connection":  { "label": "{{connection.label}}" },
+      "parameters": [
+        {
+          "name":     "amount",
+          "type":     "number",
+          "label":    "Amount (USD)",
+          "required": true,
+          "help":     "Payment amount in USD (e.g. 5.00). AlgoVoi converts to crypto on checkout."
+        },
+        {
+          "name":     "label",
+          "type":     "text",
+          "label":    "Payment Label",
+          "required": true,
+          "help":     "Description shown to the customer (e.g. 'Premium access — 1 month')."
+        },
+        {
+          "name":    "network",
+          "type":    "select",
+          "label":   "Network",
+          "default": "algorand_mainnet",
+          "help":    "Blockchain / asset the customer should pay on.",
+          "options": [
+            { "label": "Algorand — USDC",          "value": "algorand_mainnet" },
+            { "label": "VOI — aUSDC",              "value": "voi_mainnet" },
+            { "label": "Hedera — USDC",            "value": "hedera_mainnet" },
+            { "label": "Stellar — USDC",           "value": "stellar_mainnet" },
+            { "label": "Algorand — ALGO (native)", "value": "algorand_mainnet_algo" },
+            { "label": "VOI — VOI (native)",        "value": "voi_mainnet_voi" },
+            { "label": "Hedera — HBAR (native)",   "value": "hedera_mainnet_hbar" },
+            { "label": "Stellar — XLM (native)",   "value": "stellar_mainnet_xlm" },
+            { "label": "Algorand Testnet — USDC",  "value": "algorand_testnet" },
+            { "label": "VOI Testnet — aUSDC",      "value": "voi_testnet" },
+            { "label": "Hedera Testnet — USDC",    "value": "hedera_testnet" },
+            { "label": "Stellar Testnet — USDC",   "value": "stellar_testnet" }
+          ]
+        },
+        {
+          "name":    "currency",
+          "type":    "text",
+          "label":   "Base Currency",
+          "default": "USD",
+          "help":    "Fiat currency for the amount (3-letter code)."
+        },
+        {
+          "name":  "redirect_url",
+          "type":  "url",
+          "label": "Redirect URL (after payment)",
+          "help":  "HTTPS URL to redirect the customer to after a successful payment."
+        }
+      ],
+      "interface": [
+        { "name": "checkout_url",      "type": "url",     "label": "Checkout URL" },
+        { "name": "token",             "type": "text",    "label": "Checkout Token" },
+        { "name": "amount",            "type": "number",  "label": "Amount (USD)" },
+        { "name": "currency",          "type": "text",    "label": "Currency" },
+        { "name": "network",           "type": "text",    "label": "Network" },
+        { "name": "amount_microunits", "type": "integer", "label": "Amount (microunits)" }
+      ],
+      "communication": {
+        "url":    "{{connection.api_base}}/v1/payment-links",
+        "method": "POST",
+        "headers": [
+          { "name": "Authorization",  "value": "Bearer {{connection.api_key}}" },
+          { "name": "X-Tenant-Id",    "value": "{{connection.tenant_id}}" },
+          { "name": "Content-Type",   "value": "application/json" }
+        ],
+        "body": {
+          "amount":            "{{parameters.amount}}",
+          "currency":          "{{uppercase(parameters.currency)}}",
+          "label":             "{{parameters.label}}",
+          "preferred_network": "{{parameters.network}}"
+        },
+        "response": {
+          "output": "{{body}}",
+          "error":  { "message": "{{body.error}}" }
+        }
+      },
+      "samples": {
+        "checkout_url":      "https://pay.algovoi.com/c/abc123",
+        "token":             "abc123",
+        "amount":            5.0,
+        "currency":          "USD",
+        "network":           "algorand_mainnet",
+        "amount_microunits": 5000000
+      }
+    },
+    {
+      "name":        "verifyPayment",
+      "label":       "Verify Payment",
+      "description": "Checks whether an AlgoVoi checkout token has been paid on-chain.",
+      "typeId":      "action",
+      "connection":  { "label": "{{connection.label}}" },
+      "parameters": [
+        {
+          "name":     "token",
+          "type":     "text",
+          "label":    "Checkout Token",
+          "required": true,
+          "help":     "The checkout token from a previous Create Payment Link module or AlgoVoi webhook payload."
+        }
+      ],
+      "interface": [
+        { "name": "token",  "type": "text",    "label": "Checkout Token" },
+        { "name": "paid",   "type": "boolean", "label": "Paid?" },
+        { "name": "status", "type": "text",    "label": "Payment Status" }
+      ],
+      "communication": {
+        "url":    "{{connection.api_base}}/checkout/{{parameters.token}}/status",
+        "method": "GET",
+        "headers": [],
+        "response": {
+          "output": {
+            "token":  "{{parameters.token}}",
+            "paid":   "{{if(body.status == 'paid' || body.status == 'completed' || body.status == 'confirmed', true, false)}}",
+            "status": "{{body.status}}"
+          }
+        }
+      },
+      "samples": {
+        "token":  "abc123token",
+        "paid":   true,
+        "status": "paid"
+      }
+    },
+    {
+      "name":        "listNetworks",
+      "label":       "List Networks",
+      "description": "Returns all 16 AlgoVoi-supported networks (Algorand, VOI, Hedera, Stellar — mainnet and testnet).",
+      "typeId":      "action",
+      "parameters":  [],
+      "interface": [
+        { "name": "id",       "type": "text",    "label": "Network ID" },
+        { "name": "label",    "type": "text",    "label": "Chain Name" },
+        { "name": "asset",    "type": "text",    "label": "Asset Symbol" },
+        { "name": "asset_id", "type": "text",    "label": "Asset ID (on-chain)" },
+        { "name": "decimals", "type": "integer", "label": "Decimals" }
+      ],
+      "communication": {
+        "url":    "{{connection.api_base}}/v1/networks",
+        "method": "GET",
+        "headers": [
+          { "name": "Authorization", "value": "Bearer {{connection.api_key}}" },
+          { "name": "X-Tenant-Id",   "value": "{{connection.tenant_id}}" }
+        ],
+        "response": { "output": "{{body.networks}}" }
+      },
+      "samples": {
+        "id":       "algorand_mainnet",
+        "label":    "Algorand",
+        "asset":    "USDC",
+        "asset_id": "31566704",
+        "decimals": 6
+      }
+    }
+  ],
+  "webhooks": [
+    {
+      "name":        "paymentConfirmed",
+      "label":       "Payment Confirmed",
+      "description": "Triggers instantly when an AlgoVoi crypto payment is confirmed on-chain.",
+      "typeId":      "web",
+      "connection":  { "label": "{{connection.label}}" },
+      "parameters":  [],
+      "interface": [
+        { "name": "event_id",   "type": "text",    "label": "Event ID" },
+        { "name": "event_type", "type": "text",    "label": "Event Type" },
+        { "name": "status",     "type": "text",    "label": "Payment Status" },
+        { "name": "token",      "type": "text",    "label": "Checkout Token" },
+        { "name": "amount",     "type": "number",  "label": "Amount (USD)" },
+        { "name": "currency",   "type": "text",    "label": "Currency" },
+        { "name": "network",    "type": "text",    "label": "Network" },
+        { "name": "tx_id",      "type": "text",    "label": "Transaction ID" },
+        { "name": "order_id",   "type": "text",    "label": "Order / Reference ID" },
+        { "name": "payer",      "type": "text",    "label": "Payer Address" },
+        { "name": "created_at", "type": "integer", "label": "Timestamp (Unix)" }
+      ],
+      "attach": {
+        "url":    "{{connection.api_base}}/v1/webhooks",
+        "method": "POST",
+        "headers": [
+          { "name": "Authorization", "value": "Bearer {{connection.api_key}}" },
+          { "name": "X-Tenant-Id",   "value": "{{connection.tenant_id}}" }
+        ],
+        "body": {
+          "url":   "{{hook.url}}",
+          "event": "payment.confirmed"
+        },
+        "response": { "data": { "hookId": "{{body.id}}" } }
+      },
+      "detach": {
+        "url":    "{{connection.api_base}}/v1/webhooks/{{hook.data.hookId}}",
+        "method": "DELETE",
+        "headers": [
+          { "name": "Authorization", "value": "Bearer {{connection.api_key}}" },
+          { "name": "X-Tenant-Id",   "value": "{{connection.tenant_id}}" }
+        ]
+      },
+      "samples": {
+        "event_id":   "evt_sample_001",
+        "event_type": "payment.confirmed",
+        "status":     "paid",
+        "token":      "abc123",
+        "amount":     5.0,
+        "currency":   "USD",
+        "network":    "algorand_mainnet",
+        "tx_id":      "ABC123TXID",
+        "order_id":   "order_001",
+        "payer":      "ALGO_ADDRESS",
+        "created_at": 1713400000
+      }
+    }
+  ]
+}
