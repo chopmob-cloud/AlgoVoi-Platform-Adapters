@@ -18,7 +18,11 @@ https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 
 ## Quick start
 
-See the integration guide above for installation and configuration.
+1. Download [`algovoi-woocommerce.zip`](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/releases/latest/download/algovoi-woocommerce.zip) from the latest release
+2. WordPress Admin → Plugins → Add New → Upload Plugin → Install → Activate
+3. WooCommerce → Settings → Payments → AlgoVoi → enter your `algvc_...` Cloud key + API Base `https://cloud.algovoi.co.uk`
+
+See the integration guide above for full configuration options.
 
 ---
 

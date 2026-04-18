@@ -20,7 +20,13 @@ https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 
 ## Quick start
 
-See the integration guide above for installation and configuration.
+1. Download from the [latest release](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/releases/latest):
+   - [`algovoi-shopware.zip`](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/releases/latest/download/algovoi-shopware.zip) — payment plugin (required)
+   - [`algovoi-shopware-theme.zip`](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/releases/latest/download/algovoi-shopware-theme.zip) — optional theme
+2. Shopware Admin → Extensions → My extensions → Upload extension → Install → Activate
+3. Settings → Payment → AlgoVoi → enter your `algvc_...` Cloud key + API Base `https://cloud.algovoi.co.uk`
+
+See the integration guide above for full configuration options.
 
 ---
 

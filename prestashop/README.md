@@ -19,7 +19,13 @@ https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 
 ## Quick start
 
-See the integration guide above for installation and configuration.
+1. Download one or both from the [latest release](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/releases/latest):
+   - [`algovoi-prestashop.zip`](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/releases/latest/download/algovoi-prestashop.zip) — hosted checkout
+   - [`algovoi-prestashop-extension.zip`](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/releases/latest/download/algovoi-prestashop-extension.zip) — in-page wallet checkout
+2. PrestaShop Back Office → Modules → Module Manager → Upload a module
+3. Configure → enter your `algvc_...` Cloud key + API Base `https://cloud.algovoi.co.uk`
+
+See the integration guide above for full configuration options.
 
 ---
 
