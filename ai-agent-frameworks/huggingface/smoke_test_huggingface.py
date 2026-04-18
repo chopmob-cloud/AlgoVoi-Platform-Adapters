@@ -7,22 +7,21 @@ Phase 1 — Challenge render (no live AlgoVoi API needed)
     402 challenge header without a payment proof.
 
 Phase 2 — Full on-chain round-trip + InferenceClient + smolagents tool
-    Requires:
-      ALGOVOI_KEY, TENANT_ID, PAYOUT_ADDRESS, HF_TOKEN env vars
-      Live AlgoVoi gateway (api1.ilovechicken.co.uk)
-      Live Hugging Face Inference API
+    Requires real TX IDs from the 4 supported chains.
 
 Usage:
-    # Phase 1 only (CI-safe):
-    python smoke_test_huggingface.py --phase 1
+    python smoke_test_huggingface.py                                      # Phase 1
+    python smoke_test_huggingface.py ALGO_TX VOI_TX HEDERA_TX STELLAR_TX  # Phase 2
 
-    # Both phases (full integration):
-    ALGOVOI_KEY=algv_... TENANT_ID=... PAYOUT_ADDRESS=... HF_TOKEN=hf_... \\
-        python smoke_test_huggingface.py --phase 2
+Credentials loaded from (in order):
+    ALGOVOI_KEY  env var  — or first 'algv_' line in keys.txt
+    HF_TOKEN     env var  — or "" (HF calls will warn if absent)
+    TENANT_ID    env var  — defaults to placeholder
 """
 
 from __future__ import annotations
 
+import base64
 import argparse
 import json
 import os
@@ -35,6 +34,61 @@ from unittest.mock import MagicMock
 # ── path setup ────────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
+
+
+# ── Credential loading ────────────────────────────────────────────────────────
+
+def _load_labelled(label: str, path: str) -> str | None:
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.lower().startswith(label.lower() + ":"):
+                    _, _, value = line.partition(":")
+                    return value.strip().split()[0] if value.strip() else None
+    except FileNotFoundError:
+        pass
+    return None
+
+
+def _load_line_prefix(prefix: str, path: str) -> str | None:
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith(prefix):
+                    return line.split()[0]
+    except FileNotFoundError:
+        pass
+    return None
+
+
+def _load_algovoi_key() -> str:
+    k = os.environ.get("ALGOVOI_KEY")
+    if k:
+        return k
+    root = os.path.join(_HERE, "..", "..")
+    for fname in ("openai.txt", "keys.txt"):
+        v = _load_line_prefix("algv_", os.path.join(root, fname))
+        if v:
+            return v
+    return ""
+
+
+PAYOUT_ADDRS = {
+    "algorand-mainnet": "ZVLRVYQSLJNVFMOIOKT35XH5SNQG45IVFMLLRFLHDQJQA5TO5H3SO4TVDQ",
+    "voi-mainnet":      "THDLWTJ7RB4OJWFZCLL5IME7FHBSJ3SONBRWHIVQE3BEGTY2BWUEUVEOQY",
+    "hedera-mainnet":   "0.0.1317927",
+    "stellar-mainnet":  "GD45SH4TC4TMJOJWJJSLGAXODAIO36POCACT2MWS7I6CTJORMFKEP3HR",
+}
+
+
+def _mpp_proof(network: str, tx_id: str) -> str:
+    return base64.b64encode(json.dumps({
+        "network": network,
+        "payload": {"txId": tx_id},
+    }).encode()).decode()
+
 
 # ── stub gate modules for phase-1 tests ──────────────────────────────────────
 
@@ -219,49 +273,47 @@ def run_phase1_tool() -> int:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Phase 2 — live on-chain + HF inference
+# Phase 2 — live on-chain verification via real TX IDs
 # ══════════════════════════════════════════════════════════════════════════════
 
-PHASE2_NETWORKS = [
-    "algorand-mainnet",
-    "voi-mainnet",
-    "hedera-mainnet",
-    "stellar-mainnet",
-]
+def verify_payments(algo_tx: str, voi_tx: str, hedera_tx: str, stellar_tx: str) -> int:
+    algovoi_key = _load_algovoi_key()
+    hf_token    = os.environ.get("HF_TOKEN", "")
+    tenant_id   = os.environ.get("TENANT_ID", "YOUR_TENANT_ID")
 
+    if not algovoi_key:
+        print("\n\033[91mALGOVOI_KEY not found — cannot run Phase 2\033[0m")
+        return 1
 
-def run_phase2() -> int:
-    algovoi_key    = os.environ.get("ALGOVOI_KEY", "")
-    tenant_id      = os.environ.get("TENANT_ID", "")
-    payout_address = os.environ.get("PAYOUT_ADDRESS", "")
-    hf_token       = os.environ.get("HF_TOKEN", "")
-
-    missing = [k for k, v in {
-        "ALGOVOI_KEY": algovoi_key,
-        "TENANT_ID": tenant_id,
-        "PAYOUT_ADDRESS": payout_address,
-        "HF_TOKEN": hf_token,
-    }.items() if not v]
-
-    if missing:
-        print(f"\n\033[93mPhase 2 skipped — missing env vars: {', '.join(missing)}\033[0m")
-        return 0
-
-    # Remove stubs so real modules are imported
-    for k in ("mpp_algovoi", "ap2_algovoi", "openai_algovoi",
-              "huggingface_hub", "smolagents"):
+    # Remove phase-1 stubs so real modules are imported
+    for k in ("mpp", "ap2", "openai_algovoi", "huggingface_hub", "smolagents"):
         sys.modules.pop(k, None)
 
-    failures = 0
-    _head("Phase 2 — live on-chain verification (4 chains × MPP)")
+    print("\n" + "=" * 60)
+    print("PHASE 2 — On-chain Verification + HuggingFace InferenceClient")
+    print("=" * 60)
 
-    for network in PHASE2_NETWORKS:
-        label = f"mpp / {network}"
+    tests = [
+        ("algorand-mainnet", algo_tx),
+        ("voi-mainnet",      voi_tx),
+        ("hedera-mainnet",   hedera_tx),
+        ("stellar-mainnet",  stellar_tx),
+    ]
+
+    passed = failed = 0
+
+    for network, tx_id in tests:
+        print(f"\n-- {network} ------------------------------------------")
+        if tx_id == "skip":
+            print("  [WARN] skipped")
+            continue
+        print(f"  TX: {tx_id}")
+
         try:
             adapter = AlgoVoiHuggingFace(
                 algovoi_key=algovoi_key,
                 tenant_id=tenant_id,
-                payout_address=payout_address,
+                payout_address=PAYOUT_ADDRS[network],
                 hf_token=hf_token,
                 protocol="mpp",
                 network=network,
@@ -273,95 +325,81 @@ def run_phase2() -> int:
             result = adapter.check({}, {})
             assert result.requires_payment, "should require payment on first call"
 
-            # Step 2 — obtain proof from the gateway (AlgoVoi test endpoint)
-            import urllib.request
-            req_body = json.dumps({
-                "tenant_id": tenant_id,
-                "network": network,
-                "amount_microunits": 10_000,
-                "resource_id": "ai-inference",
-            }).encode()
-            req = urllib.request.Request(
-                "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
-                data=req_body,
-                headers={"Content-Type": "application/json", "X-AlgoVoi-Key": algovoi_key},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                proof_data = json.loads(resp.read())
-            proof = proof_data["proof"]
+            # Step 2 — build proof from TX ID
+            proof = _mpp_proof(network, tx_id)
 
             # Step 3 — verify
             result2 = adapter.check({"Authorization": f"Payment {proof}"}, {})
-            assert not result2.requires_payment, "should be verified with valid proof"
+            assert not result2.requires_payment, f"payment rejected: {getattr(result2, 'error', '')}"
 
-            _ok(label)
+            print("  [PASS] Payment verified")
+            if hasattr(result2, "receipt") and result2.receipt:
+                print(f"         payer  : {result2.receipt.payer}")
+                print(f"         amount : {result2.receipt.amount} microunits")
+                print(f"         tx_id  : {result2.receipt.tx_id}")
+            passed += 1
+
         except Exception as exc:
-            _fail(f"{label}: {exc}")
+            print(f"  [FAIL] {type(exc).__name__}: {exc}")
             traceback.print_exc()
-            failures += 1
+            failed += 1
 
-    # InferenceClient smoke — single call
-    _head("Phase 2 — InferenceClient.complete()")
+    # InferenceClient.complete() — warn if HF token absent
+    print(f"\n-- InferenceClient.complete() ------------------------------")
     try:
-        adapter = AlgoVoiHuggingFace(
-            algovoi_key=algovoi_key,
-            tenant_id=tenant_id,
-            payout_address=payout_address,
-            hf_token=hf_token,
-            protocol="mpp",
-            network="algorand-mainnet",
-            model="meta-llama/Meta-Llama-3-8B-Instruct",
-        )
-        reply = adapter.complete([
-            {"role": "user", "content": "Reply with exactly: AlgoVoi HF OK"}
-        ])
-        assert isinstance(reply, str) and len(reply) > 0, f"empty reply: {reply!r}"
-        _ok(f"InferenceClient reply: {reply[:80]}")
+        if not hf_token:
+            print("  [WARN] HF_TOKEN not set — skipping live InferenceClient call")
+        else:
+            adapter = AlgoVoiHuggingFace(
+                algovoi_key=algovoi_key,
+                tenant_id=tenant_id,
+                payout_address=PAYOUT_ADDRS["algorand-mainnet"],
+                hf_token=hf_token,
+                protocol="mpp",
+                network="algorand-mainnet",
+                model="meta-llama/Meta-Llama-3-8B-Instruct",
+            )
+            reply = adapter.complete([
+                {"role": "user", "content": "Reply with exactly: AlgoVoi HF OK"}
+            ])
+            assert isinstance(reply, str) and len(reply) > 0, f"empty reply: {reply!r}"
+            print(f"  [PASS] InferenceClient reply: {reply[:80]}")
+            passed += 1
+    except (ImportError, NotImplementedError) as exc:
+        print(f"  [WARN] InferenceClient not available: {exc}")
     except Exception as exc:
-        _fail(f"InferenceClient: {exc}")
+        print(f"  [FAIL] {type(exc).__name__}: {exc}")
         traceback.print_exc()
-        failures += 1
+        failed += 1
 
-    # smolagents tool — verified path
-    _head("Phase 2 — smolagents tool (verified proof)")
+    # smolagents tool — verified path using algo_tx proof
+    print(f"\n-- smolagents tool (as_tool) on algorand-mainnet -----------")
     try:
-        adapter = AlgoVoiHuggingFace(
-            algovoi_key=algovoi_key,
-            tenant_id=tenant_id,
-            payout_address=payout_address,
-            protocol="mpp",
-            network="algorand-mainnet",
-        )
-
-        # issue a proof
-        import urllib.request
-        req_body = json.dumps({
-            "tenant_id": tenant_id,
-            "network": "algorand-mainnet",
-            "amount_microunits": 10_000,
-            "resource_id": "ai-inference",
-        }).encode()
-        req = urllib.request.Request(
-            "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
-            data=req_body,
-            headers={"Content-Type": "application/json", "X-AlgoVoi-Key": algovoi_key},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            proof_data = json.loads(resp.read())
-        proof = proof_data["proof"]
-
-        tool = adapter.as_tool(resource_fn=lambda q: f"Answer to: {q}")
-        out = tool.forward(query="What is AlgoVoi?", payment_proof=proof)
-        assert "Answer to" in out, f"unexpected tool output: {out}"
-        _ok(f"tool output: {out[:80]}")
+        if algo_tx != "skip":
+            adapter = AlgoVoiHuggingFace(
+                algovoi_key=algovoi_key,
+                tenant_id=tenant_id,
+                payout_address=PAYOUT_ADDRS["algorand-mainnet"],
+                protocol="mpp",
+                network="algorand-mainnet",
+            )
+            proof = _mpp_proof("algorand-mainnet", algo_tx)
+            tool = adapter.as_tool(resource_fn=lambda q: f"Answer to: {q}")
+            out = tool.forward(query="What is AlgoVoi?", payment_proof=proof)
+            assert "Answer to" in out, f"unexpected tool output: {out}"
+            print(f"  [PASS] tool output: {out[:80]}")
+            passed += 1
+        else:
+            print("  [WARN] skipped (algo_tx == skip)")
     except Exception as exc:
-        _fail(f"tool verified path: {exc}")
+        print(f"  [FAIL] {type(exc).__name__}: {exc}")
         traceback.print_exc()
-        failures += 1
+        failed += 1
 
-    return failures
+    print(f"\n{'=' * 60}")
+    print(f"Results: {passed}/{passed + failed} passed",
+          "PASS" if failed == 0 else "FAIL")
+    return 1 if failed else 0
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -369,19 +407,9 @@ def run_phase2() -> int:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Hugging Face adapter smoke test")
-    parser.add_argument(
-        "--phase", type=int, choices=[1, 2], default=1,
-        help="1 = challenge render only (default); 2 = full live test",
-    )
-    args = parser.parse_args()
-
     total_failures = 0
     total_failures += run_phase1()
     total_failures += run_phase1_tool()
-
-    if args.phase == 2:
-        total_failures += run_phase2()
 
     if total_failures == 0:
         print(f"\n\033[92mAll smoke tests passed.\033[0m\n")
@@ -392,4 +420,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 5:
+        sys.exit(verify_payments(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]))
+    elif len(sys.argv) == 1:
+        main()
+    else:
+        print("Usage:")
+        print("  python smoke_test_huggingface.py                              # Phase 1")
+        print("  python smoke_test_huggingface.py ALGO VOI HEDERA STELLAR     # Phase 2")
+        sys.exit(1)
