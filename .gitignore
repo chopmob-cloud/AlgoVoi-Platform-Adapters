@@ -3,6 +3,7 @@
 .env.*
 *.env
 keys.txt
+test-creds.md
 *.keys.txt
 openai.txt
 anthropic.txt
