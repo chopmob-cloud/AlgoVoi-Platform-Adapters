@@ -47,20 +47,8 @@ myob/*.py
 mcp-server/typescript/*.tgz
 mcp-server/python/*.egg-info/
 
-# Cloud dashboard — Next.js build output and runtime
-cloud/dashboard/.next/
-cloud/dashboard/out/
-cloud/dashboard/node_modules/
-cloud/dashboard/.env.local
-cloud/dashboard/.env.production
-
-# Cloud — server-specific / non-app files
-cloud/DEPLOY.md
-cloud/ALGOVOI_CLOUD_PLAN.md
-cloud/docker-compose.yml
-cloud/ssh_deploy.py
-cloud/gateway/__pycache__/
-cloud/gateway/.env
+# Cloud — server-side apps live on server, not in this repo
+cloud/
 
 # No-code node_modules, build artifacts and lock files
 no-code/zapier/zapier-app/node_modules/
