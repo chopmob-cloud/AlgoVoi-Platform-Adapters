@@ -57,7 +57,7 @@ from typing import Any, Callable, Optional
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 
 # Payment intent identifier per charge intent spec
 INTENT = "charge"
@@ -188,26 +188,80 @@ class MppGate:
     """MPP payment gate — checks requests for valid payment credentials."""
 
     NETWORKS = {
-        "algorand_mainnet": {"asset_id": 31566704,   "ticker": "USDC",  "network": "algorand-mainnet"},
-        "voi_mainnet":      {"asset_id": 302190,     "ticker": "aUSDC", "network": "voi-mainnet"},
-        "hedera_mainnet":   {"asset_id": "0.0.456858", "ticker": "USDC", "network": "hedera-mainnet"},
-        "stellar_mainnet":  {
+        # ── Stablecoin / ASA / HTS / trust-line ─────────────────────────────
+        "algorand_mainnet": {
+            "asset_id": 31566704,
+            "ticker": "USDC",
+            "network": "algorand-mainnet",
+            "native": False,
+            "decimals": 6,
+        },
+        "voi_mainnet": {
+            "asset_id": 302190,
+            "ticker": "aUSDC",
+            "network": "voi-mainnet",
+            "native": False,
+            "decimals": 6,
+        },
+        "hedera_mainnet": {
+            "asset_id": "0.0.456858",
+            "ticker": "USDC",
+            "network": "hedera-mainnet",
+            "native": False,
+            "decimals": 6,
+        },
+        "stellar_mainnet": {
             "asset_id": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
             "ticker": "USDC",
             "network": "stellar-mainnet",
+            "native": False,
+            "decimals": 7,
+        },
+        # ── Native tokens ────────────────────────────────────────────────────
+        "algorand_mainnet_algo": {
+            "asset_id": None,
+            "ticker": "ALGO",
+            "network": "algorand-mainnet",
+            "native": True,
+            "decimals": 6,
+        },
+        "voi_mainnet_voi": {
+            "asset_id": None,
+            "ticker": "VOI",
+            "network": "voi-mainnet",
+            "native": True,
+            "decimals": 6,
+        },
+        "hedera_mainnet_hbar": {
+            "asset_id": None,
+            "ticker": "HBAR",
+            "network": "hedera-mainnet",
+            "native": True,
+            "decimals": 8,
+        },
+        "stellar_mainnet_xlm": {
+            "asset_id": None,
+            "ticker": "XLM",
+            "network": "stellar-mainnet",
+            "native": True,
+            "decimals": 7,
         },
     }
 
     # Public API base URLs for direct on-chain verification
     INDEXERS = {
-        "algorand-mainnet": "https://mainnet-idx.algonode.cloud/v2",
-        "algorand_mainnet": "https://mainnet-idx.algonode.cloud/v2",
-        "voi-mainnet":      "https://mainnet-idx.voi.nodely.dev/v2",
-        "voi_mainnet":      "https://mainnet-idx.voi.nodely.dev/v2",
-        "hedera-mainnet":   "https://mainnet-public.mirrornode.hedera.com/api/v1",
-        "hedera_mainnet":   "https://mainnet-public.mirrornode.hedera.com/api/v1",
-        "stellar-mainnet":  "https://horizon.stellar.org",
-        "stellar_mainnet":  "https://horizon.stellar.org",
+        "algorand-mainnet":      "https://mainnet-idx.algonode.cloud/v2",
+        "algorand_mainnet":      "https://mainnet-idx.algonode.cloud/v2",
+        "algorand_mainnet_algo": "https://mainnet-idx.algonode.cloud/v2",
+        "voi-mainnet":           "https://mainnet-idx.voi.nodely.dev/v2",
+        "voi_mainnet":           "https://mainnet-idx.voi.nodely.dev/v2",
+        "voi_mainnet_voi":       "https://mainnet-idx.voi.nodely.dev/v2",
+        "hedera-mainnet":        "https://mainnet-public.mirrornode.hedera.com/api/v1",
+        "hedera_mainnet":        "https://mainnet-public.mirrornode.hedera.com/api/v1",
+        "hedera_mainnet_hbar":   "https://mainnet-public.mirrornode.hedera.com/api/v1",
+        "stellar-mainnet":       "https://horizon.stellar.org",
+        "stellar_mainnet":       "https://horizon.stellar.org",
+        "stellar_mainnet_xlm":   "https://horizon.stellar.org",
     }
 
     def __init__(
@@ -373,13 +427,19 @@ class MppGate:
             cfg = self.NETWORKS.get(net_key)
             if not cfg:
                 continue
-            accepts.append({
+            entry: dict = {
                 "network": cfg["network"],
                 "amount": str(self.amount_microunits),
-                "asset": str(cfg["asset_id"]),
                 "payTo": self.payout_address,
                 "resource": self.resource_id,
-            })
+                "ticker": cfg["ticker"],
+            }
+            if cfg.get("asset_id") is not None:
+                entry["asset"] = str(cfg["asset_id"])
+            else:
+                # Native token — signal with "native" asset key
+                entry["asset"] = "native"
+            accepts.append(entry)
 
         expires_dt = datetime.now(timezone.utc) + timedelta(seconds=self.challenge_ttl)
         expires_str = expires_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -387,7 +447,7 @@ class MppGate:
         # Charge intent request object
         request_obj = {
             "amount": str(self.amount_microunits),
-            "currency": "usdc",
+            "currency": accepts[0]["ticker"].lower() if accepts else "usdc",
             "recipient": self.payout_address,
             "methodDetails": {
                 "accepts": accepts,
@@ -434,10 +494,14 @@ class MppGate:
 
     def _verify_avm(self, tx_id: str, network: str) -> Optional[MppReceipt]:
         """
-        Verify an Algorand or VOI USDC payment via the chain indexer.
+        Verify an Algorand or VOI payment via the chain indexer.
+
+        Handles two TX types:
+          • asset-transfer-transaction — USDC / aUSDC (ASA / ARC-200)
+          • payment-transaction        — native ALGO / VOI
 
         Checks: receiver == payout_address, amount >= amount_microunits,
-        asset-id matches network's USDC asset, confirmed-round is present.
+        asset-id matches expected token (USDC path), confirmed-round present.
         """
         indexer = self.INDEXERS.get(network)
         if not indexer:
@@ -457,13 +521,31 @@ class MppGate:
         if not tx.get("confirmed-round"):
             return None
 
+        net_cfg = self.NETWORKS.get(network.replace("-", "_"))
+        is_native = net_cfg.get("native", False) if net_cfg else False
+
+        if is_native:
+            # Native ALGO / VOI — payment-transaction type
+            ptx = tx.get("payment-transaction", {})
+            if ptx.get("receiver") != self.payout_address:
+                return None
+            amount = ptx.get("amount", 0)
+            if amount < self.amount_microunits:
+                return None
+            return MppReceipt(
+                tx_id=tx_id,
+                payer=tx.get("sender", ""),
+                network=network,
+                amount=amount,
+                method=self.method,
+            )
+
+        # Stablecoin — asset-transfer-transaction type (USDC / aUSDC)
         atx = tx.get("asset-transfer-transaction", {})
         if atx.get("receiver") != self.payout_address:
             return None
         if atx.get("amount", 0) < self.amount_microunits:
             return None
-
-        net_cfg = self.NETWORKS.get(network.replace("-", "_"))
         if net_cfg and atx.get("asset-id") != net_cfg["asset_id"]:
             return None
 
@@ -477,10 +559,13 @@ class MppGate:
 
     def _verify_hedera(self, tx_id: str, network: str) -> Optional[MppReceipt]:
         """
-        Verify a Hedera USDC payment via the Hedera Mirror Node.
+        Verify a Hedera payment via the Hedera Mirror Node.
 
-        Checks: transaction result == SUCCESS, token_transfers contains a
-        positive transfer to payout_address for the expected USDC token
+        Handles two modes:
+          • HTS token_transfers — USDC (token_id 0.0.456858)
+          • HBAR transfers      — native HBAR (tinybars, 8 decimals)
+
+        Checks: result == SUCCESS, positive credit to payout_address
         with amount >= amount_microunits.
         """
         base = self.INDEXERS.get(network)
@@ -513,8 +598,28 @@ class MppGate:
             return None
 
         net_cfg = self.NETWORKS.get(network.replace("-", "_"))
-        expected_token = net_cfg["asset_id"] if net_cfg else "0.0.456858"
+        is_native = net_cfg.get("native", False) if net_cfg else False
 
+        if is_native:
+            # HBAR native — check the `transfers` array (tinybars, signed amounts)
+            payer = ""
+            for transfer in tx.get("transfers", []):
+                amt = transfer.get("amount", 0)
+                if amt < 0:
+                    payer = transfer.get("account", "")
+                if (transfer.get("account") == self.payout_address
+                        and amt >= self.amount_microunits):
+                    return MppReceipt(
+                        tx_id=tx_id,
+                        payer=payer,
+                        network=network,
+                        amount=amt,
+                        method=self.method,
+                    )
+            return None
+
+        # HTS token — check token_transfers for USDC
+        expected_token = net_cfg["asset_id"] if net_cfg else "0.0.456858"
         payer = ""
         for transfer in tx.get("token_transfers", []):
             if transfer.get("token_id") != expected_token:
@@ -535,11 +640,15 @@ class MppGate:
 
     def _verify_stellar(self, tx_id: str, network: str) -> Optional[MppReceipt]:
         """
-        Verify a Stellar USDC payment via Horizon.
+        Verify a Stellar payment via Horizon.
 
-        Fetches the transaction's operations and looks for a payment op
-        where: to == payout_address, asset_code == USDC, asset_issuer matches,
-        and amount (converted to microunits) >= amount_microunits.
+        Handles two modes:
+          • USDC — payment op with asset_code==USDC + matching issuer
+          • XLM  — payment op with asset_type=="native"
+
+        Stellar amounts are decimal strings (e.g. "0.0100000").
+        USDC has 7 decimal places on Stellar (stroops); XLM also 7.
+        We convert to integer microunits using 10^7 = 10_000_000.
         """
         base = self.INDEXERS.get(network)
         if not base:
@@ -559,31 +668,43 @@ class MppGate:
         if not net_cfg:
             return None
 
-        # asset_id is "USDC:GA5ZS..."
-        parts = net_cfg["asset_id"].split(":", 1)
-        expected_code = parts[0]
-        expected_issuer = parts[1] if len(parts) > 1 else ""
+        is_native = net_cfg.get("native", False)
+        decimals = net_cfg.get("decimals", 7)
+        scale = 10 ** decimals  # 10_000_000 for 7-decimal Stellar assets
+
+        if not is_native:
+            # USDC trust-line — asset_id is "CODE:ISSUER"
+            parts = (net_cfg["asset_id"] or "").split(":", 1)
+            expected_code = parts[0]
+            expected_issuer = parts[1] if len(parts) > 1 else ""
 
         for op in data.get("_embedded", {}).get("records", []):
             if op.get("type") != "payment":
                 continue
             if op.get("to") != self.payout_address:
                 continue
-            if op.get("asset_code") != expected_code:
-                continue
-            if op.get("asset_issuer") != expected_issuer:
-                continue
+
+            if is_native:
+                # XLM — asset_type must be "native"
+                if op.get("asset_type") != "native":
+                    continue
+            else:
+                # USDC — check code + issuer
+                if op.get("asset_code") != expected_code:
+                    continue
+                if op.get("asset_issuer") != expected_issuer:
+                    continue
+
             try:
-                # Horizon returns decimal string e.g. "0.0100000"
-                amount_microunits = int(float(op.get("amount", "0")) * 1_000_000)
+                amount_units = int(float(op.get("amount", "0")) * scale)
             except (ValueError, TypeError):
                 continue
-            if amount_microunits >= self.amount_microunits:
+            if amount_units >= self.amount_microunits:
                 return MppReceipt(
                     tx_id=tx_id,
                     payer=op.get("from", ""),
                     network=network,
-                    amount=amount_microunits,
+                    amount=amount_units,
                     method=self.method,
                 )
         return None
