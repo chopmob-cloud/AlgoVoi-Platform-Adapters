@@ -7,10 +7,19 @@
     "test": "zapier test"
   },
   "dependencies": {
-    "zapier-platform-core": "16.4.0"
+    "zapier-platform-core": "18.5.0"
   },
-  "devDependencies": {},
-  "keywords": ["crypto", "payments", "algorand", "hedera", "stellar", "usdc"],
+  "devDependencies": {
+    "zapier-platform-cli": "^18.5.0"
+  },
+  "keywords": [
+    "crypto",
+    "payments",
+    "algorand",
+    "hedera",
+    "stellar",
+    "usdc"
+  ],
   "author": "AlgoVoi <hello@algovoi.com>",
   "license": "BUSL-1.1",
   "zapier": {

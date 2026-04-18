@@ -84,9 +84,8 @@ module.exports = {
   display: {
     label: 'Payment Confirmed',
     description:
-      'Triggers instantly when an AlgoVoi crypto payment is confirmed on-chain. ' +
+      'Triggers when an AlgoVoi crypto payment is confirmed on-chain. ' +
       'Supports USDC and native tokens on Algorand, VOI, Hedera, and Stellar.',
-    important: true,
   },
 
   operation: {

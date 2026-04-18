@@ -13,6 +13,8 @@ const App = {
   version,
   platformVersion: pv,
 
+  flags: { cleanInputData: false },
+
   authentication,
 
   beforeRequest: [
