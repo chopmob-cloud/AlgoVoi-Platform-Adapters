@@ -50,6 +50,9 @@ mcp-server/python/*.egg-info/
 # Cloud — server-side apps live on server, not in this repo
 cloud/
 
+# Grants — internal documents
+grants/
+
 # No-code node_modules, build artifacts and lock files
 no-code/zapier/zapier-app/node_modules/
 no-code/zapier/zapier-app/build/
