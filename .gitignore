@@ -43,6 +43,27 @@ zoho-books/*.py
 wave/*.py
 myob/*.py
 
-# MCP server build artifacts (dist/ and node_modules/ covered by per-dir .gitignore)
+# MCP server build artifacts
 mcp-server/typescript/*.tgz
 mcp-server/python/*.egg-info/
+
+# Cloud dashboard — Next.js build output and runtime
+cloud/dashboard/.next/
+cloud/dashboard/out/
+cloud/dashboard/node_modules/
+cloud/dashboard/.env.local
+cloud/dashboard/.env.production
+
+# Cloud gateway
+cloud/gateway/__pycache__/
+cloud/gateway/.env
+cloud/ssh_deploy.py
+
+# No-code node_modules, build artifacts and lock files
+no-code/zapier/zapier-app/node_modules/
+no-code/zapier/zapier-app/build/
+no-code/n8n/n8n-nodes-algovoi/node_modules/
+no-code/n8n/n8n-nodes-algovoi/dist/
+no-code/activepieces/algovoi-piece/node_modules/
+no-code/activepieces/algovoi-piece/dist/
+no-code/**/package-lock.json
