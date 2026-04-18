@@ -17,7 +17,30 @@ Requires Node ≥ 20.
 
 ## Configure
 
-Add to your MCP client config (`~/.claude.json`, `~/.cursor/mcp.json`, or `claude_desktop_config.json`):
+### Option A — AlgoVoi Cloud (recommended)
+
+[AlgoVoi Cloud](https://dash.algovoi.co.uk) gives you a single `algvc_...` key that covers all your integrations (WooCommerce, Zapier, n8n, MCP). Every payment your AI assistant creates appears in the Cloud dashboard alongside payments from every other platform.
+
+```json
+{
+  "mcpServers": {
+    "algovoi": {
+      "command": "npx",
+      "args": ["-y", "@algovoi/mcp-server"],
+      "env": {
+        "ALGOVOI_API_KEY": "algvc_...",
+        "ALGOVOI_API_BASE": "https://cloud.algovoi.co.uk"
+      }
+    }
+  }
+}
+```
+
+Sign up free at [dash.algovoi.co.uk](https://dash.algovoi.co.uk).
+
+### Option B — AlgoVoi direct
+
+Connect straight to the AlgoVoi API with your `algv_...` key:
 
 ```json
 {
@@ -36,7 +59,7 @@ Add to your MCP client config (`~/.claude.json`, `~/.cursor/mcp.json`, or `claud
 }
 ```
 
-Sign up for an AlgoVoi tenant at [algovoi.com](https://www.algovoi.co.uk) to get your API key.
+Sign up at [algovoi.co.uk](https://www.algovoi.co.uk) to get your API key and tenant ID.
 
 ## Tools
 
