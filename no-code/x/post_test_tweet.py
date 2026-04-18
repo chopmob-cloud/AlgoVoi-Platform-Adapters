@@ -61,9 +61,12 @@ x = AlgoVoiX(
 )
 
 TWEET = (
-    "AlgoVoi test tweet — crypto payments on Algorand, VOI, Hedera & Stellar 🚀\n"
-    "github.com/chopmob-cloud/AlgoVoi-Platform-Adapters\n"
-    "#AlgoVoi #crypto #algorand"
+    "AlgoVoi — open-source crypto payment adapters for any platform.\n\n"
+    "Accept USDC & native tokens on Algorand, VOI, Hedera & Stellar. "
+    "Works with Zapier, Make, n8n, AI agents (Claude, GPT) & more. "
+    "Verified on-chain, no banks.\n\n"
+    "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters\n"
+    "#AlgoVoi #crypto"
 )
 
 print("Posting tweet...")
