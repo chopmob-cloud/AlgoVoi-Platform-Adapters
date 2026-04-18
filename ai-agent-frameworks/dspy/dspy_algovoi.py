@@ -193,10 +193,10 @@ class AlgoVoiDSPy:
 
         if proto == "mpp":
             _add_path(os.path.join(root, "mpp-adapter"))
-            from mpp_algovoi import AlgoVoiMppGate
+            from mpp import MppGate
 
-            return AlgoVoiMppGate(
-                algovoi_key=self._algovoi_key,
+            return MppGate(
+                api_base="https://api1.ilovechicken.co.uk", api_key=self._algovoi_key,
                 tenant_id=self._tenant_id,
                 payout_address=self._payout_address,
                 networks=[self._network],
@@ -206,10 +206,10 @@ class AlgoVoiDSPy:
 
         if proto == "ap2":
             _add_path(os.path.join(root, "ap2-adapter"))
-            from ap2_algovoi import AlgoVoiAp2Gate
+            from ap2 import Ap2Gate
 
-            return AlgoVoiAp2Gate(
-                algovoi_key=self._algovoi_key,
+            return Ap2Gate(
+                merchant_id=self._tenant_id, api_base="https://api1.ilovechicken.co.uk", api_key=self._algovoi_key,
                 tenant_id=self._tenant_id,
                 payout_address=self._payout_address,
                 networks=[self._network],
@@ -218,13 +218,13 @@ class AlgoVoiDSPy:
 
         # x402 (default / fallback)
         _add_path(os.path.join(root, "ai-adapters", "openai"))
-        from openai_algovoi import AlgoVoiX402Gate
+        from openai_algovoi import _X402Gate
 
-        return AlgoVoiX402Gate(
-            algovoi_key=self._algovoi_key,
+        return _X402Gate(
+            api_base="https://api1.ilovechicken.co.uk", api_key=self._algovoi_key,
             tenant_id=self._tenant_id,
             payout_address=self._payout_address,
-            networks=[self._network],
+            network=self._network,
             amount_microunits=self._amount_microunits,
         )
 

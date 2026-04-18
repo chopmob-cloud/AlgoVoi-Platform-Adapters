@@ -115,7 +115,7 @@ The response includes a `webhook_secret` and a `webhook_url`. Save both — the 
 
 ```json
 {
-  "webhook_url": "https://api.algovoi.com/webhooks/printful/{tenant_id}",
+  "webhook_url": "https://api1.ilovechicken.co.uk/webhooks/printful/{tenant_id}",
   "webhook_secret": "...",
   "preferred_network": "algorand_mainnet"
 }
@@ -133,7 +133,7 @@ Authorization: Bearer <printful-api-key>
 Content-Type: application/json
 
 {
-  "url": "https://api.algovoi.com/webhooks/printful/{tenant_id}",
+  "url": "https://api1.ilovechicken.co.uk/webhooks/printful/{tenant_id}",
   "types": ["order_created"],
   "params": {
     "secret": "<webhook_secret from Step 3>"

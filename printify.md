@@ -117,7 +117,7 @@ The response includes a `webhook_secret` and a `webhook_url`. Save both — the 
 
 ```json
 {
-  "webhook_url": "https://api.algovoi.com/webhooks/printify/{tenant_id}",
+  "webhook_url": "https://api1.ilovechicken.co.uk/webhooks/printify/{tenant_id}",
   "webhook_secret": "...",
   "preferred_network": "algorand_mainnet"
 }
@@ -136,7 +136,7 @@ Content-Type: application/json
 
 {
   "topic": "order:created",
-  "url": "https://api.algovoi.com/webhooks/printify/{tenant_id}",
+  "url": "https://api1.ilovechicken.co.uk/webhooks/printify/{tenant_id}",
   "secret": "<webhook_secret from Step 3>"
 }
 ```

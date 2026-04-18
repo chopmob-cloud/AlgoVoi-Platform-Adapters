@@ -117,7 +117,7 @@ The response includes a `webhook_secret` and a `webhook_url`. Save both — the 
 
 ```json
 {
-  "webhook_url": "https://api.algovoi.com/webhooks/tokopedia/{tenant_id}",
+  "webhook_url": "https://api1.ilovechicken.co.uk/webhooks/tokopedia/{tenant_id}",
   "webhook_secret": "...",
   "preferred_network": "algorand_mainnet"
 }

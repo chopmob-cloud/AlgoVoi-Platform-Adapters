@@ -191,7 +191,7 @@ async def handle_interaction(request: Request):
 
         # Create AlgoVoi checkout link
         checkout = httpx.post(
-            f"https://api.algovoi.com/checkout/{TENANT_ID}",
+            f"https://api1.ilovechicken.co.uk/checkout/{TENANT_ID}",
             headers={"Authorization": f"Bearer {TENANT_API_KEY}"},
             json={"amount_fiat": amount, "currency": "USD",
                   "reference": reference, "network": "algorand_mainnet"}

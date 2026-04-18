@@ -36,7 +36,7 @@ Add to your MCP client config (`~/.claude.json`, `~/.cursor/mcp.json`, or `claud
 }
 ```
 
-Sign up for an AlgoVoi tenant at [algovoi.com](https://algovoi.com) to get your API key.
+Sign up for an AlgoVoi tenant at [algovoi.com](https://www.algovoi.co.uk) to get your API key.
 
 ## Tools
 

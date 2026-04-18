@@ -30,20 +30,20 @@ def _make_gate(requires_payment: bool = False, error: str | None = None):
 
 
 def _stub_mpp(gate):
-    mod = types.ModuleType("mpp_algovoi")
-    mod.AlgoVoiMppGate = MagicMock(return_value=gate)
-    sys.modules["mpp_algovoi"] = mod
+    mod = types.ModuleType("mpp")
+    mod.MppGate = MagicMock(return_value=gate)
+    sys.modules["mpp"] = mod
 
 
 def _stub_ap2(gate):
-    mod = types.ModuleType("ap2_algovoi")
-    mod.AlgoVoiAp2Gate = MagicMock(return_value=gate)
-    sys.modules["ap2_algovoi"] = mod
+    mod = types.ModuleType("ap2")
+    mod.Ap2Gate = MagicMock(return_value=gate)
+    sys.modules["ap2"] = mod
 
 
 def _stub_x402(gate):
     mod = types.ModuleType("openai_algovoi")
-    mod.AlgoVoiX402Gate = MagicMock(return_value=gate)
+    mod._X402Gate = MagicMock(return_value=gate)
     sys.modules["openai_algovoi"] = mod
 
 
@@ -188,18 +188,18 @@ class TestBuildGate(unittest.TestCase):
     def test_mpp_gate_created(self):
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
-        mod = types.ModuleType("mpp_algovoi")
-        mod.AlgoVoiMppGate = mock_cls
-        sys.modules["mpp_algovoi"] = mod
+        mod = types.ModuleType("mpp")
+        mod.MppGate = mock_cls
+        sys.modules["mpp"] = mod
         AlgoVoiAutoGen(algovoi_key="k", tenant_id="t", payout_address="a", protocol="mpp")
         mock_cls.assert_called_once()
 
     def test_ap2_gate_created(self):
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
-        mod = types.ModuleType("ap2_algovoi")
-        mod.AlgoVoiAp2Gate = mock_cls
-        sys.modules["ap2_algovoi"] = mod
+        mod = types.ModuleType("ap2")
+        mod.Ap2Gate = mock_cls
+        sys.modules["ap2"] = mod
         AlgoVoiAutoGen(algovoi_key="k", tenant_id="t", payout_address="a", protocol="ap2")
         mock_cls.assert_called_once()
 
@@ -207,7 +207,7 @@ class TestBuildGate(unittest.TestCase):
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
         mod = types.ModuleType("openai_algovoi")
-        mod.AlgoVoiX402Gate = mock_cls
+        mod._X402Gate = mock_cls
         sys.modules["openai_algovoi"] = mod
         AlgoVoiAutoGen(algovoi_key="k", tenant_id="t", payout_address="a", protocol="x402")
         mock_cls.assert_called_once()

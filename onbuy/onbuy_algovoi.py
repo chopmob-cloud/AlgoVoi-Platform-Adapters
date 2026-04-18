@@ -346,7 +346,7 @@ class OnbuyAlgoVoi:
         payload = json.dumps({
             "site_id": self.site_id,
             "tracking_number": tx_id[:64],
-            "tracking_url": f"https://algovoi.com/tx/{tx_id[:40]}",
+            "tracking_url": f"https://www.algovoi.co.uk/tx/{tx_id[:40]}",
             "courier_name": "AlgoVoi",
         }).encode()
 

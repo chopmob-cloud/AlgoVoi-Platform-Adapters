@@ -10,7 +10,7 @@ Phase 1 — Challenge render (no live AlgoVoi API needed)
 Phase 2 — Full on-chain round-trip + SK chat completion
     Requires:
       ALGOVOI_KEY, TENANT_ID, PAYOUT_ADDRESS, OPENAI_KEY env vars
-      Live AlgoVoi gateway (gateway.algovoi.com)
+      Live AlgoVoi gateway (api1.ilovechicken.co.uk)
       Live OpenAI API + semantic-kernel installed (pip install semantic-kernel)
 
 Usage:
@@ -82,16 +82,16 @@ def _make_challenge_gate(protocol: str, network: str) -> MagicMock:
 
 def _stub_protocol(protocol: str, gate: MagicMock) -> None:
     if protocol == "mpp":
-        mod = types.ModuleType("mpp_algovoi")
-        mod.AlgoVoiMppGate = MagicMock(return_value=gate)
-        sys.modules["mpp_algovoi"] = mod
+        mod = types.ModuleType("mpp")
+        mod.MppGate = MagicMock(return_value=gate)
+        sys.modules["mpp"] = mod
     elif protocol == "ap2":
-        mod = types.ModuleType("ap2_algovoi")
-        mod.AlgoVoiAp2Gate = MagicMock(return_value=gate)
-        sys.modules["ap2_algovoi"] = mod
+        mod = types.ModuleType("ap2")
+        mod.Ap2Gate = MagicMock(return_value=gate)
+        sys.modules["ap2"] = mod
     else:
         mod = types.ModuleType("openai_algovoi")
-        mod.AlgoVoiX402Gate = MagicMock(return_value=gate)
+        mod._X402Gate = MagicMock(return_value=gate)
         sys.modules["openai_algovoi"] = mod
 
 
@@ -283,7 +283,7 @@ def run_phase2() -> int:
                 "resource_id": "ai-function",
             }).encode()
             req = urllib.request.Request(
-                "https://gateway.algovoi.com/v1/test/issue-proof",
+                "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
                 data=req_body,
                 headers={"Content-Type": "application/json", "X-AlgoVoi-Key": algovoi_key},
                 method="POST",
@@ -338,7 +338,7 @@ def run_phase2() -> int:
             "resource_id": "ai-function",
         }).encode()
         req = urllib.request.Request(
-            "https://gateway.algovoi.com/v1/test/issue-proof",
+            "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
             data=req_body,
             headers={"Content-Type": "application/json", "X-AlgoVoi-Key": algovoi_key},
             method="POST",

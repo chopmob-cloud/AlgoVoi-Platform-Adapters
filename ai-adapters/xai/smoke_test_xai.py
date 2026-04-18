@@ -136,8 +136,8 @@ def show_challenges():
     for net in networks:
         gate   = _mpp_gate(net)
         result = gate.check({})
-        _, status, headers = result.as_flask_response()
-        www_auth = next((v for k, v in headers.items() if k.lower() == "www-authenticate"), "")
+        status, headers, _ = result.as_wsgi_response()
+        www_auth = next((v for k, v in headers if k.lower() == "www-authenticate"), "")
         print(f"  {net:20s}  {status}  {www_auth[:80]}")
 
     print("\n-- AP2 CartMandate challenges ------------------------------")

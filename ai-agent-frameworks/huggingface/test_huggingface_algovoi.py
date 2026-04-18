@@ -32,25 +32,25 @@ def _make_gate(requires_payment: bool = False, error: str | None = None):
 
 
 def _stub_mpp(gate):
-    mod = types.ModuleType("mpp_algovoi")
-    mod.AlgoVoiMppGate = MagicMock(return_value=gate)
-    sys.modules["mpp_algovoi"] = mod
+    mod = types.ModuleType("mpp")
+    mod.MppGate = MagicMock(return_value=gate)
+    sys.modules["mpp"] = mod
 
 
 def _stub_ap2(gate):
-    mod = types.ModuleType("ap2_algovoi")
-    mod.AlgoVoiAp2Gate = MagicMock(return_value=gate)
-    sys.modules["ap2_algovoi"] = mod
+    mod = types.ModuleType("ap2")
+    mod.Ap2Gate = MagicMock(return_value=gate)
+    sys.modules["ap2"] = mod
 
 
 def _stub_x402(gate):
     parent = types.ModuleType("openai_algovoi")
-    parent.AlgoVoiX402Gate = MagicMock(return_value=gate)
+    parent._X402Gate = MagicMock(return_value=gate)
     sys.modules["openai_algovoi"] = parent
 
 
 def _clear_gate_stubs():
-    for k in ("mpp_algovoi", "ap2_algovoi", "openai_algovoi"):
+    for k in ("mpp", "ap2", "openai_algovoi"):
         sys.modules.pop(k, None)
 
 
@@ -215,9 +215,9 @@ class TestBuildGate(unittest.TestCase):
     def test_mpp_gate_created(self):
         gate, gate_result = _make_gate()
         mock_cls = MagicMock(return_value=gate)
-        mod = types.ModuleType("mpp_algovoi")
-        mod.AlgoVoiMppGate = mock_cls
-        sys.modules["mpp_algovoi"] = mod
+        mod = types.ModuleType("mpp")
+        mod.MppGate = mock_cls
+        sys.modules["mpp"] = mod
         AlgoVoiHuggingFace(
             algovoi_key="k", tenant_id="t", payout_address="a",
             protocol="mpp", network="algorand-mainnet",
@@ -227,9 +227,9 @@ class TestBuildGate(unittest.TestCase):
     def test_ap2_gate_created(self):
         gate, gate_result = _make_gate()
         mock_cls = MagicMock(return_value=gate)
-        mod = types.ModuleType("ap2_algovoi")
-        mod.AlgoVoiAp2Gate = mock_cls
-        sys.modules["ap2_algovoi"] = mod
+        mod = types.ModuleType("ap2")
+        mod.Ap2Gate = mock_cls
+        sys.modules["ap2"] = mod
         AlgoVoiHuggingFace(
             algovoi_key="k", tenant_id="t", payout_address="a",
             protocol="ap2", network="algorand-mainnet",
@@ -240,7 +240,7 @@ class TestBuildGate(unittest.TestCase):
         gate, gate_result = _make_gate()
         mock_cls = MagicMock(return_value=gate)
         mod = types.ModuleType("openai_algovoi")
-        mod.AlgoVoiX402Gate = mock_cls
+        mod._X402Gate = mock_cls
         sys.modules["openai_algovoi"] = mod
         AlgoVoiHuggingFace(
             algovoi_key="k", tenant_id="t", payout_address="a",

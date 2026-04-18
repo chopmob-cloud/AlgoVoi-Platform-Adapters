@@ -136,9 +136,9 @@ def _build_gate(
     """Construct the appropriate AlgoVoi gate for the given protocol."""
     if protocol == "mpp":
         _add_path("mpp-adapter")
-        from mpp_algovoi import AlgoVoiMppGate  # type: ignore
-        return AlgoVoiMppGate(
-            algovoi_key=algovoi_key,
+        from mpp import MppGate  # type: ignore
+        return MppGate(
+            api_base="https://api1.ilovechicken.co.uk", api_key=algovoi_key,
             tenant_id=tenant_id,
             payout_address=payout_address,
             networks=[network],
@@ -147,9 +147,9 @@ def _build_gate(
         )
     elif protocol == "ap2":
         _add_path("ap2-adapter")
-        from ap2_algovoi import AlgoVoiAp2Gate  # type: ignore
-        return AlgoVoiAp2Gate(
-            algovoi_key=algovoi_key,
+        from ap2 import Ap2Gate  # type: ignore
+        return Ap2Gate(
+            merchant_id=tenant_id, api_base="https://api1.ilovechicken.co.uk", api_key=algovoi_key,
             tenant_id=tenant_id,
             payout_address=payout_address,
             networks=[network],
@@ -157,12 +157,12 @@ def _build_gate(
         )
     else:  # x402
         _add_path("ai-adapters/openai")
-        from openai_algovoi import AlgoVoiX402Gate  # type: ignore
-        return AlgoVoiX402Gate(
-            algovoi_key=algovoi_key,
+        from openai_algovoi import _X402Gate  # type: ignore
+        return _X402Gate(
+            api_base="https://api1.ilovechicken.co.uk", api_key=algovoi_key,
             tenant_id=tenant_id,
             payout_address=payout_address,
-            networks=[network],
+            network=network,
             amount_microunits=amount_microunits,
         )
 

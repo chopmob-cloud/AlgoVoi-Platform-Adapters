@@ -211,7 +211,7 @@ async function runPhase2(): Promise<number> {
 
       // Issue a test proof via AlgoVoi test endpoint
       const proofResp = await fetch(
-        "https://gateway.algovoi.com/v1/test/issue-proof",
+        "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
         {
           method: "POST",
           headers: {
@@ -278,7 +278,7 @@ async function runPhase2(): Promise<number> {
     });
 
     const proofResp = await fetch(
-      "https://gateway.algovoi.com/v1/test/issue-proof",
+      "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
       {
         method: "POST",
         headers: {

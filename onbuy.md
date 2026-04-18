@@ -152,7 +152,7 @@ Content-Type: application/json
 {
   "site_id": "2000",
   "tracking_number": "<algovoi-tx-id>",
-  "tracking_url": "https://algovoi.com/tx/<algovoi-tx-id>",
+  "tracking_url": "https://www.algovoi.co.uk/tx/<algovoi-tx-id>",
   "courier_name": "AlgoVoi"
 }
 ```

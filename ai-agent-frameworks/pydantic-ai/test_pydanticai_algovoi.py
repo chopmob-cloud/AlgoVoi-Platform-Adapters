@@ -96,18 +96,18 @@ def _make_gate():
 def _stub_mpp(gate=None):
     if gate is None:
         gate, _ = _make_gate()
-    mod = types.ModuleType("mpp_algovoi")
-    mod.AlgoVoiMppGate = MagicMock(return_value=gate)
-    sys.modules["mpp_algovoi"] = mod
+    mod = types.ModuleType("mpp")
+    mod.MppGate = MagicMock(return_value=gate)
+    sys.modules["mpp"] = mod
     return gate
 
 
 def _stub_ap2(gate=None):
     if gate is None:
         gate, _ = _make_gate()
-    mod = types.ModuleType("ap2_algovoi")
-    mod.AlgoVoiAp2Gate = MagicMock(return_value=gate)
-    sys.modules["ap2_algovoi"] = mod
+    mod = types.ModuleType("ap2")
+    mod.Ap2Gate = MagicMock(return_value=gate)
+    sys.modules["ap2"] = mod
     return gate
 
 
@@ -115,7 +115,7 @@ def _stub_x402(gate=None):
     if gate is None:
         gate, _ = _make_gate()
     mod = types.ModuleType("openai_algovoi")
-    mod.AlgoVoiX402Gate = MagicMock(return_value=gate)
+    mod._X402Gate = MagicMock(return_value=gate)
     sys.modules["openai_algovoi"] = mod
     return gate
 
@@ -172,9 +172,9 @@ class TestBuildGate:
     def test_mpp_gate_created(self):
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
-        mod = types.ModuleType("mpp_algovoi")
-        mod.AlgoVoiMppGate = mock_cls
-        sys.modules["mpp_algovoi"] = mod
+        mod = types.ModuleType("mpp")
+        mod.MppGate = mock_cls
+        sys.modules["mpp"] = mod
         AlgoVoiPydanticAI(
             algovoi_key="k", tenant_id="t", payout_address="a", protocol="mpp"
         )
@@ -183,9 +183,9 @@ class TestBuildGate:
     def test_ap2_gate_created(self):
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
-        mod = types.ModuleType("ap2_algovoi")
-        mod.AlgoVoiAp2Gate = mock_cls
-        sys.modules["ap2_algovoi"] = mod
+        mod = types.ModuleType("ap2")
+        mod.Ap2Gate = mock_cls
+        sys.modules["ap2"] = mod
         AlgoVoiPydanticAI(
             algovoi_key="k", tenant_id="t", payout_address="a", protocol="ap2"
         )
@@ -195,7 +195,7 @@ class TestBuildGate:
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
         mod = types.ModuleType("openai_algovoi")
-        mod.AlgoVoiX402Gate = mock_cls
+        mod._X402Gate = mock_cls
         sys.modules["openai_algovoi"] = mod
         AlgoVoiPydanticAI(
             algovoi_key="k", tenant_id="t", payout_address="a", protocol="x402"
@@ -206,7 +206,7 @@ class TestBuildGate:
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
         mod = types.ModuleType("openai_algovoi")
-        mod.AlgoVoiX402Gate = mock_cls
+        mod._X402Gate = mock_cls
         sys.modules["openai_algovoi"] = mod
         AlgoVoiPydanticAI(
             algovoi_key="k", tenant_id="t", payout_address="a", protocol="grpc"
@@ -216,9 +216,9 @@ class TestBuildGate:
     def test_mpp_gate_receives_correct_kwargs(self):
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
-        mod = types.ModuleType("mpp_algovoi")
-        mod.AlgoVoiMppGate = mock_cls
-        sys.modules["mpp_algovoi"] = mod
+        mod = types.ModuleType("mpp")
+        mod.MppGate = mock_cls
+        sys.modules["mpp"] = mod
         AlgoVoiPydanticAI(
             algovoi_key="algv_123",
             tenant_id="my-tid",
@@ -229,7 +229,7 @@ class TestBuildGate:
             resource_id="premium-api",
         )
         call_kwargs = mock_cls.call_args[1]
-        assert call_kwargs["algovoi_key"] == "algv_123"
+        assert call_kwargs["api_key"] == "algv_123"
         assert call_kwargs["tenant_id"] == "my-tid"
         assert call_kwargs["payout_address"] == "MYADDR"
         assert call_kwargs["networks"] == ["stellar-mainnet"]
@@ -846,9 +846,9 @@ class TestProtocols:
     def test_mpp_gate_kwarg_network(self):
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
-        mod = types.ModuleType("mpp_algovoi")
-        mod.AlgoVoiMppGate = mock_cls
-        sys.modules["mpp_algovoi"] = mod
+        mod = types.ModuleType("mpp")
+        mod.MppGate = mock_cls
+        sys.modules["mpp"] = mod
         AlgoVoiPydanticAI(
             algovoi_key="k", tenant_id="t", payout_address="a",
             protocol="mpp", network="hedera-mainnet",
@@ -858,9 +858,9 @@ class TestProtocols:
     def test_ap2_gate_kwarg_network(self):
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
-        mod = types.ModuleType("ap2_algovoi")
-        mod.AlgoVoiAp2Gate = mock_cls
-        sys.modules["ap2_algovoi"] = mod
+        mod = types.ModuleType("ap2")
+        mod.Ap2Gate = mock_cls
+        sys.modules["ap2"] = mod
         AlgoVoiPydanticAI(
             algovoi_key="k", tenant_id="t", payout_address="a",
             protocol="ap2", network="voi-mainnet",
@@ -871,7 +871,7 @@ class TestProtocols:
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
         mod = types.ModuleType("openai_algovoi")
-        mod.AlgoVoiX402Gate = mock_cls
+        mod._X402Gate = mock_cls
         sys.modules["openai_algovoi"] = mod
         AlgoVoiPydanticAI(
             algovoi_key="k", tenant_id="t", payout_address="a",
@@ -882,9 +882,9 @@ class TestProtocols:
     def test_mpp_resource_id_forwarded(self):
         gate, _ = _make_gate()
         mock_cls = MagicMock(return_value=gate)
-        mod = types.ModuleType("mpp_algovoi")
-        mod.AlgoVoiMppGate = mock_cls
-        sys.modules["mpp_algovoi"] = mod
+        mod = types.ModuleType("mpp")
+        mod.MppGate = mock_cls
+        sys.modules["mpp"] = mod
         AlgoVoiPydanticAI(
             algovoi_key="k", tenant_id="t", payout_address="a",
             protocol="mpp", resource_id="my-resource",

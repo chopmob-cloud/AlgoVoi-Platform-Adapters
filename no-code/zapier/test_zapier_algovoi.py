@@ -210,7 +210,7 @@ class TestWebhookBridge:
 
 class TestCreatePaymentLink:
     def _ok_resp(self):
-        return {"checkout_url": "https://pay.algovoi.com/checkout/abc123", "amount_microunits": 10_000_000}
+        return {"checkout_url": "https://api1.ilovechicken.co.uk/checkout/abc123", "amount_microunits": 10_000_000}
 
     def test_success_returns_checkout_url(self):
         h = make_zapier()

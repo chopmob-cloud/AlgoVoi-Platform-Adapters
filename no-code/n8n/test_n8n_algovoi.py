@@ -181,7 +181,7 @@ class TestWebhookReceiver:
 
 class TestCreatePaymentLink:
     def _ok_resp(self):
-        return {"checkout_url": "https://pay.algovoi.com/checkout/n8nTok", "amount_microunits": 5_000_000}
+        return {"checkout_url": "https://api1.ilovechicken.co.uk/checkout/n8nTok", "amount_microunits": 5_000_000}
 
     def test_success_true(self):
         h = make_n8n()
