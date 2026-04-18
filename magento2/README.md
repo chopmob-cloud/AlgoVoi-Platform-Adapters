@@ -25,7 +25,18 @@ https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 
 ## Quick start
 
-See the integration guide above for installation and configuration.
+1. Download [`algovoi-magento2.zip`](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/releases/latest/download/algovoi-magento2.zip) from the latest release
+2. Extract into `app/code/` so the module lives at `app/code/Algovoi/Payment/`
+3. Run:
+   ```bash
+   bin/magento module:enable Algovoi_Payment
+   bin/magento setup:upgrade
+   bin/magento setup:di:compile
+   bin/magento cache:flush
+   ```
+4. Admin → Stores → Configuration → Sales → Payment Methods → AlgoVoi → enter your `algvc_...` Cloud key + API Base `https://cloud.algovoi.co.uk`
+
+See the integration guide above for full configuration options.
 
 ---
 
