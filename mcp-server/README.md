@@ -33,7 +33,36 @@ Supported networks: **Algorand**, **VOI**, **Hedera**, **Stellar** (USDC on all 
 
 ---
 
-## Configuration
+## Two ways to connect
+
+### Option A — AlgoVoi Cloud (recommended)
+
+[AlgoVoi Cloud](https://dash.algovoi.co.uk) is the control plane for all your integrations — WooCommerce, Zapier, n8n, and MCP all in one dashboard. Use a single `algvc_...` Cloud key; no tenant ID or payout addresses needed in your MCP config (they're stored in the dashboard).
+
+```json
+{
+  "mcpServers": {
+    "algovoi": {
+      "command": "npx",
+      "args": ["-y", "@algovoi/mcp-server"],
+      "env": {
+        "ALGOVOI_API_KEY": "algvc_...",
+        "ALGOVOI_API_BASE": "https://cloud.algovoi.co.uk"
+      }
+    }
+  }
+}
+```
+
+Every payment Claude creates appears in your Cloud dashboard alongside payments from every other platform. One place to see everything.
+
+Sign up free at [dash.algovoi.co.uk](https://dash.algovoi.co.uk).
+
+---
+
+### Option B — AlgoVoi direct
+
+Connect straight to the AlgoVoi API with your `algv_...` key and tenant ID.
 
 Both packages read the same env vars:
 
@@ -47,17 +76,13 @@ Both packages read the same env vars:
 | `ALGOVOI_PAYOUT_STELLAR` | ✅* | Stellar payout address (`G...`) |
 | `ALGOVOI_PAYOUT_ADDRESS` | — | Universal fallback if per-chain vars are not set |
 | `ALGOVOI_WEBHOOK_SECRET` | — | For `verify_webhook` |
-| `ALGOVOI_API_BASE` | — | Override the AlgoVoi API base URL (optional) |
+| `ALGOVOI_API_BASE` | — | Override the AlgoVoi API base URL (default: `https://api1.ilovechicken.co.uk`) |
 
-**\*** At least one per-chain address (or `ALGOVOI_PAYOUT_ADDRESS` as fallback) is required. Per-chain vars take priority when set.
+**\*** At least one per-chain address (or `ALGOVOI_PAYOUT_ADDRESS` as fallback) is required.
 
 **Auth is env-var only.** Secrets never pass through tool arguments — the MCP client never sees the API key.
 
 Sign up at [www.algovoi.co.uk](https://www.algovoi.co.uk) to get your API key and tenant ID.
-
----
-
-## Claude Desktop / Claude Code / Cursor — config snippet
 
 ```json
 {
