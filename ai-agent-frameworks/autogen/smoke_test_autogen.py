@@ -8,22 +8,21 @@ Phase 1 — Challenge render (no live AlgoVoi API needed)
     challenge JSON when no proof is supplied.
 
 Phase 2 — Full on-chain round-trip + initiate_chat
-    Requires:
-      ALGOVOI_KEY, TENANT_ID, PAYOUT_ADDRESS, OPENAI_KEY env vars
-      Live AlgoVoi gateway (api1.ilovechicken.co.uk)
-      Live OpenAI API
+    Requires real TX IDs from the 4 supported chains.
 
 Usage:
-    # Phase 1 only (CI-safe):
-    python smoke_test_autogen.py --phase 1
+    python smoke_test_autogen.py                                      # Phase 1
+    python smoke_test_autogen.py ALGO_TX VOI_TX HEDERA_TX STELLAR_TX  # Phase 2
 
-    # Both phases (full integration):
-    ALGOVOI_KEY=algv_... TENANT_ID=... PAYOUT_ADDRESS=... OPENAI_KEY=sk-... \\
-        python smoke_test_autogen.py --phase 2
+Credentials loaded from (in order):
+    OPENAI_KEY / OPENAI_API_KEY  env var  — or 'OpenAI: <key>' in keys.txt
+    ALGOVOI_KEY                  env var  — or first 'algv_' line in keys.txt
+    TENANT_ID                    env var  — defaults to placeholder
 """
 
 from __future__ import annotations
 
+import base64
 import argparse
 import json
 import os
@@ -35,6 +34,81 @@ from unittest.mock import MagicMock
 # ── path setup ────────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
+
+
+# ── Credential loading ────────────────────────────────────────────────────────
+
+def _load_labelled(label: str, path: str) -> str | None:
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.lower().startswith(label.lower() + ":"):
+                    _, _, value = line.partition(":")
+                    return value.strip().split()[0] if value.strip() else None
+    except FileNotFoundError:
+        pass
+    return None
+
+
+def _load_line_prefix(prefix: str, path: str) -> str | None:
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith(prefix):
+                    return line.split()[0]
+    except FileNotFoundError:
+        pass
+    return None
+
+
+def _load_openai_key() -> str:
+    k = os.environ.get("OPENAI_KEY") or os.environ.get("OPENAI_API_KEY")
+    if k:
+        return k
+    root = os.path.join(_HERE, "..", "..")
+    for fname in ("keys.txt", "openai.txt"):
+        v = _load_labelled("openai", os.path.join(root, fname))
+        if v and v.startswith("sk-"):
+            return v
+    txt = os.path.join(root, "openai.txt")
+    try:
+        with open(txt, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("sk-"):
+                    return line
+    except FileNotFoundError:
+        pass
+    return ""
+
+
+def _load_algovoi_key() -> str:
+    k = os.environ.get("ALGOVOI_KEY")
+    if k:
+        return k
+    root = os.path.join(_HERE, "..", "..")
+    for fname in ("openai.txt", "keys.txt"):
+        v = _load_line_prefix("algv_", os.path.join(root, fname))
+        if v:
+            return v
+    return ""
+
+
+PAYOUT_ADDRS = {
+    "algorand-mainnet": "ZVLRVYQSLJNVFMOIOKT35XH5SNQG45IVFMLLRFLHDQJQA5TO5H3SO4TVDQ",
+    "voi-mainnet":      "THDLWTJ7RB4OJWFZCLL5IME7FHBSJ3SONBRWHIVQE3BEGTY2BWUEUVEOQY",
+    "hedera-mainnet":   "0.0.1317927",
+    "stellar-mainnet":  "GD45SH4TC4TMJOJWJJSLGAXODAIO36POCACT2MWS7I6CTJORMFKEP3HR",
+}
+
+
+def _mpp_proof(network: str, tx_id: str) -> str:
+    return base64.b64encode(json.dumps({
+        "network": network,
+        "payload": {"txId": tx_id},
+    }).encode()).decode()
 
 
 # ── stub gate modules for phase-1 tests ──────────────────────────────────────
@@ -217,48 +291,47 @@ def run_phase1_llm_config() -> int:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Phase 2 — live on-chain + initiate_chat
+# Phase 2 — live on-chain verification via real TX IDs
 # ══════════════════════════════════════════════════════════════════════════════
 
-PHASE2_NETWORKS = [
-    "algorand-mainnet",
-    "voi-mainnet",
-    "hedera-mainnet",
-    "stellar-mainnet",
-]
+def verify_payments(algo_tx: str, voi_tx: str, hedera_tx: str, stellar_tx: str) -> int:
+    algovoi_key = _load_algovoi_key()
+    openai_key  = _load_openai_key()
+    tenant_id   = os.environ.get("TENANT_ID", "YOUR_TENANT_ID")
 
+    if not algovoi_key:
+        print("\n\033[91mALGOVOI_KEY not found — cannot run Phase 2\033[0m")
+        return 1
 
-def run_phase2() -> int:
-    algovoi_key    = os.environ.get("ALGOVOI_KEY", "")
-    tenant_id      = os.environ.get("TENANT_ID", "")
-    payout_address = os.environ.get("PAYOUT_ADDRESS", "")
-    openai_key     = os.environ.get("OPENAI_KEY", "")
-
-    missing = [k for k, v in {
-        "ALGOVOI_KEY": algovoi_key,
-        "TENANT_ID": tenant_id,
-        "PAYOUT_ADDRESS": payout_address,
-        "OPENAI_KEY": openai_key,
-    }.items() if not v]
-
-    if missing:
-        print(f"\n\033[93mPhase 2 skipped — missing env vars: {', '.join(missing)}\033[0m")
-        return 0
-
-    # Remove stubs so real modules are imported
-    for k in ("mpp_algovoi", "ap2_algovoi", "openai_algovoi"):
+    # Remove phase-1 stubs so real modules are imported
+    for k in ("mpp", "ap2", "openai_algovoi"):
         sys.modules.pop(k, None)
 
-    failures = 0
-    _head("Phase 2 — live on-chain verification (4 chains × MPP)")
+    print("\n" + "=" * 60)
+    print("PHASE 2 — On-chain Verification + AutoGen initiate_chat")
+    print("=" * 60)
 
-    for network in PHASE2_NETWORKS:
-        label = f"mpp / {network}"
+    tests = [
+        ("algorand-mainnet", algo_tx),
+        ("voi-mainnet",      voi_tx),
+        ("hedera-mainnet",   hedera_tx),
+        ("stellar-mainnet",  stellar_tx),
+    ]
+
+    passed = failed = 0
+
+    for network, tx_id in tests:
+        print(f"\n-- {network} ------------------------------------------")
+        if tx_id == "skip":
+            print("  [WARN] skipped")
+            continue
+        print(f"  TX: {tx_id}")
+
         try:
             adapter = AlgoVoiAutoGen(
                 algovoi_key=algovoi_key,
                 tenant_id=tenant_id,
-                payout_address=payout_address,
+                payout_address=PAYOUT_ADDRS[network],
                 openai_key=openai_key,
                 protocol="mpp",
                 network=network,
@@ -269,38 +342,29 @@ def run_phase2() -> int:
             result = adapter.check({}, {})
             assert result.requires_payment, "should require payment on first call"
 
-            # Step 2 — obtain proof
-            import urllib.request
-            req_body = json.dumps({
-                "tenant_id": tenant_id,
-                "network": network,
-                "amount_microunits": 10_000,
-                "resource_id": "ai-conversation",
-            }).encode()
-            req = urllib.request.Request(
-                "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
-                data=req_body,
-                headers={"Content-Type": "application/json", "X-AlgoVoi-Key": algovoi_key},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                proof = json.loads(resp.read())["proof"]
+            # Step 2 — build proof from TX ID
+            proof = _mpp_proof(network, tx_id)
 
             # Step 3 — verify
             result2 = adapter.check({"Authorization": f"Payment {proof}"}, {})
-            assert not result2.requires_payment, "should be verified"
+            assert not result2.requires_payment, f"payment rejected: {getattr(result2, 'error', '')}"
 
-            _ok(label)
+            print("  [PASS] Payment verified")
+            if hasattr(result2, "receipt") and result2.receipt:
+                print(f"         payer  : {result2.receipt.payer}")
+                print(f"         amount : {result2.receipt.amount} microunits")
+                print(f"         tx_id  : {result2.receipt.tx_id}")
+            passed += 1
+
         except Exception as exc:
-            _fail(f"{label}: {exc}")
+            print(f"  [FAIL] {type(exc).__name__}: {exc}")
             traceback.print_exc()
-            failures += 1
+            failed += 1
 
-    # initiate_chat smoke — single conversation
-    _head("Phase 2 — initiate_chat (AutoGen 0.2.x mock conversation)")
+    # initiate_chat smoke — mock conversation (no live AutoGen install required)
+    print(f"\n-- initiate_chat (AutoGen 0.2.x mock conversation) ---------")
     try:
         from unittest.mock import MagicMock as _MM
-        # Simulate a real conversation result without importing autogen
         cr = _MM()
         cr.summary = "AutoGen says: Hello from AlgoVoi"
         cr.chat_history = [
@@ -314,7 +378,7 @@ def run_phase2() -> int:
         adapter = AlgoVoiAutoGen(
             algovoi_key=algovoi_key,
             tenant_id=tenant_id,
-            payout_address=payout_address,
+            payout_address=PAYOUT_ADDRS["algorand-mainnet"],
             openai_key=openai_key,
             protocol="mpp",
             network="algorand-mainnet",
@@ -322,48 +386,41 @@ def run_phase2() -> int:
 
         output = adapter.initiate_chat(recipient, sender, "Hello agent", max_turns=3)
         assert isinstance(output, str) and len(output) > 0
-        _ok(f"initiate_chat result: {output[:80]}")
+        print(f"  [PASS] initiate_chat result: {output[:80]}")
+        passed += 1
     except Exception as exc:
-        _fail(f"initiate_chat: {exc}")
+        print(f"  [FAIL] initiate_chat: {type(exc).__name__}: {exc}")
         traceback.print_exc()
-        failures += 1
+        failed += 1
 
-    # callable tool — verified path
-    _head("Phase 2 — callable tool (verified proof)")
+    # callable tool — verified path using algo_tx proof
+    print(f"\n-- callable tool (as_tool) on algorand-mainnet ---------------")
     try:
-        import urllib.request
-        adapter = AlgoVoiAutoGen(
-            algovoi_key=algovoi_key,
-            tenant_id=tenant_id,
-            payout_address=payout_address,
-            protocol="mpp",
-            network="algorand-mainnet",
-        )
-        req_body = json.dumps({
-            "tenant_id": tenant_id,
-            "network": "algorand-mainnet",
-            "amount_microunits": 10_000,
-            "resource_id": "ai-conversation",
-        }).encode()
-        req = urllib.request.Request(
-            "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
-            data=req_body,
-            headers={"Content-Type": "application/json", "X-AlgoVoi-Key": algovoi_key},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            proof = json.loads(resp.read())["proof"]
-
-        tool = adapter.as_tool(resource_fn=lambda q: f"Answer to: {q}")
-        out = tool(query="What is AlgoVoi?", payment_proof=proof)
-        assert "Answer to" in out, f"unexpected: {out}"
-        _ok(f"tool output: {out[:80]}")
+        if algo_tx != "skip":
+            adapter = AlgoVoiAutoGen(
+                algovoi_key=algovoi_key,
+                tenant_id=tenant_id,
+                payout_address=PAYOUT_ADDRS["algorand-mainnet"],
+                protocol="mpp",
+                network="algorand-mainnet",
+            )
+            proof = _mpp_proof("algorand-mainnet", algo_tx)
+            tool = adapter.as_tool(resource_fn=lambda q: f"Answer to: {q}")
+            out = tool(query="What is AlgoVoi?", payment_proof=proof)
+            assert "Answer to" in out, f"unexpected: {out}"
+            print(f"  [PASS] tool output: {out[:80]}")
+            passed += 1
+        else:
+            print("  [WARN] skipped (algo_tx == skip)")
     except Exception as exc:
-        _fail(f"tool verified path: {exc}")
+        print(f"  [FAIL] {type(exc).__name__}: {exc}")
         traceback.print_exc()
-        failures += 1
+        failed += 1
 
-    return failures
+    print(f"\n{'=' * 60}")
+    print(f"Results: {passed}/{passed + failed} passed",
+          "PASS" if failed == 0 else "FAIL")
+    return 1 if failed else 0
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -371,20 +428,10 @@ def run_phase2() -> int:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="AutoGen adapter smoke test")
-    parser.add_argument(
-        "--phase", type=int, choices=[1, 2], default=1,
-        help="1 = challenge render only (default); 2 = full live test",
-    )
-    args = parser.parse_args()
-
     total = 0
     total += run_phase1()
     total += run_phase1_tool()
     total += run_phase1_llm_config()
-
-    if args.phase == 2:
-        total += run_phase2()
 
     if total == 0:
         print(f"\n\033[92mAll smoke tests passed.\033[0m\n")
@@ -395,4 +442,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 5:
+        sys.exit(verify_payments(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]))
+    elif len(sys.argv) == 1:
+        main()
+    else:
+        print("Usage:")
+        print("  python smoke_test_autogen.py                              # Phase 1")
+        print("  python smoke_test_autogen.py ALGO VOI HEDERA STELLAR     # Phase 2")
+        sys.exit(1)
