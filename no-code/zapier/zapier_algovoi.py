@@ -426,7 +426,7 @@ class AlgoVoiZapier:
 
         try:
             resp = _http_get(
-                f"{self._base}/checkout/{urllib.parse.quote(token, safe='')}",
+                f"{self._base}/checkout/{urllib.parse.quote(token, safe='')}/status",
                 {},
             )
         except Exception as exc:

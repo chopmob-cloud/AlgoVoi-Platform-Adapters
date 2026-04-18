@@ -374,7 +374,7 @@ class AlgoVoiN8n:
             return _err_item("token is required", "MISSING_TOKEN")
         try:
             resp = _http_get(
-                f"{self._base}/checkout/{urllib.parse.quote(token, safe='')}",
+                f"{self._base}/checkout/{urllib.parse.quote(token, safe='')}/status",
                 {},
             )
         except Exception as exc:

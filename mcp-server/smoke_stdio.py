@@ -2,7 +2,7 @@
 Stdio smoke test for both AlgoVoi MCP servers (TypeScript + Python).
 
 Starts each server as a subprocess with fake env vars, speaks the MCP JSON-RPC
-2.0 protocol over stdin/stdout, and asserts all 8 tools are listed on each side.
+2.0 protocol over stdin/stdout, and asserts all 11 tools are listed on each side.
 
 Run:
     python smoke_stdio.py
@@ -78,9 +78,12 @@ def run_ts() -> int:
 
     env = os.environ.copy()
     env.update({
-        "ALGOVOI_API_KEY":        "algv_smoke",
-        "ALGOVOI_TENANT_ID":      "tenant-smoke",
-        "ALGOVOI_PAYOUT_ADDRESS": "SMOKE_ADDR",
+        "ALGOVOI_API_KEY":         "algv_smoke",
+        "ALGOVOI_TENANT_ID":       "tenant-smoke",
+        "ALGOVOI_PAYOUT_ALGORAND": "SMOKE_ALGO_ADDR",
+        "ALGOVOI_PAYOUT_VOI":      "SMOKE_VOI_ADDR",
+        "ALGOVOI_PAYOUT_HEDERA":   "0.0.999999",
+        "ALGOVOI_PAYOUT_STELLAR":  "GSMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKE",
     })
     proc = subprocess.Popen(
         ["node", str(dist)],
@@ -98,7 +101,7 @@ def run_ts() -> int:
         if extra:
             fail(f"unexpected extra tools: {extra}")
             return 1
-        ok(f"all 8 tools listed: {sorted(tools)}")
+        ok(f"all 11 tools listed: {sorted(tools)}")
         return 0
     except Exception as exc:
         fail(f"{exc}")
@@ -123,10 +126,13 @@ def run_py() -> int:
     print("\nPython server (python -m algovoi_mcp)")
     env = os.environ.copy()
     env.update({
-        "ALGOVOI_API_KEY":        "algv_smoke",
-        "ALGOVOI_TENANT_ID":      "tenant-smoke",
-        "ALGOVOI_PAYOUT_ADDRESS": "SMOKE_ADDR",
-        "PYTHONUNBUFFERED":       "1",
+        "ALGOVOI_API_KEY":         "algv_smoke",
+        "ALGOVOI_TENANT_ID":       "tenant-smoke",
+        "ALGOVOI_PAYOUT_ALGORAND": "SMOKE_ALGO_ADDR",
+        "ALGOVOI_PAYOUT_VOI":      "SMOKE_VOI_ADDR",
+        "ALGOVOI_PAYOUT_HEDERA":   "0.0.999999",
+        "ALGOVOI_PAYOUT_STELLAR":  "GSMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKE",
+        "PYTHONUNBUFFERED":        "1",
     })
     proc = subprocess.Popen(
         [sys.executable, "-m", "algovoi_mcp"],
@@ -144,7 +150,7 @@ def run_py() -> int:
         if extra:
             fail(f"unexpected extra tools: {extra}")
             return 1
-        ok(f"all 8 tools listed: {sorted(tools)}")
+        ok(f"all 11 tools listed: {sorted(tools)}")
         return 0
     except Exception as exc:
         fail(f"{exc}")

@@ -45,7 +45,12 @@ function makeClient() {
     apiBase: "https://api1.example.test",
     apiKey: "algv_test",
     tenantId: "tenant-test",
-    payoutAddress: "PAYOUT_ADDR_TEST",
+    payoutAddresses: {
+      algorand_mainnet: "PAYOUT_ADDR_TEST",
+      voi_mainnet:      "PAYOUT_ADDR_TEST",
+      hedera_mainnet:   "PAYOUT_ADDR_TEST",
+      stellar_mainnet:  "PAYOUT_ADDR_TEST",
+    },
   });
 }
 
@@ -517,8 +522,8 @@ describe("verifyWebhook", () => {
 // ── list_networks (2 tests) ───────────────────────────────────────────────────
 
 describe("listNetworks", () => {
-  it("returns 4 networks", () => {
-    expect(listNetworks().networks).toHaveLength(4);
+  it("returns 16 networks (8 mainnet + 8 testnet)", () => {
+    expect(listNetworks().networks).toHaveLength(16);
   });
   it("includes CAIP-2 and asset_id", () => {
     const out = listNetworks();
@@ -590,7 +595,18 @@ describe("generateMppChallenge", () => {
 
 describe("verifyMppReceipt", () => {
   it("verified:true passes through", async () => {
-    mockFetch(() => ({ verified: true, tx_id: "TX1" }));
+    // Mock the Algorand indexer response with a valid confirmed USDC transfer to payout address.
+    mockFetch(() => ({
+      transaction: {
+        "confirmed-round": 12345,
+        sender: "PAYER_ADDR_TEST",
+        "asset-transfer-transaction": {
+          receiver: "PAYOUT_ADDR_TEST",
+          amount: 10000,
+          "asset-id": 31566704,
+        },
+      },
+    }));
     const out = await verifyMppReceipt(
       makeClient(),
       parseVerifyMppReceipt({
@@ -621,10 +637,23 @@ describe("verifyMppReceipt", () => {
 
 describe("verifyX402Proof", () => {
   it("verified:true passes through", async () => {
-    mockFetch(() => ({ verified: true }));
+    // Mock the Algorand indexer response with a valid confirmed USDC transfer.
+    mockFetch(() => ({
+      transaction: {
+        "confirmed-round": 12345,
+        sender: "PAYER_ADDR_TEST",
+        "asset-transfer-transaction": {
+          receiver: "PAYOUT_ADDR_TEST",
+          amount: 10000,
+          "asset-id": 31566704,
+        },
+      },
+    }));
+    // Encode a proof that contains a tx_id field.
+    const proof = Buffer.from(JSON.stringify({ tx_id: "TX1" })).toString("base64");
     const out = await verifyX402Proof(
       makeClient(),
-      parseVerifyX402Proof({ proof: "abc", network: "algorand_mainnet" })
+      parseVerifyX402Proof({ proof, network: "algorand_mainnet" })
     );
     expect(out.verified).toBe(true);
   });
@@ -723,7 +752,18 @@ describe("generateAp2Mandate", () => {
 
 describe("verifyAp2Payment", () => {
   it("verified:true passes through", async () => {
-    mockFetch(() => ({ verified: true }));
+    // Mock the Algorand indexer response with a valid confirmed USDC transfer to payout address.
+    mockFetch(() => ({
+      transaction: {
+        "confirmed-round": 12345,
+        sender: "PAYER_ADDR_TEST",
+        "asset-transfer-transaction": {
+          receiver: "PAYOUT_ADDR_TEST",
+          amount: 10000,
+          "asset-id": 31566704,
+        },
+      },
+    }));
     const out = await verifyAp2Payment(
       makeClient(),
       parseVerifyAp2Payment({ mandate_id: "a".repeat(16), tx_id: "TX1", network: "algorand_mainnet" })

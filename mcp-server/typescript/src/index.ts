@@ -49,18 +49,45 @@ function requireEnv(name: string): string {
   if (!v || !v.trim()) {
     process.stderr.write(
       `\n[algovoi-mcp] missing required env var: ${name}\n` +
-        `Set ALGOVOI_API_KEY, ALGOVOI_TENANT_ID, and ALGOVOI_PAYOUT_ADDRESS.\n\n`
+        `Set ALGOVOI_API_KEY, ALGOVOI_TENANT_ID, and at least one payout address.\n\n`
     );
     process.exit(2);
   }
   return v;
 }
 
-const API_KEY        = requireEnv("ALGOVOI_API_KEY");
-const TENANT_ID      = requireEnv("ALGOVOI_TENANT_ID");
-const PAYOUT_ADDRESS = requireEnv("ALGOVOI_PAYOUT_ADDRESS");
-const API_BASE       = process.env.ALGOVOI_API_BASE || "https://api1.ilovechicken.co.uk";
+function optionalEnv(name: string): string | undefined {
+  const v = process.env[name];
+  return v && v.trim() ? v.trim() : undefined;
+}
+
+const API_KEY      = requireEnv("ALGOVOI_API_KEY");
+const TENANT_ID    = requireEnv("ALGOVOI_TENANT_ID");
+const API_BASE     = process.env.ALGOVOI_API_BASE || "https://api1.ilovechicken.co.uk";
 const WEBHOOK_SECRET = process.env.ALGOVOI_WEBHOOK_SECRET;
+
+// Per-chain payout addresses. Per-chain vars take priority; ALGOVOI_PAYOUT_ADDRESS
+// acts as a universal fallback for any chain not individually configured.
+const PAYOUT_FALLBACK = optionalEnv("ALGOVOI_PAYOUT_ADDRESS");
+const PAYOUT_ADDRESSES: Record<string, string> = {};
+const CHAIN_ENV: [string, string][] = [
+  ["algorand_mainnet", "ALGOVOI_PAYOUT_ALGORAND"],
+  ["voi_mainnet",      "ALGOVOI_PAYOUT_VOI"],
+  ["hedera_mainnet",   "ALGOVOI_PAYOUT_HEDERA"],
+  ["stellar_mainnet",  "ALGOVOI_PAYOUT_STELLAR"],
+];
+for (const [key, envVar] of CHAIN_ENV) {
+  const v = optionalEnv(envVar) ?? PAYOUT_FALLBACK;
+  if (v) PAYOUT_ADDRESSES[key] = v;
+}
+if (Object.keys(PAYOUT_ADDRESSES).length === 0) {
+  process.stderr.write(
+    "\n[algovoi-mcp] no payout address configured.\n" +
+    "Set ALGOVOI_PAYOUT_ALGORAND, ALGOVOI_PAYOUT_VOI, ALGOVOI_PAYOUT_HEDERA,\n" +
+    "ALGOVOI_PAYOUT_STELLAR (or ALGOVOI_PAYOUT_ADDRESS as a universal fallback).\n\n"
+  );
+  process.exit(2);
+}
 
 function parseEnabledTools(raw: string | undefined): Set<string> | null {
   if (!raw || !raw.trim()) return null;
@@ -79,10 +106,10 @@ function parseEnabledTools(raw: string | undefined): Set<string> | null {
 const ENABLED_TOOLS = parseEnabledTools(process.env.MCP_ENABLED_TOOLS);
 
 const client = new AlgoVoiClient({
-  apiBase:       API_BASE,
-  apiKey:        API_KEY,
-  tenantId:      TENANT_ID,
-  payoutAddress: PAYOUT_ADDRESS,
+  apiBase:         API_BASE,
+  apiKey:          API_KEY,
+  tenantId:        TENANT_ID,
+  payoutAddresses: PAYOUT_ADDRESSES,
 });
 
 // ── MCP server ────────────────────────────────────────────────────────────────

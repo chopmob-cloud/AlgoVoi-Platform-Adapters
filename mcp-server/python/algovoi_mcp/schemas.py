@@ -17,8 +17,18 @@ from .networks import NETWORKS
 
 _STRICT = ConfigDict(strict=True, extra="forbid")
 
-NetworkLiteral  = Literal["algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet"]
-ExtNetworkLiteral = Literal["algorand_mainnet", "voi_mainnet"]
+NetworkLiteral  = Literal[
+    # Mainnet
+    "algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet",
+    "algorand_mainnet_algo", "voi_mainnet_voi", "hedera_mainnet_hbar", "stellar_mainnet_xlm",
+    # Testnet
+    "algorand_testnet", "voi_testnet", "hedera_testnet", "stellar_testnet",
+    "algorand_testnet_algo", "voi_testnet_voi", "hedera_testnet_hbar", "stellar_testnet_xlm",
+]
+ExtNetworkLiteral = Literal[
+    "algorand_mainnet", "voi_mainnet", "algorand_mainnet_algo", "voi_mainnet_voi",
+    "algorand_testnet", "voi_testnet", "algorand_testnet_algo", "voi_testnet_voi",
+]
 
 
 class CreatePaymentLinkInput(BaseModel):
@@ -72,9 +82,8 @@ class VerifyMppReceiptInput(BaseModel):
 
 class VerifyX402ProofInput(BaseModel):
     model_config = _STRICT
-    resource_id: str            = Field(min_length=1, max_length=200)
-    tx_id:       str            = Field(min_length=1, max_length=200)
-    network:     NetworkLiteral
+    proof:   str            = Field(min_length=1, max_length=64 * 1024)
+    network: NetworkLiteral
 
 
 class GenerateX402ChallengeInput(BaseModel):
@@ -97,7 +106,7 @@ class GenerateAp2MandateInput(BaseModel):
 
 class VerifyAp2PaymentInput(BaseModel):
     model_config = _STRICT
-    payment_id: str            = Field(min_length=1, max_length=64)
+    mandate_id: str            = Field(min_length=1, max_length=64)
     tx_id:      str            = Field(min_length=1, max_length=200)
     network:    NetworkLiteral
 
@@ -123,5 +132,10 @@ SCHEMAS_BY_TOOL: dict[str, type[BaseModel]] = {
 _EXPECTED = set(SCHEMAS_BY_TOOL.keys())
 assert len(_EXPECTED) == 11, f"expected 11 tool schemas, got {len(_EXPECTED)}"
 # Cross-check each schema's network fields against the canonical NETWORKS tuple.
-for _n in ("algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet"):
+for _n in (
+    "algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet",
+    "algorand_mainnet_algo", "voi_mainnet_voi", "hedera_mainnet_hbar", "stellar_mainnet_xlm",
+    "algorand_testnet", "voi_testnet", "hedera_testnet", "stellar_testnet",
+    "algorand_testnet_algo", "voi_testnet_voi", "hedera_testnet_hbar", "stellar_testnet_xlm",
+):
     assert _n in NETWORKS, f"network {_n!r} not in networks.NETWORKS"

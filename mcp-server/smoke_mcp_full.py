@@ -4,7 +4,7 @@ AlgoVoi MCP Server — Thorough Smoke Test
 
 Phase 1 — Offline tool calls (no network to AlgoVoi API):
   01  tools/list — all 11 tools present
-  02  list_networks — 4 networks, correct CAIP-2 + asset IDs
+  02  list_networks — 16 networks (8 mainnet + 8 testnet), correct CAIP-2 + asset IDs
   03  generate_mpp_challenge — 402 + WWW-Authenticate shape
   04  generate_x402_challenge — 402 + X-Payment-Required decodable
   05  generate_ap2_mandate — mandate_id len 16, mandate_b64 round-trips
@@ -15,7 +15,7 @@ Phase 1 — Offline tool calls (no network to AlgoVoi API):
   10  MCP_ENABLED_TOOLS — subset listing + disabled tool rejection
 
 Phase 2 — Live API round-trip (requires ALGOVOI_API_KEY / ALGOVOI_TENANT_ID /
-          ALGOVOI_PAYOUT_ADDRESS):
+          and at least one ALGOVOI_PAYOUT_* address):
   11  create_payment_link — returns checkout_url + token
   12  verify_payment — polls the token just created
 
@@ -24,7 +24,7 @@ Usage:
     python smoke_mcp_full.py
 
     # Phase 2 as well (needs real credentials in env or keys.txt):
-    ALGOVOI_API_KEY=algv_... ALGOVOI_TENANT_ID=... ALGOVOI_PAYOUT_ADDRESS=... \\
+    ALGOVOI_API_KEY=algv_... ALGOVOI_TENANT_ID=... ALGOVOI_PAYOUT_ALGORAND=... \\
         python smoke_mcp_full.py --live
 
 Run from the mcp-server/ directory.
@@ -60,7 +60,6 @@ def _load_algovoi_creds() -> dict[str, str] | None:
     """Try env vars first, then keys.txt in repo root."""
     api_key  = os.environ.get("ALGOVOI_API_KEY", "")
     tenant   = os.environ.get("ALGOVOI_TENANT_ID", "")
-    payout   = os.environ.get("ALGOVOI_PAYOUT_ADDRESS", "")
 
     if not api_key:
         repo_root = Path(__file__).parent.parent
@@ -76,13 +75,24 @@ def _load_algovoi_creds() -> dict[str, str] | None:
             if api_key:
                 break
 
-    if not (api_key and tenant and payout):
+    # Require at least one payout address (per-chain or universal fallback).
+    payout_env: dict[str, str] = {}
+    for key, var in [
+        ("ALGOVOI_PAYOUT_ALGORAND", "ALGOVOI_PAYOUT_ALGORAND"),
+        ("ALGOVOI_PAYOUT_VOI",      "ALGOVOI_PAYOUT_VOI"),
+        ("ALGOVOI_PAYOUT_HEDERA",   "ALGOVOI_PAYOUT_HEDERA"),
+        ("ALGOVOI_PAYOUT_STELLAR",  "ALGOVOI_PAYOUT_STELLAR"),
+        ("ALGOVOI_PAYOUT_ADDRESS",  "ALGOVOI_PAYOUT_ADDRESS"),  # fallback
+    ]:
+        v = os.environ.get(var, "").strip()
+        if v:
+            payout_env[key] = v
+
+    if not (api_key and tenant and payout_env):
         return None
-    return {
-        "ALGOVOI_API_KEY":        api_key,
-        "ALGOVOI_TENANT_ID":      tenant,
-        "ALGOVOI_PAYOUT_ADDRESS": payout,
-    }
+    creds = {"ALGOVOI_API_KEY": api_key, "ALGOVOI_TENANT_ID": tenant}
+    creds.update(payout_env)
+    return creds
 
 # --MCP session (stdio JSON-RPC helper) --─────────────────────────────────────
 
@@ -168,10 +178,13 @@ def _launch_ts(extra_env: dict | None = None) -> subprocess.Popen:
         )
     env = os.environ.copy()
     env.update({
-        "ALGOVOI_API_KEY":        "algv_smoke",
-        "ALGOVOI_TENANT_ID":      "tenant-smoke",
-        "ALGOVOI_PAYOUT_ADDRESS": "SMOKE_PAYOUT_ADDR",
-        "ALGOVOI_WEBHOOK_SECRET": "whsec_smoke",
+        "ALGOVOI_API_KEY":         "algv_smoke",
+        "ALGOVOI_TENANT_ID":       "tenant-smoke",
+        "ALGOVOI_PAYOUT_ALGORAND": "SMOKE_ALGO_ADDR",
+        "ALGOVOI_PAYOUT_VOI":      "SMOKE_VOI_ADDR",
+        "ALGOVOI_PAYOUT_HEDERA":   "0.0.999999",
+        "ALGOVOI_PAYOUT_STELLAR":  "GSMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKE",
+        "ALGOVOI_WEBHOOK_SECRET":  "whsec_smoke",
     })
     if extra_env:
         env.update(extra_env)
@@ -185,11 +198,14 @@ def _launch_ts(extra_env: dict | None = None) -> subprocess.Popen:
 def _launch_py(extra_env: dict | None = None) -> subprocess.Popen:
     env = os.environ.copy()
     env.update({
-        "ALGOVOI_API_KEY":        "algv_smoke",
-        "ALGOVOI_TENANT_ID":      "tenant-smoke",
-        "ALGOVOI_PAYOUT_ADDRESS": "SMOKE_PAYOUT_ADDR",
-        "ALGOVOI_WEBHOOK_SECRET": "whsec_smoke",
-        "PYTHONUNBUFFERED":       "1",
+        "ALGOVOI_API_KEY":         "algv_smoke",
+        "ALGOVOI_TENANT_ID":       "tenant-smoke",
+        "ALGOVOI_PAYOUT_ALGORAND": "SMOKE_ALGO_ADDR",
+        "ALGOVOI_PAYOUT_VOI":      "SMOKE_VOI_ADDR",
+        "ALGOVOI_PAYOUT_HEDERA":   "0.0.999999",
+        "ALGOVOI_PAYOUT_STELLAR":  "GSMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKESMOKE",
+        "ALGOVOI_WEBHOOK_SECRET":  "whsec_smoke",
+        "PYTHONUNBUFFERED":        "1",
     })
     if extra_env:
         env.update(extra_env)
@@ -238,18 +254,31 @@ def run_phase1(session: McpSession, label: str) -> int:
         fail(f"[{label}] 01 tools/list — expected {sorted(EXPECTED)}, got {sorted(names)}")
         failures += 1
 
-    # 02 — list_networks
+    # 02 — list_networks (8 mainnet + 8 testnet = 16 total)
     out = session.call_tool("list_networks")
     nets = out.get("networks", [])
-    if len(nets) == 4 and all("caip2" in n and "asset_id" in n for n in nets):
+    keys = {n["key"] for n in nets}
+    expected_keys = {
+        # Mainnet
+        "algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet",
+        "algorand_mainnet_algo", "voi_mainnet_voi", "hedera_mainnet_hbar", "stellar_mainnet_xlm",
+        # Testnet
+        "algorand_testnet", "voi_testnet", "hedera_testnet", "stellar_testnet",
+        "algorand_testnet_algo", "voi_testnet_voi", "hedera_testnet_hbar", "stellar_testnet_xlm",
+    }
+    if len(nets) == 16 and expected_keys <= keys and all("caip2" in n and "asset_id" in n for n in nets):
         algo = next((n for n in nets if n["key"] == "algorand_mainnet"), None)
-        if algo and algo["asset_id"] == "31566704" and algo["caip2"] == "algorand:mainnet":
-            ok(f"[{label}] 02 list_networks — 4 networks, correct CAIP-2 + asset IDs")
+        algo_native = next((n for n in nets if n["key"] == "algorand_mainnet_algo"), None)
+        algo_testnet = next((n for n in nets if n["key"] == "algorand_testnet"), None)
+        if (algo and algo["asset_id"] == "31566704" and algo["caip2"] == "algorand:mainnet"
+                and algo_native and algo_native["asset_id"] is None and algo_native["asset"] == "ALGO"
+                and algo_testnet and algo_testnet["caip2"] == "algorand:testnet"):
+            ok(f"[{label}] 02 list_networks — 16 networks (8 mainnet + 8 testnet), correct CAIP-2 + asset IDs")
         else:
-            fail(f"[{label}] 02 list_networks — algorand_mainnet fields wrong: {algo}")
+            fail(f"[{label}] 02 list_networks — network fields wrong: algo={algo} algo_native={algo_native} algo_testnet={algo_testnet}")
             failures += 1
     else:
-        fail(f"[{label}] 02 list_networks — unexpected shape: {out}")
+        fail(f"[{label}] 02 list_networks — unexpected shape (got {len(nets)} networks): {out}")
         failures += 1
 
     # 03 — generate_mpp_challenge
@@ -262,7 +291,7 @@ def run_phase1(session: McpSession, label: str) -> int:
         and h.startswith("Payment ")
         and 'intent="charge"' in h
         and len(out.get("challenge_id", "")) == 16
-        and out.get("accepts", [{}])[0].get("receiver") == "SMOKE_PAYOUT_ADDR"
+        and out.get("accepts", [{}])[0].get("receiver") == "SMOKE_ALGO_ADDR"
     ):
         ok(f"[{label}] 03 generate_mpp_challenge — 402 + correct WWW-Authenticate")
     else:
@@ -279,7 +308,7 @@ def run_phase1(session: McpSession, label: str) -> int:
     try:
         decoded = json.loads(base64.b64decode(header_b64))
         assert decoded["version"] == "1"
-        assert decoded["payTo"]   == "SMOKE_PAYOUT_ADDR"
+        assert decoded["payTo"]   == "SMOKE_ALGO_ADDR"
         assert decoded["maxAmountRequired"] == "500000"
         assert decoded["networkId"] == "algorand:mainnet"
         ok(f"[{label}] 04 generate_x402_challenge — 402 + X-Payment-Required decodes correctly")
@@ -300,7 +329,7 @@ def run_phase1(session: McpSession, label: str) -> int:
         assert mandate["type"]              == "PaymentMandate"
         assert mandate["version"]           == "0.1"
         assert mandate["protocol"]          == "algovoi-ap2/0.1"
-        assert mandate["payee"]["address"]  == "SMOKE_PAYOUT_ADDR"
+        assert mandate["payee"]["address"]  == "SMOKE_ALGO_ADDR"
         assert mandate["amount"]["value"]   == "2000000"
         assert mandate["mandate_id"]        == mandate_id
         ok(f"[{label}] 05 generate_ap2_mandate — mandate_id={mandate_id}, b64 round-trips OK")
@@ -604,7 +633,7 @@ def run_server(
         finally:
             _kill(proc2)
     elif live:
-        skip(f"[{label}] Phase 2 — no credentials found (set ALGOVOI_API_KEY / ALGOVOI_TENANT_ID / ALGOVOI_PAYOUT_ADDRESS)")
+        skip(f"[{label}] Phase 2 — no credentials found (set ALGOVOI_API_KEY, ALGOVOI_TENANT_ID, and at least one ALGOVOI_PAYOUT_* address)")
 
     return failures
 
@@ -616,7 +645,7 @@ def main() -> None:
         description="AlgoVoi MCP Server full smoke test",
         epilog=(
             "Phase 2 usage:\n"
-            "  ALGOVOI_API_KEY=algv_... ALGOVOI_TENANT_ID=... ALGOVOI_PAYOUT_ADDRESS=... \\\n"
+            "  ALGOVOI_API_KEY=algv_... ALGOVOI_TENANT_ID=... ALGOVOI_PAYOUT_ALGORAND=... \\\n"
             "      python smoke_mcp_full.py --live\n\n"
             "With TX ID verification (all 4 chains):\n"
             "  python smoke_mcp_full.py --live \\\n"

@@ -166,10 +166,24 @@ export function listNetworks() {
 // ── 6. generate_mpp_challenge ─────────────────────────────────────────────────
 
 const CAIP2: Record<string, string> = {
-  algorand_mainnet: "algorand:mainnet",
-  voi_mainnet:      "voi:mainnet",
-  hedera_mainnet:   "hedera:mainnet",
-  stellar_mainnet:  "stellar:pubnet",
+  // Mainnet
+  algorand_mainnet:      "algorand:mainnet",
+  voi_mainnet:           "voi:mainnet",
+  hedera_mainnet:        "hedera:mainnet",
+  stellar_mainnet:       "stellar:pubnet",
+  algorand_mainnet_algo: "algorand:mainnet",
+  voi_mainnet_voi:       "voi:mainnet",
+  hedera_mainnet_hbar:   "hedera:mainnet",
+  stellar_mainnet_xlm:   "stellar:pubnet",
+  // Testnet
+  algorand_testnet:      "algorand:testnet",
+  voi_testnet:           "voi:testnet",
+  hedera_testnet:        "hedera:testnet",
+  stellar_testnet:       "stellar:testnet",
+  algorand_testnet_algo: "algorand:testnet",
+  voi_testnet_voi:       "voi:testnet",
+  hedera_testnet_hbar:   "hedera:testnet",
+  stellar_testnet_xlm:   "stellar:testnet",
 };
 
 export function generateMppChallenge(
@@ -184,7 +198,7 @@ export function generateMppChallenge(
     scheme:   "algovoi",
     network:  CAIP2[n],
     asset:    NETWORK_INFO[n as Network].asset_id,
-    receiver: client.payoutAddress,
+    receiver: client.payoutAddressFor(n),
     amount:   String(args.amount_microunits),
     decimals: NETWORK_INFO[n as Network].decimals,
   }));
@@ -276,7 +290,7 @@ export function generateX402Challenge(
     resource:          args.resource,
     description:       args.description ?? "",
     mimeType:          "application/json",
-    payTo:             client.payoutAddress,
+    payTo:             client.payoutAddressFor(network),
     maxTimeoutSeconds: expiresIn,
     asset:             info.asset_id,
     decimals:          info.decimals,
@@ -320,7 +334,7 @@ export function generateAp2Mandate(
     type:        "PaymentMandate",
     mandate_id:  mandateId,
     payee: {
-      address:  client.payoutAddress,
+      address:  client.payoutAddressFor(network),
       network:  CAIP2[network],
       asset_id: info.asset_id,
     },
@@ -366,7 +380,7 @@ export const TOOL_SCHEMAS = [
   {
     name: "create_payment_link",
     description:
-      "Create a hosted AlgoVoi checkout URL for a given amount and chain. Returns a short token and public URL the customer can visit to pay in USDC (Algorand / VOI / Hedera / Stellar).",
+      "Create a hosted AlgoVoi checkout URL for a given amount and chain. Returns a short token and public URL the customer can visit to pay in USDC or native tokens (Algorand / VOI / Hedera / Stellar).",
     inputSchema: {
       type: "object",
       properties: {
@@ -405,7 +419,7 @@ export const TOOL_SCHEMAS = [
         amount:   { type: "number" },
         currency: { type: "string" },
         label:    { type: "string" },
-        network:  { type: "string", enum: ["algorand_mainnet", "voi_mainnet"] },
+        network:  { type: "string", enum: ["algorand_mainnet", "voi_mainnet", "algorand_mainnet_algo", "voi_mainnet_voi", "algorand_testnet", "voi_testnet", "algorand_testnet_algo", "voi_testnet_voi"] },
       },
       required: ["amount", "currency", "label", "network"],
       additionalProperties: false,

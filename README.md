@@ -31,6 +31,7 @@ Included:
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
 - **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 4 chains)
 - **AI agent framework adapters** for LangChain, LlamaIndex, CrewAI, Hugging Face, AutoGen, Semantic Kernel, Pydantic AI, DSPy, Vercel AI SDK, Google A2A, LangGraph, and Agno — gate LLM-agnostic pipelines, RAG chains, multi-agent crews, and autonomous agents (MPP + AP2 + x402, all 4 chains)
+- **MCP server** (`@algovoi/mcp-server` / `algovoi-mcp`) — exposes 11 AlgoVoi tools natively inside Claude Desktop, Claude Code, Cursor, and Windsurf via the Model Context Protocol
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
 - **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 4 chains
 
@@ -112,6 +113,9 @@ platform-adapters/
 │   ├── a2a/              # Google A2A gate — JSON-RPC 2.0 server + client, agent card, task store
 │   ├── langgraph/        # LangGraph gate — StateGraph invoke/stream, ToolNode, create_react_agent
 │   └── agno/             # Agno gate — pre_hooks, ASGI middleware (AgentOS), run_agent + arun_agent
+├── mcp-server/           # MCP server — 11 AlgoVoi tools for Claude Desktop / Claude Code / Cursor / Windsurf
+│   ├── typescript/       #   @algovoi/mcp-server (npm) — `npx -y @algovoi/mcp-server`
+│   └── python/           #   algovoi-mcp (PyPI) — `uvx algovoi-mcp`
 ├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
 ├── easy-digital-downloads/ # EDD 3.2+ WordPress plugin (digital downloads, licensing)
 ├── ghost/                # Ghost 5.x paid-membership grant-on-payment adapter
@@ -1023,6 +1027,60 @@ tool = gate.as_tool(lambda q: fetch_kb(q), tool_name="premium_kb")
 ```
 
 All 4 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/a2a/README.md](./ai-agent-frameworks/a2a/README.md)
+
+---
+
+## MCP Server
+
+An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that exposes AlgoVoi's payment infrastructure as tools directly inside Claude Desktop, Claude Code, Cursor, Windsurf, and any other MCP-compatible AI assistant. Ships as two packages — pick whichever runtime your client supports:
+
+| Package | Install | Command |
+|---------|---------|---------|
+| **`@algovoi/mcp-server`** (npm) | `npm i -g @algovoi/mcp-server` | `npx -y @algovoi/mcp-server` |
+| **`algovoi-mcp`** (PyPI) | `pip install algovoi-mcp` | `uvx algovoi-mcp` |
+
+### 11 built-in tools
+
+| # | Tool | What it does |
+|---|------|-------------|
+| 1 | `create_payment_link` | Create a hosted-checkout URL for a given amount and chain |
+| 2 | `verify_payment` | Verify a checkout token (optionally with a tx_id) |
+| 3 | `prepare_extension_payment` | In-page wallet-flow params (Algorand / VOI) |
+| 4 | `verify_webhook` | HMAC-SHA256 signature check for AlgoVoi webhooks |
+| 5 | `list_networks` | Supported chains + asset IDs (offline, no API call) |
+| 6 | `generate_mpp_challenge` | IETF MPP 402 `WWW-Authenticate` headers + challenge_id |
+| 7 | `verify_mpp_receipt` | Verify an MPP on-chain receipt (direct indexer, no API call) |
+| 8 | `verify_x402_proof` | Verify an x402 base64 payment proof (direct indexer) |
+| 9 | `generate_x402_challenge` | x402 `X-Payment-Required` 402 headers + payload |
+| 10 | `generate_ap2_mandate` | AP2 v0.1 `PaymentMandate` for AI agent payment flows |
+| 11 | `verify_ap2_payment` | Verify an AP2 mandate payment receipt (direct indexer) |
+
+### Quick start — Claude Desktop / Claude Code / Cursor
+
+```json
+{
+  "mcpServers": {
+    "algovoi": {
+      "command": "npx",
+      "args": ["-y", "@algovoi/mcp-server"],
+      "env": {
+        "ALGOVOI_API_KEY":         "algv_...",
+        "ALGOVOI_TENANT_ID":       "...",
+        "ALGOVOI_PAYOUT_ALGORAND": "<your-algorand-address>",
+        "ALGOVOI_PAYOUT_VOI":      "<your-voi-address>",
+        "ALGOVOI_PAYOUT_HEDERA":   "0.0.<your-account>",
+        "ALGOVOI_PAYOUT_STELLAR":  "G<your-stellar-address>"
+      }
+    }
+  }
+}
+```
+
+Single-chain users only need to set the env var for their chain — the others are optional. For the Python package, swap `"command": "uvx", "args": ["algovoi-mcp"]`.
+
+Config file locations: **Claude Desktop** `%APPDATA%\Claude\claude_desktop_config.json` (Windows) / `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) · **Claude Code** `~/.claude.json` · **Cursor** `~/.cursor/mcp.json`
+
+Full reference: [mcp-server/README.md](./mcp-server/README.md) · TypeScript source: [mcp-server/typescript/](./mcp-server/typescript/) · Python source: [mcp-server/python/](./mcp-server/python/)
 
 ---
 

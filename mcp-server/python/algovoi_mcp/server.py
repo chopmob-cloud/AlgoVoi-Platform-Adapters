@@ -172,7 +172,7 @@ def tool_generate_mpp_challenge(
             "scheme":   "algovoi",
             "network":  CAIP2[n],
             "asset":    NETWORK_INFO[n]["asset_id"],
-            "receiver": client.payout_address,
+            "receiver": client.payout_address_for(n),
             "amount":   str(args.amount_microunits),
             "decimals": NETWORK_INFO[n]["decimals"],
         }
@@ -229,7 +229,7 @@ def tool_verify_mpp_receipt(
 def tool_verify_x402_proof(
     client: AlgoVoiClient, args: VerifyX402ProofInput
 ) -> dict:
-    resp = client.verify_x402_proof(args.resource_id, args.tx_id, args.network)
+    resp = client.verify_x402_proof(args.proof, args.network)
     return {"verified": bool(resp.get("verified") or resp.get("valid"))}
 
 
@@ -251,7 +251,7 @@ def tool_generate_x402_challenge(
         "resource":          args.resource,
         "description":       args.description or "",
         "mimeType":          "application/json",
-        "payTo":             client.payout_address,
+        "payTo":             client.payout_address_for(network),
         "maxTimeoutSeconds": expires_in,
         "asset":             net_info["asset_id"],
         "decimals":          net_info["decimals"],
@@ -294,7 +294,7 @@ def tool_generate_ap2_mandate(
         "type":       "PaymentMandate",
         "mandate_id": mandate_id,
         "payee": {
-            "address":  client.payout_address,
+            "address":  client.payout_address_for(network),
             "network":  CAIP2[network],
             "asset_id": net_info["asset_id"],
         },
@@ -327,7 +327,7 @@ def tool_generate_ap2_mandate(
 def tool_verify_ap2_payment(
     client: AlgoVoiClient, args: VerifyAp2PaymentInput
 ) -> dict:
-    resp = client.verify_ap2_payment(args.payment_id, args.tx_id, args.network)
+    resp = client.verify_ap2_payment(args.mandate_id, args.tx_id, args.network)
     return {"verified": bool(resp.get("verified") or resp.get("valid"))}
 
 
@@ -339,7 +339,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "description": (
             "Create a hosted AlgoVoi checkout URL for a given amount and chain. "
             "Returns a short token and public URL the customer can visit to pay in USDC "
-            "(Algorand / VOI / Hedera / Stellar)."
+            "or native tokens (Algorand / VOI / Hedera / Stellar)."
         ),
         "inputSchema": {
             "type": "object",
@@ -385,7 +385,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "amount":   {"type": "number"},
                 "currency": {"type": "string"},
                 "label":    {"type": "string"},
-                "network":  {"type": "string", "enum": ["algorand_mainnet", "voi_mainnet"]},
+                "network":  {"type": "string", "enum": ["algorand_mainnet", "voi_mainnet", "algorand_mainnet_algo", "voi_mainnet_voi", "algorand_testnet", "voi_testnet", "algorand_testnet_algo", "voi_testnet_voi"]},
             },
             "required":             ["amount", "currency", "label", "network"],
             "additionalProperties": False,
@@ -466,11 +466,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "resource_id": {"type": "string", "description": "Resource identifier the payment was for."},
-                "tx_id":       {"type": "string", "description": "On-chain transaction ID submitted by the paying client."},
-                "network":     {"type": "string", "enum": list(NETWORKS)},
+                "proof":   {"type": "string", "description": "Base64 payment payload from X-Payment header."},
+                "network": {"type": "string", "enum": list(NETWORKS)},
             },
-            "required":             ["resource_id", "tx_id", "network"],
+            "required":             ["proof", "network"],
             "additionalProperties": False,
         },
     },
@@ -523,11 +522,11 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "payment_id": {"type": "string", "description": "payment_id (mandate_id) returned by generate_ap2_mandate."},
+                "mandate_id": {"type": "string", "description": "mandate_id returned by generate_ap2_mandate."},
                 "tx_id":      {"type": "string", "description": "On-chain transaction ID submitted by the paying agent."},
                 "network":    {"type": "string", "enum": list(NETWORKS)},
             },
-            "required":             ["payment_id", "tx_id", "network"],
+            "required":             ["mandate_id", "tx_id", "network"],
             "additionalProperties": False,
         },
     },
@@ -679,16 +678,37 @@ async def run_stdio() -> None:
     """Read env vars, build server, and run stdio transport."""
     api_key        = _require_env("ALGOVOI_API_KEY")
     tenant_id      = _require_env("ALGOVOI_TENANT_ID")
-    payout_address = _require_env("ALGOVOI_PAYOUT_ADDRESS")
     api_base       = os.environ.get("ALGOVOI_API_BASE", "https://api1.ilovechicken.co.uk")
     webhook_secret = os.environ.get("ALGOVOI_WEBHOOK_SECRET")
     enabled_tools  = _parse_enabled_tools(os.environ.get("MCP_ENABLED_TOOLS"))
 
+    # Per-chain payout addresses. Per-chain vars take priority;
+    # ALGOVOI_PAYOUT_ADDRESS acts as a universal fallback.
+    payout_fallback = os.environ.get("ALGOVOI_PAYOUT_ADDRESS", "").strip() or None
+    chain_env = [
+        ("algorand_mainnet", "ALGOVOI_PAYOUT_ALGORAND"),
+        ("voi_mainnet",      "ALGOVOI_PAYOUT_VOI"),
+        ("hedera_mainnet",   "ALGOVOI_PAYOUT_HEDERA"),
+        ("stellar_mainnet",  "ALGOVOI_PAYOUT_STELLAR"),
+    ]
+    payout_addresses: dict[str, str] = {}
+    for key, env_var in chain_env:
+        v = (os.environ.get(env_var, "").strip() or None) or payout_fallback
+        if v:
+            payout_addresses[key] = v
+    if not payout_addresses:
+        sys.stderr.write(
+            "\n[algovoi-mcp] no payout address configured.\n"
+            "Set ALGOVOI_PAYOUT_ALGORAND, ALGOVOI_PAYOUT_VOI, ALGOVOI_PAYOUT_HEDERA,\n"
+            "ALGOVOI_PAYOUT_STELLAR (or ALGOVOI_PAYOUT_ADDRESS as a universal fallback).\n\n"
+        )
+        raise SystemExit(2)
+
     client = AlgoVoiClient(
-        api_base       = api_base,
-        api_key        = api_key,
-        tenant_id      = tenant_id,
-        payout_address = payout_address,
+        api_base         = api_base,
+        api_key          = api_key,
+        tenant_id        = tenant_id,
+        payout_addresses = payout_addresses,
     )
     server = build_server(client, webhook_secret, enabled_tools)
 
@@ -707,7 +727,7 @@ def _require_env(name: str) -> str:
     if not v:
         sys.stderr.write(
             f"\n[algovoi-mcp] missing required env var: {name}\n"
-            "Set ALGOVOI_API_KEY, ALGOVOI_TENANT_ID, and ALGOVOI_PAYOUT_ADDRESS.\n\n"
+            "Set ALGOVOI_API_KEY, ALGOVOI_TENANT_ID, and at least one payout address.\n\n"
         )
         raise SystemExit(2)
     return v
