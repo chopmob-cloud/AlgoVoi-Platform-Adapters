@@ -9,16 +9,22 @@ Phase 1 -- Challenge render (no live API needed)
 
 Phase 2 -- Full on-chain round-trip
     Requires:
-      ALGOVOI_KEY, TENANT_ID, PAYOUT_ADDRESS env vars
-      Live AlgoVoi gateway (api1.ilovechicken.co.uk)
+      ALGOVOI_KEY, TENANT_ID env vars
+      Real on-chain TX IDs for each network (use "skip" to skip a chain)
 
 Usage:
     # Phase 1 only (CI-safe):
     python smoke_test_a2a.py --phase 1
 
     # Both phases (full integration):
-    ALGOVOI_KEY=algv_... TENANT_ID=... PAYOUT_ADDRESS=... \\
-        python smoke_test_a2a.py --phase 2
+    ALGOVOI_KEY=algv_... TENANT_ID=... \\
+        python smoke_test_a2a.py --phase 2 \\
+            --algo-tx  <ALGORAND_TX_ID> \\
+            --voi-tx   <VOI_TX_ID> \\
+            --hedera-tx <HEDERA_TX_ID> \\
+            --stellar-tx <STELLAR_TX_ID>
+
+    Use "skip" for any chain not yet funded.
 """
 
 from __future__ import annotations
@@ -302,23 +308,36 @@ def run_phase1_agent_card() -> int:
 
 # ── Phase 2 ───────────────────────────────────────────────────────────────────
 
-PHASE2_NETWORKS = [
-    "algorand-mainnet",
-    "voi-mainnet",
-    "hedera-mainnet",
-    "stellar-mainnet",
+_PAYOUT_A2A = {
+    "algorand-mainnet": "ZVLRVYQSLJNVFMOIOKT35XH5SNQG45IVFMLLRFLHDQJQA5TO5H3SO4TVDQ",
+    "voi-mainnet":      "THDLWTJ7RB4OJWFZCLL5IME7FHBSJ3SONBRWHIVQE3BEGTY2BWUEUVEOQY",
+    "hedera-mainnet":   "0.0.1317927",
+    "stellar-mainnet":  "GD45SH4TC4TMJOJWJJSLGAXODAIO36POCACT2MWS7I6CTJORMFKEP3HR",
+}
+
+PHASE2_ENTRIES_A2A = [
+    ("algorand-mainnet", "algo_tx"),
+    ("voi-mainnet",      "voi_tx"),
+    ("hedera-mainnet",   "hedera_tx"),
+    ("stellar-mainnet",  "stellar_tx"),
 ]
 
 
-def run_phase2() -> int:
-    algovoi_key    = os.environ.get("ALGOVOI_KEY", "")
-    tenant_id      = os.environ.get("TENANT_ID", "")
-    payout_address = os.environ.get("PAYOUT_ADDRESS", "")
+def _mpp_proof_a2a(network: str, tx_id: str) -> str:
+    import base64
+    return base64.b64encode(json.dumps({
+        "network": network,
+        "payload": {"txId": tx_id},
+    }).encode()).decode()
+
+
+def run_phase2(tx_ids: dict[str, str]) -> int:
+    algovoi_key = os.environ.get("ALGOVOI_KEY", "")
+    tenant_id   = os.environ.get("TENANT_ID", "")
 
     missing = [k for k, v in {
-        "ALGOVOI_KEY":    algovoi_key,
-        "TENANT_ID":      tenant_id,
-        "PAYOUT_ADDRESS": payout_address,
+        "ALGOVOI_KEY": algovoi_key,
+        "TENANT_ID":   tenant_id,
     }.items() if not v]
 
     if missing:
@@ -326,16 +345,27 @@ def run_phase2() -> int:
         return 0
 
     from a2a_algovoi import AlgoVoiA2A
-    failures = 0
+    failures = skipped = 0
+    first_verified: tuple[str, str] | None = None  # (network, tx_id)
 
     head("Phase 2 -- live on-chain verification (4 chains × MPP)")
-    for network in PHASE2_NETWORKS:
+    for network, arg_dest in PHASE2_ENTRIES_A2A:
+        tx_id = tx_ids.get(arg_dest, "skip")
         label = f"mpp / {network}"
+
+        if tx_id.lower() == "skip":
+            print(f"  SKIP  {label}")
+            skipped += 1
+            continue
+
+        print(f"\n  {label}")
+        print(f"    TX: {tx_id}")
+
         try:
             gate = AlgoVoiA2A(
                 algovoi_key=algovoi_key,
                 tenant_id=tenant_id,
-                payout_address=payout_address,
+                payout_address=_PAYOUT_A2A[network],
                 protocol="mpp",
                 network=network,
                 amount_microunits=10_000,
@@ -346,32 +376,24 @@ def run_phase2() -> int:
             if not r1.requires_payment:
                 raise AssertionError("Expected 402 before payment")
 
-            # Issue test proof
-            import urllib.request
-            proof_payload = json.dumps({
-                "tenant_id": tenant_id,
-                "network":   network,
-                "amount_microunits": 10_000,
-                "resource_id": "ai-function",
-            }).encode()
-            req = urllib.request.Request(
-                "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
-                data=proof_payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "X-AlgoVoi-Key": algovoi_key,
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                proof = json.loads(resp.read())["proof"]
-
-            # Verified → no payment required
+            # With proof → verified on-chain
+            proof = _mpp_proof_a2a(network, tx_id)
             r2 = gate.check({"Authorization": f"Payment {proof}"})
             if r2.requires_payment:
-                raise AssertionError("Expected verified after proof")
+                raise AssertionError(f"Payment rejected — {r2.error}")
+
+            # Receipt lives on the wrapped gate result
+            receipt = getattr(r2._gate_result, "receipt", None)
+            if receipt:
+                print(f"    [PASS] Verified — payer: {receipt.payer}  "
+                      f"amount: {receipt.amount}  tx: {receipt.tx_id[:40]}…")
+            else:
+                print(f"    [PASS] Verified (no receipt object)")
 
             ok(label)
+            if first_verified is None:
+                first_verified = (network, tx_id)
+
         except Exception as exc:
             fail(f"{label}: {exc}")
             traceback.print_exc()
@@ -379,53 +401,42 @@ def run_phase2() -> int:
 
     # handle_request round-trip with live verification
     head("Phase 2 -- handle_request with live payment proof")
-    try:
-        gate = AlgoVoiA2A(
-            algovoi_key=algovoi_key,
-            tenant_id=tenant_id,
-            payout_address=payout_address,
-            protocol="mpp",
-            network="algorand-mainnet",
-            amount_microunits=10_000,
-        )
+    if first_verified is None:
+        print("  SKIP  no verified network available for handle_request test")
+    else:
+        network, tx_id = first_verified
+        try:
+            gate = AlgoVoiA2A(
+                algovoi_key=algovoi_key,
+                tenant_id=tenant_id,
+                payout_address=_PAYOUT_A2A[network],
+                protocol="mpp",
+                network=network,
+                amount_microunits=10_000,
+            )
 
-        import urllib.request
-        proof_payload = json.dumps({
-            "tenant_id": tenant_id,
-            "network":   "algorand-mainnet",
-            "amount_microunits": 10_000,
-            "resource_id": "ai-function",
-        }).encode()
-        req = urllib.request.Request(
-            "https://api1.ilovechicken.co.uk/v1/test/issue-proof",
-            data=proof_payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-AlgoVoi-Key": algovoi_key,
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            proof = json.loads(resp.read())["proof"]
+            proof = _mpp_proof_a2a(network, tx_id)
+            body = {
+                "jsonrpc": "2.0",
+                "method":  "message/send",
+                "params":  {"message": {"parts": [{"type": "text", "text": "ping"}]}},
+                "id":      "live-1",
+            }
+            resp_dict = gate.handle_request(
+                body,
+                lambda text: f"pong:{text}",
+                headers={"Authorization": f"Payment {proof}"},
+            )
+            assert resp_dict["result"]["status"]["state"] == "completed"
+            ok(f"handle_request live ({network}): "
+               f"{resp_dict['result']['artifacts'][0]['parts'][0]['text'][:60]}")
+        except Exception as exc:
+            fail(f"handle_request live: {exc}")
+            traceback.print_exc()
+            failures += 1
 
-        body = {
-            "jsonrpc": "2.0",
-            "method":  "message/send",
-            "params":  {"message": {"parts": [{"type": "text", "text": "ping"}]}},
-            "id":      "live-1",
-        }
-        resp_dict = gate.handle_request(
-            body,
-            lambda text: f"pong:{text}",
-            headers={"Authorization": f"Payment {proof}"},
-        )
-        assert resp_dict["result"]["status"]["state"] == "completed"
-        ok(f"handle_request live: {resp_dict['result']['artifacts'][0]['parts'][0]['text'][:60]}")
-    except Exception as exc:
-        fail(f"handle_request live: {exc}")
-        traceback.print_exc()
-        failures += 1
-
+    if skipped == 4:
+        print("\nPhase 2: all chains skipped (no TX IDs provided)")
     return failures
 
 
@@ -434,6 +445,10 @@ def run_phase2() -> int:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--phase", type=int, default=1)
+    parser.add_argument("--algo-tx",    default="skip", metavar="TX_ID")
+    parser.add_argument("--voi-tx",     default="skip", metavar="TX_ID")
+    parser.add_argument("--hedera-tx",  default="skip", metavar="TX_ID")
+    parser.add_argument("--stellar-tx", default="skip", metavar="TX_ID")
     args = parser.parse_args()
 
     total = 0
@@ -443,7 +458,13 @@ def main() -> None:
     total += run_phase1_agent_card()
 
     if args.phase == 2:
-        total += run_phase2()
+        tx_ids = {
+            "algo_tx":    args.algo_tx,
+            "voi_tx":     args.voi_tx,
+            "hedera_tx":  args.hedera_tx,
+            "stellar_tx": args.stellar_tx,
+        }
+        total += run_phase2(tx_ids)
 
     if total == 0:
         print("\nAll smoke tests passed.\n")
