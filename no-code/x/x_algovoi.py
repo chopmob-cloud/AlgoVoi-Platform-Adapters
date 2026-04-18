@@ -130,16 +130,23 @@ NETWORK_INFO = {
 
 # Default tweet templates (overridable via tweet_template= constructor arg)
 _TMPL_PAYMENT = (
-    "💳 Payment received!\n"
-    "{amount_display} {asset} on {network_label}\n"
+    "✅ {amount_display} {asset} payment confirmed on {network_label}\n\n"
+    "Verified directly on the blockchain by AlgoVoi — "
+    "open-source crypto payment adapters for Zapier, Make, n8n, AI agents & more. "
+    "No banks, no card processors.\n\n"
     "TX: {tx_id_short}\n"
     "#AlgoVoi #crypto"
 )
 
+# Note: {checkout_url} is always placed last so it is never truncated.
+# X counts any URL as 23 characters regardless of actual length, so
+# the X-counted length stays comfortably under 280 even with long URLs.
+# label_short = label truncated to 60 chars — keeps total raw length ≤ 280.
 _TMPL_LINK = (
-    "{label}\n"
-    "Pay with crypto: {checkout_url}\n"
-    "{amount_display} {asset} · {network_label}\n"
+    "{label_short}\n\n"
+    "Pay {amount_display} {asset} on {network_label} with crypto — "
+    "verified on-chain by AlgoVoi. No account needed, just a wallet.\n\n"
+    "{checkout_url}\n"
     "#AlgoVoi"
 )
 
@@ -351,8 +358,20 @@ def _build_link_tweet(
     template: str,
 ) -> str:
     net_info = NETWORK_INFO.get(network, {})
+
+    # X counts any URL as 23 chars regardless of actual length.
+    # Reserve room so the URL+hashtag tail is never truncated.
+    # Worst case tail: "\n{url}\n#AlgoVoi" = 1 + len(url) + 1 + 8 = ~84 chars raw.
+    # Keep non-URL body ≤ 196 chars raw so total raw ≤ 280.
+    _URL_RESERVE = len(checkout_url) + 10   # "\n" + url + "\n#AlgoVoi"
+    _BODY_MAX    = _MAX_TWEET - _URL_RESERVE
+
+    # Truncate label to 60 chars so it fits cleanly in the body budget
+    label_short = label[:60] + ("…" if len(label) > 60 else "")
+
     text = template.format(
         label          = label,
+        label_short    = label_short,
         checkout_url   = checkout_url,
         amount_display = str(round(amount, 6)).rstrip("0").rstrip("."),
         asset          = net_info.get("asset", currency),
@@ -360,7 +379,15 @@ def _build_link_tweet(
         network        = network,
         currency       = currency,
     )
-    return text[:_MAX_TWEET]
+
+    # If the full formatted text still exceeds _MAX_TWEET raw chars,
+    # trim the body but preserve the URL tail intact.
+    if len(text) > _MAX_TWEET:
+        url_tag_tail = f"\n{checkout_url}\n#AlgoVoi"
+        body = text[: _MAX_TWEET - len(url_tag_tail)].rstrip()
+        text = body + "\n\n" + url_tag_tail.lstrip("\n")
+
+    return text
 
 
 # ── Main adapter class ─────────────────────────────────────────────────────────

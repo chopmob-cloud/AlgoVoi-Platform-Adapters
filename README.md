@@ -31,7 +31,7 @@ Included:
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
 - **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 4 chains)
 - **AI agent framework adapters** for LangChain, LlamaIndex, CrewAI, Hugging Face, AutoGen, Semantic Kernel, Pydantic AI, DSPy, Vercel AI SDK, Google A2A, LangGraph, and Agno — gate LLM-agnostic pipelines, RAG chains, multi-agent crews, and autonomous agents (MPP + AP2 + x402, all 4 chains)
-- **No-code / automation adapters** for Zapier, Make (Integromat), and n8n — drop-in Python classes that bridge AlgoVoi payment flows into any no-code workflow, with webhook verification, MPP + x402 + AP2 challenge generation, and all 16 networks
+- **No-code / automation adapters** for Zapier, Make (Integromat), n8n, and **X (Twitter)** — drop-in Python classes that bridge AlgoVoi payment flows into any no-code workflow, with webhook verification, MPP + x402 + AP2 challenge generation, and all 16 networks; the X adapter auto-posts payment confirmations and checkout links to X via webhook (OAuth 1.0a, stdlib-only, 4-chain mainnet verified 2026-04-18)
 - **MCP server** (`@algovoi/mcp-server` / `algovoi-mcp`) — exposes 11 AlgoVoi tools natively inside Claude Desktop, Claude Code, Cursor, and Windsurf via the Model Context Protocol
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
 - **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 4 chains
@@ -114,10 +114,11 @@ platform-adapters/
 │   ├── a2a/              # Google A2A gate — JSON-RPC 2.0 server + client, agent card, task store
 │   ├── langgraph/        # LangGraph gate — StateGraph invoke/stream, ToolNode, create_react_agent
 │   └── agno/             # Agno gate — pre_hooks, ASGI middleware (AgentOS), run_agent + arun_agent
-├── no-code/              # No-code / automation adapters (Zapier, Make, n8n) — v1.0.0, 225 tests
+├── no-code/              # No-code / automation adapters (Zapier, Make, n8n, X) — v1.0.0, 225+ tests
 │   ├── zapier/           #   AlgoVoiZapier — ZapierActionResult, webhook bridge, action handlers
 │   ├── make/             #   AlgoVoiMake — Make bundle dict, module handlers
-│   └── n8n/              #   AlgoVoiN8n — n8n item dict, operation handlers
+│   ├── n8n/              #   AlgoVoiN8n — n8n item dict, operation handlers
+│   └── x/                #   AlgoVoiX — X (Twitter) webhook adapter; auto-posts payment confirmations &amp; checkout links via OAuth 1.0a
 ├── mcp-server/           # MCP server — 11 AlgoVoi tools for Claude Desktop / Claude Code / Cursor / Windsurf
 │   ├── typescript/       #   @algovoi/mcp-server (npm) — `npx -y @algovoi/mcp-server`
 │   └── python/           #   algovoi-mcp (PyPI) — `uvx algovoi-mcp`
@@ -199,6 +200,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Zapier (no-code) | — (webhook bridge + action handlers: create_payment_link, verify_payment, list_networks, generate_challenge MPP/x402/AP2; ZapierActionResult return type — 77/77 tests, Phase 1+2 PASS 17 Apr 2026, Comet-validated) | 16 networks (8 mainnet + 8 testnet) | — |
 | Make / Integromat (no-code) | — (module handlers: create_payment_link, verify_payment, list_networks, generate_challenge MPP/x402/AP2; Make bundle dict return type — 71/71 tests, Phase 1+2 PASS 17 Apr 2026, Comet-validated) | 16 networks (8 mainnet + 8 testnet) | — |
 | n8n (no-code) | — (operation handlers: create_payment_link, verify_payment, list_networks, generate MPP/x402/AP2 challenges; n8n item dict return type — 77/77 tests, Phase 1+2 PASS 17 Apr 2026, Comet-validated) | 16 networks (8 mainnet + 8 testnet) | — |
+| X / Twitter (no-code) | — (webhook adapter + OAuth 1.0a tweet posting; auto-posts payment confirmations &amp; checkout links when AlgoVoi fires a webhook; 62/62 unit tests; 4-chain mainnet e2e verified 18 Apr 2026 — payments confirmed on-chain, tweets posted automatically) | Algorand, VOI, Hedera, Stellar | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`). Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
