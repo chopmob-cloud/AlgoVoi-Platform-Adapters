@@ -1,6 +1,6 @@
 {
   "name": "@algovoi/mcp-server",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "mcpName": "io.github.chopmob-cloud/algovoi-mcp-server",
   "description": "MCP server for AlgoVoi — create crypto payment links, verify payments, and generate MPP / x402 challenges from any MCP client (Claude Desktop, Claude Code, Cursor, Windsurf). Supports all 16 AlgoVoi networks: USDC on Algorand/VOI/Hedera/Stellar (mainnet + testnet) and native ALGO/VOI/HBAR/XLM.",
   "license": "BUSL-1.1",
