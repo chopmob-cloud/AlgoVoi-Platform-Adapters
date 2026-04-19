@@ -1,0 +1,104 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.chopmob-cloud/algovoi-mcp-server",
+  "description": "AlgoVoi crypto payments via MCP: USDC + native on Algorand, VOI, Hedera, Stellar.",
+  "repository": {
+    "url": "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters",
+    "source": "github"
+  },
+  "version": "1.1.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@algovoi/mcp-server",
+      "version": "1.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "ALGOVOI_API_KEY",
+          "description": "Your AlgoVoi API key. Use an algvc_... key from https://dash.algovoi.co.uk for the Cloud path (recommended), or an algv_... key for direct API access.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "ALGOVOI_API_BASE",
+          "description": "AlgoVoi API base URL. Defaults to https://cloud.algovoi.co.uk when using a Cloud key. Set to https://api1.ilovechicken.co.uk for direct API access.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "https://cloud.algovoi.co.uk"
+        },
+        {
+          "name": "ALGOVOI_TENANT_ID",
+          "description": "Tenant UUID. Required only for direct-API keys (algv_...). Leave unset when using AlgoVoi Cloud.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "ALGOVOI_PAYOUT_ADDRESS",
+          "description": "Default payout wallet address. Required only for direct-API keys. Managed centrally in the AlgoVoi Cloud dashboard otherwise.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "ALGOVOI_WEBHOOK_SECRET",
+          "description": "Optional HMAC-SHA256 secret for webhook verification. Enables the verify_webhook tool.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    },
+    {
+      "registryType": "pypi",
+      "identifier": "algovoi-mcp",
+      "version": "1.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "ALGOVOI_API_KEY",
+          "description": "Your AlgoVoi API key. Use an algvc_... key from https://dash.algovoi.co.uk for the Cloud path (recommended), or an algv_... key for direct API access.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "ALGOVOI_API_BASE",
+          "description": "AlgoVoi API base URL. Defaults to https://cloud.algovoi.co.uk when using a Cloud key. Set to https://api1.ilovechicken.co.uk for direct API access.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "https://cloud.algovoi.co.uk"
+        },
+        {
+          "name": "ALGOVOI_TENANT_ID",
+          "description": "Tenant UUID. Required only for direct-API keys (algv_...). Leave unset when using AlgoVoi Cloud.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "ALGOVOI_PAYOUT_ADDRESS",
+          "description": "Default payout wallet address. Required only for direct-API keys. Managed centrally in the AlgoVoi Cloud dashboard otherwise.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "ALGOVOI_WEBHOOK_SECRET",
+          "description": "Optional HMAC-SHA256 secret for webhook verification. Enables the verify_webhook tool.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
