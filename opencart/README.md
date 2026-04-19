@@ -23,7 +23,7 @@ https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
    - [`algovoi-opencart.zip`](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/releases/latest/download/algovoi-opencart.zip) — hosted checkout
    - [`algovoi-opencart-extension.zip`](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/releases/latest/download/algovoi-opencart-extension.zip) — in-page wallet checkout
 2. OpenCart Admin → Extensions → Installer → Upload → Install
-3. Extensions → Payments → AlgoVoi → Edit → enter your `algvc_...` Cloud key + API Base `https://cloud.algovoi.co.uk`
+3. Extensions → Payments → AlgoVoi → Edit → enter your `algv_...` API key + API Base `https://cloud.algovoi.co.uk`
 
 See the integration guide above for full configuration options.
 

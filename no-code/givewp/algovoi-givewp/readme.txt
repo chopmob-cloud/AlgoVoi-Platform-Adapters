@@ -49,7 +49,7 @@ AlgoVoi Cloud manages your payout wallet addresses centrally — you add them on
 2. Click **Activate**
 3. Go to **Donations > Settings > Payment Gateways**
 4. Enable **AlgoVoi**
-5. Enter your AlgoVoi Cloud API key (starts with `algvc_`) from https://dash.algovoi.co.uk
+5. Enter your AlgoVoi API key (starts with `algv_`) from https://dash.algovoi.co.uk
 6. Leave the API Base URL as the default `https://cloud.algovoi.co.uk`
 
 A free AlgoVoi Cloud account is required. Sign up at https://dash.algovoi.co.uk/signup

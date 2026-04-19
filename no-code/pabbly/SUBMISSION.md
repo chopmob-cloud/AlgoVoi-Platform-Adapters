@@ -51,7 +51,7 @@ Includes:
 JSON + README:
 https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/tree/master/no-code/pabbly
 
-I can provide a test Cloud API key (algvc_...) for your QA to exercise
+I can provide a test API key (algv_...) for your QA to exercise
 every action and trigger against a live sandbox.
 
 What's the next step to get this into your review queue?
@@ -66,10 +66,10 @@ Chopmob / AlgoVoi
 Prepare in advance so you can share immediately when asked:
 
 ```
-# For Pabbly QA testing — AlgoVoi Cloud key
-ALGOVOI_API_KEY=algvc_<paste-here>
+# For Pabbly QA testing — AlgoVoi API key
+ALGOVOI_API_KEY=algv_<paste-here>
 ALGOVOI_API_BASE=https://cloud.algovoi.co.uk
-# No tenant ID or payout addresses needed — Cloud manages these
+# No tenant ID or payout addresses needed when API_BASE points at Cloud
 
 # Test flow:
 # 1. Create connection with the key above
@@ -112,4 +112,4 @@ Once listed:
 - [ ] Update `no-code/pabbly/README.md` with the live Pabbly app URL
 - [ ] Update `dash.algovoi.co.uk/connect` Pabbly wizard to link to the real app page
 - [ ] Update `marketplace_submissions.md` memory: ⬜ → ✅
-- [ ] Rotate the QA `algvc_` key (can be kept for production monitoring, relabelled)
+- [ ] Rotate the QA `algv_` key (can be kept for production monitoring, relabelled)

@@ -95,7 +95,7 @@ class GF_AlgoVoi extends GFPaymentAddOn {
     }
 
     public function is_valid_api_key( $value ) {
-        return ( strpos( $value, 'algv_' ) === 0 || strpos( $value, 'algvc_' ) === 0 );
+        return ( strpos( $value, 'algv_' ) === 0 );
     }
 
     // ── Feed settings ──────────────────────────────────────────────────────────

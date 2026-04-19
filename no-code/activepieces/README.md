@@ -13,7 +13,7 @@ Accept crypto payments on Algorand, VOI, Hedera & Stellar via [Activepieces](htt
 ## Setup (Activepieces Cloud)
 1. Open [cloud.activepieces.com](https://cloud.activepieces.com)
 2. Pieces → search **AlgoVoi**
-3. Connect with your `algvc_...` Cloud key + API Base `https://cloud.algovoi.co.uk`
+3. Connect with your `algv_...` API key + API Base `https://cloud.algovoi.co.uk`
 
 ## Setup (self-hosted)
 ```bash
@@ -26,7 +26,7 @@ Then add the piece to your Activepieces instance via the pieces registry.
 ## Auth — AlgoVoi Cloud (recommended)
 | Field | Value |
 |-------|-------|
-| API Key | `algvc_...` (from dash.algovoi.co.uk) |
+| API Key | `algv_...` (from dash.algovoi.co.uk) |
 | API Base URL | `https://cloud.algovoi.co.uk` |
 
 Leave Tenant ID and payout addresses blank — managed in your Cloud dashboard.

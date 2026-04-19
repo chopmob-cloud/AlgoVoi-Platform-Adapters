@@ -34,7 +34,7 @@ https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
    bin/magento setup:di:compile
    bin/magento cache:flush
    ```
-4. Admin → Stores → Configuration → Sales → Payment Methods → AlgoVoi → enter your `algvc_...` Cloud key + API Base `https://cloud.algovoi.co.uk`
+4. Admin → Stores → Configuration → Sales → Payment Methods → AlgoVoi → enter your `algv_...` API key + API Base `https://cloud.algovoi.co.uk`
 
 See the integration guide above for full configuration options.
 
