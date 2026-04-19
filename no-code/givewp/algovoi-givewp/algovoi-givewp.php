@@ -6,10 +6,16 @@
  * Version:         1.0.0
  * Author:          AlgoVoi
  * Author URI:      https://algovoi.co.uk
- * License:         MIT
+ * License:         GPL-2.0-or-later
+ * License URI:     https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:     algovoi-givewp
- * Requires PHP:    7.4
  * Requires at least: 5.8
+ * Tested up to:    6.9.4
+ * Requires PHP:    7.4
+ *
+ * This WordPress plugin is dual-licensed: GPL-2.0-or-later (for WordPress.org
+ * distribution and GPL compatibility) and BUSL-1.1 (for the wider AlgoVoi
+ * Platform Adapters repository). See LICENSE-PLUGINS.md at the repo root.
  */
 
 defined( 'ABSPATH' ) || exit;
