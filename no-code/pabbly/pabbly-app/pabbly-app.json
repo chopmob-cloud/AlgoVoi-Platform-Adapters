@@ -1,8 +1,8 @@
 {
   "name": "AlgoVoi",
   "label": "AlgoVoi",
-  "version": "1.0.0",
-  "description": "Accept crypto payments on Algorand, VOI, Hedera & Stellar. Create hosted checkout links, verify on-chain payments, and trigger scenarios on payment events — no banks, no card processors.",
+  "version": "1.1.0",
+  "description": "Accept crypto payments on Algorand, VOI, Hedera & Stellar via AlgoVoi. Create hosted checkout links, verify on-chain payments, and trigger workflows the instant a payment confirms — no banks, no card processors, direct-to-wallet settlement. Works with both AlgoVoi Cloud (recommended, one key) and direct API.",
   "categories": ["payment"],
   "color": "#00b8a9",
   "audience": "public",
@@ -17,52 +17,54 @@
         "label":     "API Key",
         "required":  true,
         "sensitive": true,
-        "help":      "Your AlgoVoi API key (starts with algv_). Find it at dash.algovoi.co.uk → Settings."
+        "help":      "Your AlgoVoi API key. Recommended: use an AlgoVoi Cloud key (starts with 'algvc_') from https://dash.algovoi.co.uk → Settings → API Keys. Direct-API keys (starting with 'algv_') also work but require the fields below."
+      },
+      {
+        "name":    "api_base",
+        "type":    "text",
+        "label":   "API Base URL",
+        "default": "https://cloud.algovoi.co.uk",
+        "required": true,
+        "help":    "Leave as https://cloud.algovoi.co.uk to use AlgoVoi Cloud (recommended — payout addresses and tenant routing are managed centrally in your Cloud dashboard). For direct API access, change to https://api1.ilovechicken.co.uk and fill in Tenant ID + payout addresses below."
       },
       {
         "name":     "tenant_id",
         "type":     "text",
-        "label":    "Tenant ID",
-        "required": true,
-        "help":     "Your AlgoVoi tenant UUID. Find it at dash.algovoi.co.uk → Settings."
+        "label":    "Tenant ID (direct-API only)",
+        "required": false,
+        "help":     "Leave blank if using AlgoVoi Cloud (algvc_ key). Required only when using a direct algv_ key against api1.ilovechicken.co.uk — your tenant UUID from dash.algovoi.co.uk → Settings."
       },
       {
         "name":  "payout_algorand",
         "type":  "text",
-        "label": "Payout Address — Algorand",
-        "help":  "Algorand wallet address for ALGO / USDC payouts (58-char base32)."
+        "label": "Payout Address — Algorand (direct-API only)",
+        "help":  "Leave blank if using AlgoVoi Cloud. Algorand wallet address for ALGO / USDC payouts (58-char base32) — only required for direct-API mode."
       },
       {
         "name":  "payout_voi",
         "type":  "text",
-        "label": "Payout Address — VOI",
-        "help":  "VOI wallet address for VOI / aUSDC payouts."
+        "label": "Payout Address — VOI (direct-API only)",
+        "help":  "Leave blank if using AlgoVoi Cloud. VOI wallet address for VOI / aUSDC payouts — direct-API mode only."
       },
       {
         "name":  "payout_hedera",
         "type":  "text",
-        "label": "Payout Address — Hedera",
-        "help":  "Hedera account ID for HBAR / USDC payouts (e.g. 0.0.123456)."
+        "label": "Payout Address — Hedera (direct-API only)",
+        "help":  "Leave blank if using AlgoVoi Cloud. Hedera account ID (e.g. 0.0.123456) for HBAR / USDC payouts — direct-API mode only."
       },
       {
         "name":  "payout_stellar",
         "type":  "text",
-        "label": "Payout Address — Stellar",
-        "help":  "Stellar public key for XLM / USDC payouts (starts with G)."
+        "label": "Payout Address — Stellar (direct-API only)",
+        "help":  "Leave blank if using AlgoVoi Cloud. Stellar public key (starts with G) for XLM / USDC payouts — direct-API mode only."
       },
       {
         "name":      "webhook_secret",
         "type":      "text",
         "label":     "Webhook Secret",
         "sensitive": true,
-        "help":      "AlgoVoi webhook signing secret for HMAC-SHA256 verification. Found in dash.algovoi.co.uk → Settings → Webhooks."
-      },
-      {
-        "name":    "api_base",
-        "type":    "text",
-        "label":   "API Base URL",
-        "default": "https://api1.ilovechicken.co.uk",
-        "help":    "AlgoVoi API base URL. Leave as default unless using AlgoVoi Cloud (https://cloud.algovoi.co.uk)."
+        "required":  false,
+        "help":      "Optional HMAC-SHA256 signing secret for verifying webhook authenticity. Found in dash.algovoi.co.uk → Settings → Webhooks. Recommended for production."
       }
     ],
     "test": {
@@ -150,7 +152,7 @@
         }
       },
       "sample": {
-        "checkout_url":      "https://pay.algovoi.com/c/abc123",
+        "checkout_url":      "https://cloud.algovoi.co.uk/checkout/abc123",
         "token":             "abc123",
         "amount":            5.0,
         "network":           "algorand_mainnet",
