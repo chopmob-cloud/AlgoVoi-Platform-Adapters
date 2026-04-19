@@ -2,6 +2,8 @@
 
 MCP server for [AlgoVoi](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters) — create crypto payment links, verify payments, and generate MPP / x402 challenges from any MCP client (Claude Desktop, Claude Code, Cursor, Windsurf).
 
+Supports **all 16 AlgoVoi networks**: USDC on Algorand, VOI, Hedera, Stellar (mainnet + testnet) and native ALGO, VOI, HBAR, XLM (mainnet + testnet).
+
 ## Install
 
 ```bash
