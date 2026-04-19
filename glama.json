@@ -1,0 +1,21 @@
+{
+  "$schema": "https://glama.ai/api/mcp/v1/schemas/glama.json",
+  "name": "algovoi-mcp-server",
+  "display_name": "AlgoVoi MCP Server",
+  "description": "Accept crypto payments on Algorand, VOI, Hedera, and Stellar from any MCP client (Claude Desktop, Cursor, Windsurf). Create hosted checkout links, verify on-chain payments, and generate MPP / x402 / AP2 challenges. Supports all 16 AlgoVoi networks — USDC + native tokens (ALGO, VOI, HBAR, XLM) on mainnet and testnet.",
+  "version": "1.1.2",
+  "repository": "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters",
+  "license": "BUSL-1.1",
+  "runtime": "node",
+  "maintainers": ["chopmob-cloud"],
+  "mcpServers": {
+    "algovoi": {
+      "command": "npx",
+      "args": ["-y", "@algovoi/mcp-server"],
+      "env": {
+        "ALGOVOI_API_KEY": "algv_...",
+        "ALGOVOI_API_BASE": "https://cloud.algovoi.co.uk"
+      }
+    }
+  }
+}
