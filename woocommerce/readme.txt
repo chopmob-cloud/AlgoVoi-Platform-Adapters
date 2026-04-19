@@ -7,8 +7,8 @@ Requires PHP: 8.0
 WC requires at least: 7.0
 WC tested up to: 10.6.2
 Stable tag: 2.4.2
-License: BUSL-1.1
-License URI: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/blob/master/LICENSE
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Accept USDC stablecoin payments on Algorand, VOI, Hedera, and Stellar. Instant settlement, no chargebacks, no FX fees.
 
@@ -38,15 +38,14 @@ AlgoVoi lets WooCommerce merchants accept USDC stablecoin payments settled direc
 
 == Installation ==
 
-1. Download the plugin zip from the AlgoVoi dashboard or the WordPress plugin directory
-2. Go to **Plugins > Add New > Upload Plugin** and upload the zip
-3. Activate the plugin
-4. Go to **WooCommerce > Settings > Payments**
-5. Enable **AlgoVoi** and/or **AlgoVoi Extension**
-6. Enter your AlgoVoi API key and Tenant ID (from your AlgoVoi dashboard)
-7. Enter your webhook secret and register the webhook URL in your AlgoVoi dashboard
+1. Go to **Plugins > Add New**, search for **AlgoVoi** and click **Install Now**
+2. Click **Activate**
+3. Go to **WooCommerce > Settings > Payments**
+4. Enable **AlgoVoi** and/or **AlgoVoi Extension**
+5. Enter your AlgoVoi Cloud API key (starts with `algvc_`) from https://dash.algovoi.co.uk
+6. Leave the API Base URL as the default `https://cloud.algovoi.co.uk` — tenant ID and payout addresses are managed centrally in your Cloud dashboard
 
-A free AlgoVoi account is required. Sign up at https://api1.ilovechicken.co.uk/signup
+A free AlgoVoi Cloud account is required. Sign up at https://dash.algovoi.co.uk/signup
 
 == Frequently Asked Questions ==
 

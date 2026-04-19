@@ -11,13 +11,16 @@
  * WC requires at least: 7.0
  * WC tested up to:      10.6.2
  * Author:               AlgoVoi
- * Author URI:           https://api1.ilovechicken.co.uk
- * License:              BUSL-1.1
- * License URI:          https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/blob/master/LICENSE
+ * Author URI:           https://algovoi.co.uk
+ * License:              GPL-2.0-or-later
+ * License URI:          https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:          algovoi
 
  * AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
- * Licensed under the Business Source License 1.1 — see LICENSE for details.
+ *
+ * This WordPress plugin is dual-licensed: GPL-2.0-or-later (for WordPress.org
+ * distribution and GPL compatibility) and BUSL-1.1 (for the wider AlgoVoi
+ * Platform Adapters repository). See LICENSE-PLUGINS.md at the repo root.
  */
 if (!defined('ABSPATH')) exit;
 
