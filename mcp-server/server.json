@@ -18,14 +18,14 @@
       "environmentVariables": [
         {
           "name": "ALGOVOI_API_KEY",
-          "description": "Your AlgoVoi API key. Use an algvc_... key from https://dash.algovoi.co.uk for the Cloud path (recommended), or an algv_... key for direct API access.",
+          "description": "Your AlgoVoi API key (algv_...) from https://dash.algovoi.co.uk.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"
         },
         {
           "name": "ALGOVOI_API_BASE",
-          "description": "AlgoVoi API base URL. Defaults to https://cloud.algovoi.co.uk when using a Cloud key. Set to https://api1.ilovechicken.co.uk for direct API access.",
+          "description": "AlgoVoi API base URL. Default cloud.algovoi.co.uk (managed payouts) or api1.ilovechicken.co.uk.",
           "isRequired": false,
           "isSecret": false,
           "format": "string",
@@ -33,14 +33,14 @@
         },
         {
           "name": "ALGOVOI_TENANT_ID",
-          "description": "Tenant UUID. Required only for direct-API keys (algv_...). Leave unset when using AlgoVoi Cloud.",
+          "description": "Tenant UUID. Required only for direct API access. Leave unset when using AlgoVoi Cloud.",
           "isRequired": false,
           "isSecret": false,
           "format": "string"
         },
         {
           "name": "ALGOVOI_PAYOUT_ADDRESS",
-          "description": "Default payout wallet address. Required only for direct-API keys. Managed centrally in the AlgoVoi Cloud dashboard otherwise.",
+          "description": "Default payout wallet address. Required only for direct API access; managed in Cloud otherwise.",
           "isRequired": false,
           "isSecret": false,
           "format": "string"
@@ -64,14 +64,14 @@
       "environmentVariables": [
         {
           "name": "ALGOVOI_API_KEY",
-          "description": "Your AlgoVoi API key. Use an algvc_... key from https://dash.algovoi.co.uk for the Cloud path (recommended), or an algv_... key for direct API access.",
+          "description": "Your AlgoVoi API key (algv_...) from https://dash.algovoi.co.uk.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"
         },
         {
           "name": "ALGOVOI_API_BASE",
-          "description": "AlgoVoi API base URL. Defaults to https://cloud.algovoi.co.uk when using a Cloud key. Set to https://api1.ilovechicken.co.uk for direct API access.",
+          "description": "AlgoVoi API base URL. Default cloud.algovoi.co.uk (managed payouts) or api1.ilovechicken.co.uk.",
           "isRequired": false,
           "isSecret": false,
           "format": "string",
@@ -79,14 +79,14 @@
         },
         {
           "name": "ALGOVOI_TENANT_ID",
-          "description": "Tenant UUID. Required only for direct-API keys (algv_...). Leave unset when using AlgoVoi Cloud.",
+          "description": "Tenant UUID. Required only for direct API access. Leave unset when using AlgoVoi Cloud.",
           "isRequired": false,
           "isSecret": false,
           "format": "string"
         },
         {
           "name": "ALGOVOI_PAYOUT_ADDRESS",
-          "description": "Default payout wallet address. Required only for direct-API keys. Managed centrally in the AlgoVoi Cloud dashboard otherwise.",
+          "description": "Default payout wallet address. Required only for direct API access; managed in Cloud otherwise.",
           "isRequired": false,
           "isSecret": false,
           "format": "string"

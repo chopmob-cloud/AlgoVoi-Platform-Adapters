@@ -21,7 +21,7 @@ Requires Node ≥ 20.
 
 ### Option A — AlgoVoi Cloud (recommended)
 
-[AlgoVoi Cloud](https://dash.algovoi.co.uk) gives you a single `algvc_...` key that covers all your integrations (WooCommerce, Zapier, n8n, MCP). Every payment your AI assistant creates appears in the Cloud dashboard alongside payments from every other platform.
+[AlgoVoi Cloud](https://dash.algovoi.co.uk) routes every integration through one dashboard. Point `ALGOVOI_API_BASE` at `https://cloud.algovoi.co.uk` and use your `algv_...` API key — no tenant ID or payout addresses needed; they're managed centrally. Every payment your AI assistant creates appears alongside payments from every other platform.
 
 ```json
 {
@@ -30,7 +30,7 @@ Requires Node ≥ 20.
       "command": "npx",
       "args": ["-y", "@algovoi/mcp-server"],
       "env": {
-        "ALGOVOI_API_KEY": "algvc_...",
+        "ALGOVOI_API_KEY": "algv_...",
         "ALGOVOI_API_BASE": "https://cloud.algovoi.co.uk"
       }
     }

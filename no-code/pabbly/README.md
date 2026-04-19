@@ -13,7 +13,7 @@ Accept crypto payments on Algorand, VOI, Hedera & Stellar via Pabbly Connect.
 ## Setup (end-user)
 1. Log in at [connect.pabbly.com](https://connect.pabbly.com)
 2. Create a workflow → search **AlgoVoi**
-3. Connect with your `algvc_...` Cloud key — API Base defaults to `https://cloud.algovoi.co.uk`
+3. Connect with your `algv_...` API key — API Base defaults to `https://cloud.algovoi.co.uk`
 4. Leave Tenant ID and payout-address fields **blank** — Cloud manages them centrally
 
 Direct-API users (advanced): use an `algv_...` key + set API Base to `https://api1.ilovechicken.co.uk` + fill Tenant ID and payout addresses.
@@ -29,7 +29,7 @@ The app definition lives at `pabbly-app/pabbly-app.json` (v1.1.0, Pabbly Connect
 ### Submission path
 1. Log into [connect.pabbly.com](https://connect.pabbly.com) → visit `/app` (the developer portal)
 2. If portal is gated, use the chat widget or email `integration@pabbly.com` requesting developer access. Attach `pabbly-app.json` or link to this file on GitHub.
-3. Pabbly reviewers will test actions + triggers against a sandbox; provide a working `algvc_...` Cloud key for QA.
+3. Pabbly reviewers will test actions + triggers against a sandbox; provide a working `algv_...` API key for QA.
 4. Once approved, the app appears in the public Pabbly Connect app directory.
 
 ### Pabbly pre-requisites (per [official guide](https://forum.pabbly.com/threads/introduction-and-pre-requisites.2425/))

@@ -37,7 +37,7 @@ Supported networks: **Algorand**, **VOI**, **Hedera**, **Stellar** (USDC on all 
 
 ### Option A — AlgoVoi Cloud (recommended)
 
-[AlgoVoi Cloud](https://dash.algovoi.co.uk) is the control plane for all your integrations — WooCommerce, Zapier, n8n, and MCP all in one dashboard. Use a single `algvc_...` Cloud key; no tenant ID or payout addresses needed in your MCP config (they're stored in the dashboard).
+[AlgoVoi Cloud](https://dash.algovoi.co.uk) is the control plane for all your integrations — WooCommerce, Zapier, n8n, and MCP all in one dashboard. Point `ALGOVOI_API_BASE` at `https://cloud.algovoi.co.uk` and your single `algv_...` API key covers every integration — no tenant ID or payout addresses needed (they're stored in the dashboard).
 
 ```json
 {
@@ -46,7 +46,7 @@ Supported networks: **Algorand**, **VOI**, **Hedera**, **Stellar** (USDC on all 
       "command": "npx",
       "args": ["-y", "@algovoi/mcp-server"],
       "env": {
-        "ALGOVOI_API_KEY": "algvc_...",
+        "ALGOVOI_API_KEY": "algv_...",
         "ALGOVOI_API_BASE": "https://cloud.algovoi.co.uk"
       }
     }

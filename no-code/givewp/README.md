@@ -15,7 +15,7 @@ Accept crypto donations (USDC on Algorand, VOI, Hedera & Stellar) via GiveWP.
 ## Setup with AlgoVoi Cloud (recommended)
 | Setting | Value |
 |---------|-------|
-| API Key | `algvc_...` (from dash.algovoi.co.uk) |
+| API Key | `algv_...` (from dash.algovoi.co.uk) |
 | API Base URL | `https://cloud.algovoi.co.uk` |
 
 Payout addresses are managed in your Cloud dashboard.

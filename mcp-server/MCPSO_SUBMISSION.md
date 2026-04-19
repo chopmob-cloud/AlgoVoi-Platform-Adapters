@@ -16,7 +16,7 @@ https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/tree/master/mcp-serve
 
 ### Description (if the form has one)
 ```
-Accept crypto payments on Algorand, VOI, Hedera & Stellar from any MCP client (Claude Desktop, Cursor, Windsurf). Create hosted checkout links, verify on-chain payments, generate MPP/x402/AP2 challenges. Supports all 16 AlgoVoi networks: USDC + native tokens on mainnet and testnet. Routes through AlgoVoi Cloud (algvc_... key) or direct API.
+Accept crypto payments on Algorand, VOI, Hedera & Stellar from any MCP client (Claude Desktop, Cursor, Windsurf). Create hosted checkout links, verify on-chain payments, generate MPP/x402/AP2 challenges. Supports all 16 AlgoVoi networks: USDC + native tokens on mainnet and testnet. Routes through AlgoVoi Cloud (managed payouts) or direct API.
 ```
 
 ### Category / Tags (if present)
@@ -33,7 +33,7 @@ payment, crypto, algorand, stellar, hedera, usdc, agent-commerce, x402, mpp, ap2
       "command": "npx",
       "args": ["-y", "@algovoi/mcp-server"],
       "env": {
-        "ALGOVOI_API_KEY": "algvc_...",
+        "ALGOVOI_API_KEY": "algv_...",
         "ALGOVOI_API_BASE": "https://cloud.algovoi.co.uk"
       }
     }

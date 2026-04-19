@@ -10,7 +10,7 @@ export const algovoiAuth = PieceAuth.CustomAuth({
 
 Get your API key and Tenant ID from [dash.algovoi.co.uk](https://dash.algovoi.co.uk) → Settings.
 
-**Tip:** AlgoVoi Cloud users can use their \`algvc_...\` key with API Base URL \`https://cloud.algovoi.co.uk\` — no Tenant ID or payout addresses needed.
+**Tip:** Point the API Base URL at \`https://cloud.algovoi.co.uk\` to have AlgoVoi Cloud manage payouts centrally — no Tenant ID or payout addresses needed. For direct API access use \`https://api1.ilovechicken.co.uk\` with all fields filled.
   `,
   props: {
     api_key: PieceAuth.SecretText({

@@ -56,7 +56,7 @@ AlgoVoi Cloud centrally manages payout wallet addresses — configure them once 
 1. Go to **Plugins > Add New**, search for **AlgoVoi for Gravity Forms** and click **Install Now**
 2. Click **Activate**
 3. Go to **Forms > Settings > AlgoVoi**
-4. Enter your AlgoVoi Cloud API key (starts with `algvc_`) from https://dash.algovoi.co.uk
+4. Enter your AlgoVoi API key (starts with `algv_`) from https://dash.algovoi.co.uk
 5. Leave the API Base URL as the default `https://cloud.algovoi.co.uk`
 6. Edit any form → add an **AlgoVoi** feed via the Payment Add-On framework
 7. Set the amount field and network, publish the form
