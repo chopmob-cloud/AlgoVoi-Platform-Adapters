@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="256" viewBox="0 0 1024 256" role="img" aria-label="AlgoVoi">
+  <rect x="0" y="0" width="256" height="256" rx="64" ry="64" fill="#0070f3"/>
+  <text x="128" y="128"
+        font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
+        font-weight="900"
+        font-size="120"
+        fill="#ffffff"
+        text-anchor="middle"
+        dominant-baseline="central"
+        letter-spacing="-4">AV</text>
+  <text x="296" y="128"
+        font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif"
+        font-weight="700"
+        font-size="120"
+        fill="#f9fafb"
+        dominant-baseline="central"
+        letter-spacing="-2">AlgoVoi</text>
+</svg>
