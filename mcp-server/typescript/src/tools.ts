@@ -6,7 +6,7 @@
  * receives a validated, typed argument object.
  */
 
-import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
+import { createHmac, timingSafeEqual, randomBytes, randomUUID } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { AlgoVoiClient } from "./client.js";
 import { IdempotencyCache } from "./idempotency.js";
@@ -18,10 +18,12 @@ import {
 } from "./networks.js";
 import type {
   CreatePaymentLinkInput,
+  FetchAgentCardInput,
   GenerateAp2MandateInput,
   GenerateMppChallengeInput,
   GenerateX402ChallengeInput,
   PrepareExtensionPaymentInput,
+  SendA2aMessageInput,
   VerifyAp2PaymentInput,
   VerifyMppReceiptInput,
   VerifyPaymentInput,
@@ -374,6 +376,97 @@ export async function verifyAp2Payment(
   };
 }
 
+// ── 12. fetch_agent_card ──────────────────────────────────────────────────────
+
+export async function fetchAgentCard(args: FetchAgentCardInput): Promise<unknown> {
+  const url = `${args.agent_url.replace(/\/$/, "")}/.well-known/agent.json`;
+  try {
+    const resp = await fetch(url, {
+      method:  "GET",
+      headers: { Accept: "application/json", "User-Agent": "algovoi-mcp/1.2.0" },
+      signal:  AbortSignal.timeout(5_000),
+    });
+    if (!resp.ok) {
+      return { agent_url: args.agent_url, card: null, error: `HTTP ${resp.status}` };
+    }
+    const card = await resp.json();
+    return { agent_url: args.agent_url, card, error: null };
+  } catch (err) {
+    return {
+      agent_url: args.agent_url,
+      card:      null,
+      error:     err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+// ── 13. send_a2a_message ──────────────────────────────────────────────────────
+
+export async function sendA2aMessage(args: SendA2aMessageInput): Promise<unknown> {
+  const url     = `${args.agent_url.replace(/\/$/, "")}/message:send`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept:          "application/json",
+    "User-Agent":    "algovoi-mcp/1.2.0",
+  };
+  if (args.payment_proof) {
+    headers["Authorization"] = `Payment ${args.payment_proof}`;
+  }
+  const body = JSON.stringify({
+    message: {
+      role:      "user",
+      parts:     [{ type: "text", text: args.text }],
+      messageId: args.message_id ?? randomUUID(),
+    },
+  });
+
+  let resp: Response;
+  try {
+    resp = await fetch(url, {
+      method:  "POST",
+      headers,
+      body,
+      signal:  AbortSignal.timeout(30_000),
+    });
+  } catch (err) {
+    return {
+      payment_required: false,
+      agent_url:        args.agent_url,
+      task:             null,
+      error:            err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  if (resp.status === 402) {
+    const challengeHeaders: Record<string, string> = {};
+    resp.headers.forEach((v, k) => { challengeHeaders[k] = v; });
+    let body402: Record<string, unknown> = {};
+    try { body402 = (await resp.json()) as Record<string, unknown>; } catch { /* empty */ }
+    return {
+      payment_required:  true,
+      challenge_headers: challengeHeaders,
+      request_id:        body402["request_id"] ?? null,
+      agent_url:         args.agent_url,
+      note:
+        "Pay on-chain then retry with payment_proof set. " +
+        "Inspect challenge_headers — WWW-Authenticate = MPP, " +
+        "X-Payment-Required = x402, X-AP2-Cart-Mandate = AP2.",
+    };
+  }
+
+  if (!resp.ok) {
+    return {
+      payment_required: false,
+      agent_url:        args.agent_url,
+      task:             null,
+      error:            `HTTP ${resp.status}`,
+    };
+  }
+
+  const task = await resp.json();
+  return { payment_required: false, agent_url: args.agent_url, task };
+}
+
 // ── Tool schemas (MCP wire — JSON Schema) ─────────────────────────────────────
 
 export const TOOL_SCHEMAS = [
@@ -540,6 +633,58 @@ export const TOOL_SCHEMAS = [
         network:    { type: "string", enum: [...NETWORKS] },
       },
       required: ["mandate_id", "tx_id", "network"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "fetch_agent_card",
+    description:
+      "Fetch an A2A agent's public discovery card from {agent_url}/.well-known/agent.json. " +
+      "Returns the agent's name, capabilities, skills, and supported payment schemes. " +
+      "Use this before send_a2a_message to understand what the agent does and what it costs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        agent_url: {
+          type:        "string",
+          description: "Base HTTPS URL of the A2A agent (e.g. https://api1.example.com). Must start with https://.",
+        },
+      },
+      required: ["agent_url"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "send_a2a_message",
+    description:
+      "Send a message to a payment-gated A2A v1.0 agent (POST {agent_url}/message:send). " +
+      "First call with no payment_proof — if the agent requires payment it returns " +
+      "payment_required=true with challenge_headers (MPP / x402 / AP2). " +
+      "Inspect the challenge, pay on-chain using the matching generate_*_challenge tool, " +
+      "then retry with the payment_proof. On success returns the task result.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        agent_url: {
+          type:        "string",
+          description: "Base HTTPS URL of the A2A agent. Must start with https://.",
+        },
+        text: {
+          type:        "string",
+          description: "Message text to send (max 4096 chars).",
+        },
+        payment_proof: {
+          type:        "string",
+          description:
+            "Optional payment proof to include as Authorization: Payment <proof>. " +
+            "Obtain after paying on-chain following a 402 challenge.",
+        },
+        message_id: {
+          type:        "string",
+          description: "Optional idempotency ID for the message (max 64 chars). Auto-generated if omitted.",
+        },
+      },
+      required:             ["agent_url", "text"],
       additionalProperties: false,
     },
   },

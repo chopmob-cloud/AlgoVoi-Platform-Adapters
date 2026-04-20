@@ -39,6 +39,8 @@ import {
   generateX402Challenge,
   generateAp2Mandate,
   verifyAp2Payment,
+  fetchAgentCard,
+  sendA2aMessage,
   TOOL_SCHEMAS,
 } from "./tools.js";
 
@@ -211,6 +213,10 @@ async function dispatch(
       return generateAp2Mandate(client, args as any);
     case "verify_ap2_payment":
       return verifyAp2Payment(client, args as any);
+    case "fetch_agent_card":
+      return fetchAgentCard(args as any);
+    case "send_a2a_message":
+      return sendA2aMessage(args as any);
     default:
       throw new Error(`unknown tool: ${name}`);
   }

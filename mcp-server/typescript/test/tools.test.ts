@@ -12,10 +12,12 @@ import { IdempotencyCache } from "../src/idempotency.js";
 import {
   ValidationError,
   parseCreatePaymentLink,
+  parseFetchAgentCard,
   parseGenerateAp2Mandate,
   parseGenerateMppChallenge,
   parseGenerateX402Challenge,
   parsePrepareExtensionPayment,
+  parseSendA2aMessage,
   parseVerifyAp2Payment,
   parseVerifyMppReceipt,
   parseVerifyPayment,
@@ -25,6 +27,8 @@ import {
 } from "../src/schemas.js";
 import {
   createPaymentLink,
+  fetchAgentCard,
+  sendA2aMessage,
   verifyPayment,
   prepareExtensionPayment,
   verifyWebhook,
@@ -75,8 +79,8 @@ afterEach(() => {
 // ── TOOL_SCHEMAS (3 tests) ────────────────────────────────────────────────────
 
 describe("TOOL_SCHEMAS", () => {
-  it("has exactly 11 tools", () => {
-    expect(TOOL_SCHEMAS).toHaveLength(11);
+  it("has exactly 13 tools", () => {
+    expect(TOOL_SCHEMAS).toHaveLength(13);
   });
   it("every tool has name, description, inputSchema, additionalProperties=false", () => {
     for (const t of TOOL_SCHEMAS) {
@@ -781,5 +785,136 @@ describe("verifyAp2Payment", () => {
     expect(() =>
       parseVerifyAp2Payment({ mandate_id: "a".repeat(16), tx_id: "TX1", network: "bitcoin" })
     ).toThrow(ValidationError);
+  });
+});
+
+// ── fetch_agent_card (5 tests) ────────────────────────────────────────────────
+
+/** Full-control mock that returns an explicit Response-like object. */
+function mockFetchFull(respFactory: (url: string, init?: any) => any) {
+  // @ts-expect-error — overriding global fetch for the test
+  globalThis.fetch = vi.fn(async (url: any, init?: any) => respFactory(String(url), init));
+}
+
+describe("fetchAgentCard", () => {
+  it("returns card on 200", async () => {
+    mockFetchFull(() => ({
+      ok:     true,
+      status: 200,
+      json:   async () => ({ name: "Test Agent", description: "A test agent" }),
+    }));
+    const out = await fetchAgentCard(parseFetchAgentCard({ agent_url: "https://agent.example.com" })) as any;
+    expect(out.card.name).toBe("Test Agent");
+    expect(out.error).toBeNull();
+  });
+
+  it("returns error on non-200", async () => {
+    mockFetchFull(() => ({ ok: false, status: 404, json: async () => ({}) }));
+    const out = await fetchAgentCard(parseFetchAgentCard({ agent_url: "https://agent.example.com" })) as any;
+    expect(out.card).toBeNull();
+    expect(out.error).toMatch(/404/);
+  });
+
+  it("appends /.well-known/agent.json to the agent_url", async () => {
+    let capturedUrl = "";
+    mockFetchFull((url) => {
+      capturedUrl = url;
+      return { ok: true, status: 200, json: async () => ({}) };
+    });
+    await fetchAgentCard(parseFetchAgentCard({ agent_url: "https://agent.example.com/" }));
+    expect(capturedUrl).toBe("https://agent.example.com/.well-known/agent.json");
+  });
+
+  it("handles network error gracefully", async () => {
+    // @ts-expect-error
+    globalThis.fetch = vi.fn(async () => { throw new Error("ECONNREFUSED"); });
+    const out = await fetchAgentCard(parseFetchAgentCard({ agent_url: "https://agent.example.com" })) as any;
+    expect(out.card).toBeNull();
+    expect(out.error).toMatch(/ECONNREFUSED/);
+  });
+
+  it("rejects http:// agent_url at parse time", () => {
+    expect(() => parseFetchAgentCard({ agent_url: "http://insecure.example.com" }))
+      .toThrow(ValidationError);
+  });
+});
+
+// ── send_a2a_message (7 tests) ────────────────────────────────────────────────
+
+function makeHeadersForEach(obj: Record<string, string>) {
+  return { forEach: (cb: (v: string, k: string) => void) => Object.entries(obj).forEach(([k, v]) => cb(v, k)) };
+}
+
+describe("sendA2aMessage", () => {
+  it("returns task on 200", async () => {
+    mockFetchFull(() => ({
+      ok:      true,
+      status:  200,
+      headers: makeHeadersForEach({}),
+      json:    async () => ({ id: "task-1", status: "completed", artifacts: [] }),
+    }));
+    const out = await sendA2aMessage(parseSendA2aMessage({ agent_url: "https://agent.example.com", text: "Hello" })) as any;
+    expect(out.payment_required).toBe(false);
+    expect(out.task.id).toBe("task-1");
+  });
+
+  it("returns challenge_headers on 402", async () => {
+    mockFetchFull(() => ({
+      ok:      false,
+      status:  402,
+      headers: makeHeadersForEach({ "www-authenticate": 'Payment realm="AlgoVoi", id="abc123"' }),
+      json:    async () => ({ request_id: "req-1" }),
+    }));
+    const out = await sendA2aMessage(parseSendA2aMessage({ agent_url: "https://agent.example.com", text: "Hello" })) as any;
+    expect(out.payment_required).toBe(true);
+    expect(out.challenge_headers["www-authenticate"]).toMatch(/AlgoVoi/);
+    expect(out.request_id).toBe("req-1");
+  });
+
+  it("returns error on non-200/402", async () => {
+    mockFetchFull(() => ({
+      ok:      false,
+      status:  500,
+      headers: makeHeadersForEach({}),
+      json:    async () => ({}),
+    }));
+    const out = await sendA2aMessage(parseSendA2aMessage({ agent_url: "https://agent.example.com", text: "Hi" })) as any;
+    expect(out.payment_required).toBe(false);
+    expect(out.error).toMatch(/500/);
+  });
+
+  it("includes Authorization header when payment_proof supplied", async () => {
+    let capturedInit: any;
+    mockFetchFull((_, init) => {
+      capturedInit = init;
+      return { ok: true, status: 200, headers: makeHeadersForEach({}), json: async () => ({}) };
+    });
+    await sendA2aMessage(
+      parseSendA2aMessage({ agent_url: "https://agent.example.com", text: "Hi", payment_proof: "proof-abc" })
+    );
+    expect(capturedInit.headers["Authorization"]).toBe("Payment proof-abc");
+  });
+
+  it("POSTs to {agent_url}/message:send", async () => {
+    let capturedUrl = "";
+    mockFetchFull((url) => {
+      capturedUrl = url;
+      return { ok: true, status: 200, headers: makeHeadersForEach({}), json: async () => ({}) };
+    });
+    await sendA2aMessage(parseSendA2aMessage({ agent_url: "https://agent.example.com/", text: "Hi" }));
+    expect(capturedUrl).toBe("https://agent.example.com/message:send");
+  });
+
+  it("handles network error gracefully", async () => {
+    // @ts-expect-error
+    globalThis.fetch = vi.fn(async () => { throw new Error("ETIMEDOUT"); });
+    const out = await sendA2aMessage(parseSendA2aMessage({ agent_url: "https://agent.example.com", text: "Hi" })) as any;
+    expect(out.payment_required).toBe(false);
+    expect(out.error).toMatch(/ETIMEDOUT/);
+  });
+
+  it("rejects http:// agent_url at parse time", () => {
+    expect(() => parseSendA2aMessage({ agent_url: "http://bad.example.com", text: "Hi" }))
+      .toThrow(ValidationError);
   });
 });
