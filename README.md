@@ -32,7 +32,7 @@ Included:
 - **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 4 chains)
 - **AI agent framework adapters** for LangChain, LlamaIndex, CrewAI, Hugging Face, AutoGen, Semantic Kernel, Pydantic AI, DSPy, Vercel AI SDK, Google A2A, LangGraph, and Agno — gate LLM-agnostic pipelines, RAG chains, multi-agent crews, and autonomous agents (MPP + AP2 + x402, all 4 chains)
 - **No-code / automation adapters** for Zapier, Make (Integromat), n8n, and **X (Twitter)** — drop-in Python classes that bridge AlgoVoi payment flows into any no-code workflow, with webhook verification, MPP + x402 + AP2 challenge generation, and all 16 networks; the X adapter auto-posts payment confirmations and checkout links to X via webhook (OAuth 1.0a, stdlib-only, 4-chain mainnet verified 2026-04-18)
-- **MCP server** (`@algovoi/mcp-server` / `algovoi-mcp`) — exposes 11 AlgoVoi tools natively inside Claude Desktop, Claude Code, Cursor, and Windsurf via the Model Context Protocol
+- **MCP server** (`@algovoi/mcp-server` / `algovoi-mcp`) — exposes 13 AlgoVoi tools natively inside Claude Desktop, Claude Code, Cursor, and Windsurf via the Model Context Protocol
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
 - **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 4 chains
 
@@ -119,7 +119,7 @@ platform-adapters/
 │   ├── make/             #   AlgoVoiMake — Make bundle dict, module handlers
 │   ├── n8n/              #   AlgoVoiN8n — n8n item dict, operation handlers
 │   └── x/                #   AlgoVoiX — X (Twitter) webhook adapter; auto-posts payment confirmations &amp; checkout links via OAuth 1.0a
-├── mcp-server/           # MCP server — 11 AlgoVoi tools for Claude Desktop / Claude Code / Cursor / Windsurf
+├── mcp-server/           # MCP server — 13 AlgoVoi tools for Claude Desktop / Claude Code / Cursor / Windsurf
 │   ├── typescript/       #   @algovoi/mcp-server (npm) — `npx -y @algovoi/mcp-server`
 │   └── python/           #   algovoi-mcp (PyPI) — `uvx algovoi-mcp`
 ├── drupal-commerce/      # Drupal 10/11 + Commerce 2/3 payment gateway module
@@ -1185,7 +1185,7 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 | **`@algovoi/mcp-server`** (npm) | `npm i -g @algovoi/mcp-server` | `npx -y @algovoi/mcp-server` |
 | **`algovoi-mcp`** (PyPI) | `pip install algovoi-mcp` | `uvx algovoi-mcp` |
 
-### 11 built-in tools
+### 13 built-in tools
 
 | # | Tool | What it does |
 |---|------|-------------|
@@ -1200,6 +1200,8 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 | 9 | `generate_x402_challenge` | x402 `X-Payment-Required` 402 headers + payload |
 | 10 | `generate_ap2_mandate` | AP2 v0.1 `PaymentMandate` for AI agent payment flows |
 | 11 | `verify_ap2_payment` | Verify an AP2 mandate payment receipt (direct indexer) |
+| 12 | `fetch_agent_card` | `GET {agent_url}/.well-known/agent.json` — discover an A2A agent's capabilities and payment requirements |
+| 13 | `send_a2a_message` | `POST {agent_url}/message:send` — call a payment-gated A2A v1.0 agent; returns task on 200, challenge headers on 402 for pay-and-retry |
 
 ### Quick start — Claude Desktop / Claude Code / Cursor
 
