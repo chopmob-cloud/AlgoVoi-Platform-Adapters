@@ -1,9 +1,11 @@
 """
-Unit tests for AlgoVoi Google A2A Adapter
-==========================================
+Unit tests for AlgoVoi Google A2A Adapter v2.0.0
+=================================================
 
-82 tests covering A2AResult, constructor, MPP/x402/AP2 gate delegation,
-send_message, handle_request, agent_card, as_tool, flask_guard, and flask_agent.
+108 tests covering A2AResult, constructor, MPP/x402/AP2 gate delegation,
+send_message (REST), handle_request (legacy JSON-RPC), agent_card,
+extended_agent_card, list_tasks, all six Flask REST endpoint helpers,
+as_tool, flask_guard, and flask_agent (legacy).
 
 All gate interactions are mocked — no live API calls.
 """
@@ -14,7 +16,8 @@ import json
 import os
 import sys
 import urllib.error
-from unittest.mock import MagicMock, patch, call
+from typing import Optional
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -82,11 +85,8 @@ def _make_adapter(
     return adapter
 
 
-from typing import Optional
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
-# Group 1 — A2AResult (7 tests)
+# Group 1 — A2AResult (9 tests)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestA2AResult:
@@ -146,11 +146,11 @@ class TestA2AResult:
 
 class TestVersion:
     def test_version_string(self):
-        assert __version__ == "1.0.0"
+        assert __version__ == "2.0.0"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Group 3 — Constructor (5 tests)
+# Group 3 — Constructor (6 tests)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestConstructor:
@@ -178,14 +178,16 @@ class TestConstructor:
         assert isinstance(a._tasks, dict)
         assert len(a._tasks) == 0
 
+    def test_custom_api_base(self):
+        a = _make_adapter(api_base="https://api1.ilovechicken.co.uk")
+        assert a._api_base == "https://api1.ilovechicken.co.uk"
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Group 4 — MPP check (10 tests)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestMppCheck:
-    # no-proof cases (6)
-
     def test_no_proof_requires_payment(self):
         a = _make_adapter(protocol="mpp")
         r = a.check({})
@@ -222,8 +224,6 @@ class TestMppCheck:
         r = a.check({})
         assert r.requires_payment is True
 
-    # with-proof cases (4)
-
     def test_valid_proof_passes(self):
         a = _make_adapter(protocol="mpp", gate=_ok_gate())
         r = a.check({"Authorization": "Payment valid-proof"})
@@ -245,7 +245,7 @@ class TestMppCheck:
     def test_check_passes_body_to_gate(self):
         gate = _no_proof_gate()
         a = _make_adapter(protocol="mpp", gate=gate)
-        body = {"method": "message/send", "params": {}}
+        body = {"message": {"parts": []}}
         a.check({}, body)
         call_args = gate.check.call_args
         assert call_args[0][1] == body
@@ -403,7 +403,7 @@ class TestAp2Check:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Group 7 — send_message (8 tests)
+# Group 7 — send_message (8 tests) — REST v2 format
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestSendMessage:
@@ -413,7 +413,7 @@ class TestSendMessage:
     def test_https_required(self):
         a = self._adapter()
         with pytest.raises(ValueError, match="HTTPS"):
-            a.send_message("http://example.com/a2a", "hi")
+            a.send_message("http://example.com", "hi")
 
     def test_with_proof_sends_auth_header(self):
         a = self._adapter()
@@ -423,14 +423,14 @@ class TestSendMessage:
             captured["headers"] = dict(req.headers)
             resp = MagicMock()
             resp.read.return_value = json.dumps(
-                {"jsonrpc": "2.0", "result": {"id": "t1", "status": {"state": "completed"}}, "id": "1"}
+                {"id": "t1", "status": {"state": "completed"}}
             ).encode()
             resp.__enter__ = lambda s: s
             resp.__exit__ = MagicMock(return_value=False)
             return resp
 
         with patch("urllib.request.urlopen", fake_urlopen):
-            a.send_message("https://agent.example.com/a2a", "hello", payment_proof="myproof")
+            a.send_message("https://agent.example.com", "hello", payment_proof="myproof")
         assert "Authorization" in captured["headers"]
         assert "myproof" in captured["headers"]["Authorization"]
 
@@ -441,51 +441,66 @@ class TestSendMessage:
         def fake_urlopen(req, timeout=30):
             captured["headers"] = dict(req.headers)
             resp = MagicMock()
-            resp.read.return_value = json.dumps(
-                {"jsonrpc": "2.0", "result": {}, "id": "1"}
-            ).encode()
+            resp.read.return_value = json.dumps({"id": "t1", "status": {"state": "completed"}}).encode()
             resp.__enter__ = lambda s: s
             resp.__exit__ = MagicMock(return_value=False)
             return resp
 
         with patch("urllib.request.urlopen", fake_urlopen):
-            a.send_message("https://agent.example.com/a2a", "hello")
+            a.send_message("https://agent.example.com", "hello")
         assert "Authorization" not in captured["headers"]
 
-    def test_jsonrpc_payload_format(self):
+    def test_rest_payload_format(self):
+        """Payload is REST style — top-level message, no jsonrpc wrapper."""
         a = self._adapter()
         captured: dict = {}
 
         def fake_urlopen(req, timeout=30):
             captured["data"] = json.loads(req.data.decode())
             resp = MagicMock()
-            resp.read.return_value = b'{"jsonrpc":"2.0","result":{},"id":"1"}'
+            resp.read.return_value = b'{"id":"t1","status":{"state":"completed"}}'
             resp.__enter__ = lambda s: s
             resp.__exit__ = MagicMock(return_value=False)
             return resp
 
         with patch("urllib.request.urlopen", fake_urlopen):
-            a.send_message("https://agent.example.com/a2a", "test text", message_id="req-1")
+            a.send_message("https://agent.example.com", "test text", message_id="req-1")
         payload = captured["data"]
-        assert payload["jsonrpc"]          == "2.0"
-        assert payload["method"]           == "message/send"
-        assert payload["id"]               == "req-1"
-        assert payload["params"]["message"]["parts"][0]["text"] == "test text"
+        assert "jsonrpc" not in payload
+        assert payload["message"]["parts"][0]["text"] == "test text"
+        assert payload["message"]["messageId"] == "req-1"
 
-    def test_success_returns_result(self):
+    def test_endpoint_url_uses_message_send_path(self):
+        """Client POSTs to /message:send on the agent base URL."""
         a = self._adapter()
-        mock_resp = {"jsonrpc": "2.0", "result": {"id": "t1", "status": {"state": "completed"}}, "id": "1"}
+        captured: dict = {}
+
+        def fake_urlopen(req, timeout=30):
+            captured["url"] = req.full_url
+            resp = MagicMock()
+            resp.read.return_value = b'{"id":"t1","status":{"state":"completed"}}'
+            resp.__enter__ = lambda s: s
+            resp.__exit__ = MagicMock(return_value=False)
+            return resp
+
+        with patch("urllib.request.urlopen", fake_urlopen):
+            a.send_message("https://agent.example.com", "hi")
+        assert captured["url"].endswith("/message:send")
+
+    def test_success_returns_task(self):
+        a = self._adapter()
+        mock_task = {"id": "t1", "status": {"state": "completed"}}
 
         def fake_urlopen(req, timeout=30):
             resp = MagicMock()
-            resp.read.return_value = json.dumps(mock_resp).encode()
+            resp.read.return_value = json.dumps(mock_task).encode()
             resp.__enter__ = lambda s: s
             resp.__exit__ = MagicMock(return_value=False)
             return resp
 
         with patch("urllib.request.urlopen", fake_urlopen):
-            result = a.send_message("https://agent.example.com/a2a", "hi")
-        assert result["result"]["status"]["state"] == "completed"
+            result = a.send_message("https://agent.example.com", "hi")
+        assert result["status"]["state"] == "completed"
 
     def test_402_returns_error_dict(self):
         a = self._adapter()
@@ -493,34 +508,32 @@ class TestSendMessage:
         mock_hdrs.get = lambda key, default=None: (
             'Payment realm="test"' if key == "WWW-Authenticate" else default
         )
-        exc = urllib.error.HTTPError("https://x.com/a2a", 402, "Payment Required", mock_hdrs, None)
+        exc = urllib.error.HTTPError("https://x.com", 402, "Payment Required", mock_hdrs, None)
         with patch("urllib.request.urlopen", side_effect=exc):
-            result = a.send_message("https://x.com/a2a", "hi")
-        assert result["error"]["code"]    == _A2A_PAYMENT_REQUIRED
-        assert result["error"]["message"] == "payment_required"
+            result = a.send_message("https://x.com", "hi")
+        assert result["error"] == "payment_required"
 
-    def test_402_includes_www_authenticate(self):
+    def test_402_includes_challenge_headers(self):
         a = self._adapter()
         mock_hdrs = MagicMock()
         mock_hdrs.get = lambda key, default=None: (
             'Payment realm="api"' if key == "WWW-Authenticate" else default
         )
-        exc = urllib.error.HTTPError("https://x.com/a2a", 402, "Payment Required", mock_hdrs, None)
+        exc = urllib.error.HTTPError("https://x.com", 402, "Payment Required", mock_hdrs, None)
         with patch("urllib.request.urlopen", side_effect=exc):
-            result = a.send_message("https://x.com/a2a", "hi")
-        challenge = result["error"]["data"]["challenge_headers"]
-        assert challenge.get("WWW-Authenticate") == 'Payment realm="api"'
+            result = a.send_message("https://x.com", "hi")
+        assert result["challenge_headers"].get("WWW-Authenticate") == 'Payment realm="api"'
 
     def test_non_402_http_error_reraises(self):
         a = self._adapter()
-        exc = urllib.error.HTTPError("https://x.com/a2a", 500, "Internal Server Error", {}, None)
+        exc = urllib.error.HTTPError("https://x.com", 500, "Internal Server Error", {}, None)
         with patch("urllib.request.urlopen", side_effect=exc):
             with pytest.raises(urllib.error.HTTPError):
-                a.send_message("https://x.com/a2a", "hi")
+                a.send_message("https://x.com", "hi")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Group 8 — handle_request (12 tests)
+# Group 8 — handle_request (12 tests) — legacy JSON-RPC compat
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestHandleRequest:
@@ -621,7 +634,7 @@ class TestHandleRequest:
         resp = a.handle_request(
             self._send_body(),
             lambda t: "ok",
-            headers={"X-Test": "1"},  # triggers payment check
+            headers={"X-Test": "1"},
         )
         assert resp["error"]["code"] == _A2A_PAYMENT_REQUIRED
 
@@ -633,34 +646,95 @@ class TestHandleRequest:
 class TestAgentCard:
     def test_name(self):
         a    = _make_adapter(agent_name="TestBot")
-        card = a.agent_card("https://bot.example.com/a2a")
+        card = a.agent_card("https://api1.ilovechicken.co.uk")
         assert card["name"] == "TestBot"
 
     def test_url(self):
         a    = _make_adapter()
-        card = a.agent_card("https://bot.example.com/a2a")
-        assert card["url"] == "https://bot.example.com/a2a"
+        card = a.agent_card("https://api1.ilovechicken.co.uk")
+        assert card["url"] == "https://api1.ilovechicken.co.uk"
 
     def test_capabilities_defaults(self):
         a    = _make_adapter()
-        card = a.agent_card("https://x.com")
+        card = a.agent_card("https://api1.ilovechicken.co.uk")
         assert card["capabilities"]["streaming"]         is False
         assert card["capabilities"]["pushNotifications"] is False
 
     def test_capabilities_streaming_flag(self):
         a    = _make_adapter()
-        card = a.agent_card("https://x.com", supports_streaming=True)
+        card = a.agent_card("https://api1.ilovechicken.co.uk", supports_streaming=True)
         assert card["capabilities"]["streaming"] is True
 
     def test_skills_included_when_provided(self):
         a    = _make_adapter()
         skill = {"id": "kb", "name": "Knowledge Base", "description": "Premium KB"}
-        card  = a.agent_card("https://x.com", skills=[skill])
+        card  = a.agent_card("https://api1.ilovechicken.co.uk", skills=[skill])
         assert card["skills"][0]["id"] == "kb"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Group 10 — as_tool / AlgoVoiPaymentTool (8 tests)
+# Group 10 — extended_agent_card (5 tests)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestExtendedAgentCard:
+    def test_has_authentication_key(self):
+        a    = _make_adapter(protocol="mpp")
+        card = a.extended_agent_card("https://api1.ilovechicken.co.uk")
+        assert "authentication" in card
+
+    def test_auth_scheme_matches_protocol(self):
+        a    = _make_adapter(protocol="x402")
+        card = a.extended_agent_card("https://api1.ilovechicken.co.uk")
+        assert "X402" in card["authentication"]["schemes"]
+
+    def test_has_endpoints_key(self):
+        a    = _make_adapter()
+        card = a.extended_agent_card("https://api1.ilovechicken.co.uk")
+        assert "endpoints" in card
+
+    def test_endpoints_contain_message_send(self):
+        a    = _make_adapter()
+        card = a.extended_agent_card("https://api1.ilovechicken.co.uk")
+        assert "/message:send" in card["endpoints"]["messageSend"]
+
+    def test_inherits_base_card_name(self):
+        a    = _make_adapter(agent_name="PayBot")
+        card = a.extended_agent_card("https://api1.ilovechicken.co.uk")
+        assert card["name"] == "PayBot"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Group 11 — list_tasks (3 tests)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestListTasks:
+    def test_empty_initially(self):
+        a = _make_adapter()
+        assert a.list_tasks() == []
+
+    def test_tasks_added_after_handle_request(self):
+        a = _make_adapter()
+        a.handle_request(
+            {"jsonrpc": "2.0", "method": "message/send",
+             "params": {"message": {"parts": [{"type": "text", "text": "q"}]}}, "id": "1"},
+            lambda t: "reply",
+        )
+        assert len(a.list_tasks()) == 1
+
+    def test_returns_most_recent_first(self):
+        a = _make_adapter()
+        body = lambda t: {"jsonrpc": "2.0", "method": "message/send",
+                          "params": {"message": {"parts": [{"type": "text", "text": t}]}}, "id": t}
+        a.handle_request(body("first"), lambda t: "r1")
+        a.handle_request(body("second"), lambda t: "r2")
+        tasks = a.list_tasks()
+        assert len(tasks) == 2
+        # reversed — second task is first in the list
+        assert tasks[0]["artifacts"][0]["parts"][0]["text"] == "r2"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Group 12 — as_tool / AlgoVoiPaymentTool (8 tests)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestAsTool:
@@ -715,13 +789,13 @@ class TestAsTool:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Group 11 — flask_guard (4 tests)
+# Group 13 — flask_guard (4 tests)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestFlaskGuard:
     def _flask_app(self, adapter: AlgoVoiA2A):
         pytest.importorskip("flask")
-        from flask import Flask, request
+        from flask import Flask
         app = Flask(__name__)
 
         @app.route("/a2a", methods=["POST"])
@@ -737,7 +811,7 @@ class TestFlaskGuard:
         a    = _make_adapter(gate=_no_proof_gate())
         app  = self._flask_app(a)
         with app.test_client() as client:
-            resp = client.post("/a2a", json={"jsonrpc": "2.0", "method": "message/send"})
+            resp = client.post("/a2a", json={"message": {"parts": []}})
         assert resp.status_code == 402
 
     def test_guard_returns_200_with_payment(self):
@@ -746,7 +820,7 @@ class TestFlaskGuard:
         with app.test_client() as client:
             resp = client.post(
                 "/a2a",
-                json={"jsonrpc": "2.0", "method": "message/send"},
+                json={"message": {"parts": []}},
                 headers={"Authorization": "Payment valid"},
             )
         assert resp.status_code == 200
@@ -771,7 +845,364 @@ class TestFlaskGuard:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Group 12 — flask_agent (6 tests)
+# Group 14 — flask_agent_card (3 tests) — public, no auth
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestFlaskAgentCard:
+    def _flask_app(self, adapter: AlgoVoiA2A):
+        pytest.importorskip("flask")
+        from flask import Flask
+        app = Flask(__name__)
+
+        @app.route("/.well-known/agent.json")
+        def agent_card():
+            return adapter.flask_agent_card("https://api1.ilovechicken.co.uk")
+
+        return app
+
+    def test_returns_200(self):
+        a   = _make_adapter(gate=_no_proof_gate())  # no auth needed
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/.well-known/agent.json")
+        assert resp.status_code == 200
+
+    def test_returns_agent_name(self):
+        a   = _make_adapter(agent_name="AlgoVoi Gateway")
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/.well-known/agent.json")
+        assert resp.get_json()["name"] == "AlgoVoi Gateway"
+
+    def test_public_no_payment_required(self):
+        """Agent card is public — gate is _no_proof_ but still returns 200."""
+        a   = _make_adapter(gate=_no_proof_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/.well-known/agent.json")
+        assert resp.status_code == 200
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Group 15 — flask_extended_agent_card (4 tests) — auth required
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestFlaskExtendedAgentCard:
+    def _flask_app(self, adapter: AlgoVoiA2A):
+        pytest.importorskip("flask")
+        from flask import Flask
+        app = Flask(__name__)
+
+        @app.route("/extendedAgentCard")
+        def extended_card():
+            return adapter.flask_extended_agent_card("https://api1.ilovechicken.co.uk")
+
+        return app
+
+    def test_returns_402_without_payment(self):
+        a   = _make_adapter(gate=_no_proof_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/extendedAgentCard")
+        assert resp.status_code == 402
+
+    def test_returns_200_with_payment(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/extendedAgentCard")
+        assert resp.status_code == 200
+
+    def test_card_has_authentication(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/extendedAgentCard")
+        assert "authentication" in resp.get_json()
+
+    def test_card_has_endpoints(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/extendedAgentCard")
+        assert "endpoints" in resp.get_json()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Group 16 — flask_message_send (6 tests)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestFlaskMessageSend:
+    def _flask_app(self, adapter: AlgoVoiA2A, handler=None):
+        pytest.importorskip("flask")
+        from flask import Flask
+        app = Flask(__name__)
+        _handler = handler or (lambda text: f"echo:{text}")
+
+        @app.route("/message:send", methods=["POST"])
+        def message_send():
+            return adapter.flask_message_send(_handler)
+
+        return app
+
+    def test_returns_402_without_payment(self):
+        a   = _make_adapter(gate=_no_proof_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.post("/message:send", json={"message": {"parts": [{"type": "text", "text": "hi"}]}})
+        assert resp.status_code == 402
+
+    def test_returns_200_with_payment(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.post(
+                "/message:send",
+                json={"message": {"parts": [{"type": "text", "text": "hi"}]}},
+                headers={"Authorization": "Payment proof"},
+            )
+        assert resp.status_code == 200
+
+    def test_response_has_task_id(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.post(
+                "/message:send",
+                json={"message": {"parts": [{"type": "text", "text": "hi"}]}},
+                headers={"Authorization": "Payment proof"},
+            )
+        assert "id" in resp.get_json()
+
+    def test_response_task_completed(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.post(
+                "/message:send",
+                json={"message": {"parts": [{"type": "text", "text": "hi"}]}},
+                headers={"Authorization": "Payment proof"},
+            )
+        assert resp.get_json()["status"]["state"] == "completed"
+
+    def test_invalid_json_returns_400(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.post(
+                "/message:send",
+                data=b"{{bad json",
+                content_type="application/json",
+            )
+        assert resp.status_code == 400
+
+    def test_handler_exception_returns_failed_task(self):
+        def boom(t):
+            raise RuntimeError("crash")
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a, handler=boom)
+        with app.test_client() as client:
+            resp = client.post(
+                "/message:send",
+                json={"message": {"parts": [{"type": "text", "text": "hi"}]}},
+                headers={"Authorization": "Payment proof"},
+            )
+        assert resp.get_json()["status"]["state"] == "failed"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Group 17 — flask_list_tasks (4 tests)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestFlaskListTasks:
+    def _flask_app(self, adapter: AlgoVoiA2A):
+        pytest.importorskip("flask")
+        from flask import Flask
+        app = Flask(__name__)
+
+        @app.route("/tasks")
+        def list_tasks():
+            return adapter.flask_list_tasks()
+
+        @app.route("/message:send", methods=["POST"])
+        def message_send():
+            return adapter.flask_message_send(lambda t: "reply")
+
+        return app
+
+    def test_returns_402_without_payment(self):
+        a   = _make_adapter(gate=_no_proof_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/tasks")
+        assert resp.status_code == 402
+
+    def test_returns_200_with_payment(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/tasks")
+        assert resp.status_code == 200
+
+    def test_returns_empty_list_initially(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/tasks")
+        assert resp.get_json()["tasks"] == []
+
+    def test_returns_task_after_message_send(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            client.post(
+                "/message:send",
+                json={"message": {"parts": [{"type": "text", "text": "hi"}]}},
+                headers={"Authorization": "Payment proof"},
+            )
+            resp = client.get("/tasks")
+        assert len(resp.get_json()["tasks"]) == 1
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Group 18 — flask_get_task (4 tests)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestFlaskGetTask:
+    def _flask_app(self, adapter: AlgoVoiA2A):
+        pytest.importorskip("flask")
+        from flask import Flask
+        app = Flask(__name__)
+
+        @app.route("/tasks/<task_id>")
+        def get_task(task_id):
+            return adapter.flask_get_task(task_id)
+
+        @app.route("/message:send", methods=["POST"])
+        def message_send():
+            return adapter.flask_message_send(lambda t: "reply")
+
+        return app
+
+    def test_returns_402_without_payment(self):
+        a   = _make_adapter(gate=_no_proof_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/tasks/some-id")
+        assert resp.status_code == 402
+
+    def test_returns_404_for_unknown_task(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.get("/tasks/no-such-task")
+        assert resp.status_code == 404
+
+    def test_returns_task_when_found(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            send = client.post(
+                "/message:send",
+                json={"message": {"parts": [{"type": "text", "text": "hi"}]}},
+                headers={"Authorization": "Payment proof"},
+            )
+            task_id = send.get_json()["id"]
+            resp = client.get(f"/tasks/{task_id}")
+        assert resp.status_code == 200
+        assert resp.get_json()["id"] == task_id
+
+    def test_task_state_completed(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            send = client.post(
+                "/message:send",
+                json={"message": {"parts": [{"type": "text", "text": "hi"}]}},
+                headers={"Authorization": "Payment proof"},
+            )
+            task_id = send.get_json()["id"]
+            resp = client.get(f"/tasks/{task_id}")
+        assert resp.get_json()["status"]["state"] == "completed"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Group 19 — flask_cancel_task (5 tests)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestFlaskCancelTask:
+    def _flask_app(self, adapter: AlgoVoiA2A):
+        pytest.importorskip("flask")
+        from flask import Flask
+        app = Flask(__name__)
+
+        @app.route("/tasks/<task_id>:cancel", methods=["POST"])
+        def cancel_task(task_id):
+            return adapter.flask_cancel_task(task_id)
+
+        @app.route("/message:send", methods=["POST"])
+        def message_send():
+            return adapter.flask_message_send(lambda t: "reply")
+
+        return app
+
+    def test_returns_402_without_payment(self):
+        a   = _make_adapter(gate=_no_proof_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.post("/tasks/some-id:cancel")
+        assert resp.status_code == 402
+
+    def test_returns_404_for_unknown_task(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            resp = client.post("/tasks/no-such:cancel")
+        assert resp.status_code == 404
+
+    def test_cancels_task(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            send = client.post(
+                "/message:send",
+                json={"message": {"parts": [{"type": "text", "text": "hi"}]}},
+                headers={"Authorization": "Payment proof"},
+            )
+            task_id = send.get_json()["id"]
+            resp = client.post(f"/tasks/{task_id}:cancel")
+        assert resp.status_code == 200
+        assert resp.get_json()["status"]["state"] == "canceled"
+
+    def test_cancel_updates_task_in_store(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            send = client.post(
+                "/message:send",
+                json={"message": {"parts": [{"type": "text", "text": "hi"}]}},
+                headers={"Authorization": "Payment proof"},
+            )
+            task_id = send.get_json()["id"]
+            client.post(f"/tasks/{task_id}:cancel")
+        assert a._tasks[task_id]["status"]["state"] == "canceled"
+
+    def test_cancel_response_has_timestamp(self):
+        a   = _make_adapter(gate=_ok_gate())
+        app = self._flask_app(a)
+        with app.test_client() as client:
+            send = client.post(
+                "/message:send",
+                json={"message": {"parts": [{"type": "text", "text": "hi"}]}},
+                headers={"Authorization": "Payment proof"},
+            )
+            task_id = send.get_json()["id"]
+            resp = client.post(f"/tasks/{task_id}:cancel")
+        assert "timestamp" in resp.get_json()["status"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Group 20 — flask_agent legacy (6 tests)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestFlaskAgent:
@@ -852,7 +1283,6 @@ class TestFlaskAgent:
         a   = _make_adapter(gate=_ok_gate())
         app = self._flask_app(a)
         with app.test_client() as client:
-            # First create a task
             send = client.post(
                 "/a2a",
                 json={"jsonrpc": "2.0", "method": "message/send",
@@ -861,7 +1291,6 @@ class TestFlaskAgent:
                 headers={"Authorization": "Payment proof"},
             )
             task_id = send.get_json()["result"]["id"]
-            # Then retrieve it
             get = client.post(
                 "/a2a",
                 json={"jsonrpc": "2.0", "method": "tasks/get",
