@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .networks import NETWORKS
 
@@ -111,6 +111,33 @@ class VerifyAp2PaymentInput(BaseModel):
     network:    NetworkLiteral
 
 
+class FetchAgentCardInput(BaseModel):
+    model_config = _STRICT
+    agent_url: str = Field(min_length=10, max_length=2048)
+
+    @field_validator("agent_url")
+    @classmethod
+    def _must_be_https(cls, v: str) -> str:
+        if not v.startswith("https://"):
+            raise ValueError('"agent_url" must start with https://')
+        return v
+
+
+class SendA2aMessageInput(BaseModel):
+    model_config = _STRICT
+    agent_url:     str           = Field(min_length=10, max_length=2048)
+    text:          str           = Field(min_length=1,  max_length=4096)
+    payment_proof: Optional[str] = Field(default=None, min_length=1, max_length=4096)
+    message_id:    Optional[str] = Field(default=None, min_length=1, max_length=64)
+
+    @field_validator("agent_url")
+    @classmethod
+    def _must_be_https(cls, v: str) -> str:
+        if not v.startswith("https://"):
+            raise ValueError('"agent_url" must start with https://')
+        return v
+
+
 # Mapping from tool name → schema class — used by the dispatcher to pick
 # the right model at runtime.  Keep in sync with TOOL_SCHEMAS in server.py.
 SCHEMAS_BY_TOOL: dict[str, type[BaseModel]] = {
@@ -125,12 +152,14 @@ SCHEMAS_BY_TOOL: dict[str, type[BaseModel]] = {
     "generate_x402_challenge":   GenerateX402ChallengeInput,
     "generate_ap2_mandate":      GenerateAp2MandateInput,
     "verify_ap2_payment":        VerifyAp2PaymentInput,
+    "fetch_agent_card":          FetchAgentCardInput,
+    "send_a2a_message":          SendA2aMessageInput,
 }
 
 # Sanity check at import time — if anyone adds a new tool without the matching
 # schema, this surfaces immediately rather than at tool-call time.
 _EXPECTED = set(SCHEMAS_BY_TOOL.keys())
-assert len(_EXPECTED) == 11, f"expected 11 tool schemas, got {len(_EXPECTED)}"
+assert len(_EXPECTED) == 13, f"expected 13 tool schemas, got {len(_EXPECTED)}"
 # Cross-check each schema's network fields against the canonical NETWORKS tuple.
 for _n in (
     "algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet",

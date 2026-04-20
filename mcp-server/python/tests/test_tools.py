@@ -21,11 +21,13 @@ from algovoi_mcp.client import AlgoVoiClient
 from algovoi_mcp.idempotency import IdempotencyCache
 from algovoi_mcp.schemas import (
     CreatePaymentLinkInput,
+    FetchAgentCardInput,
     GenerateAp2MandateInput,
     GenerateMppChallengeInput,
     GenerateX402ChallengeInput,
     ListNetworksInput,
     PrepareExtensionPaymentInput,
+    SendA2aMessageInput,
     VerifyAp2PaymentInput,
     VerifyMppReceiptInput,
     VerifyPaymentInput,
@@ -62,8 +64,8 @@ def make_client(**overrides) -> AlgoVoiClient:
 # ── Tool schemas (3 tests) ────────────────────────────────────────────────────
 
 class TestToolSchemas:
-    def test_eight_tools(self):
-        assert len(server.TOOL_SCHEMAS) == 11
+    def test_thirteen_tools(self):
+        assert len(server.TOOL_SCHEMAS) == 13
 
     def test_every_schema_shape(self):
         for t in server.TOOL_SCHEMAS:
@@ -693,3 +695,142 @@ class TestVerifyAp2Payment:
     def test_bad_network_rejected_by_schema(self):
         with pytest.raises(ValidationError):
             VerifyAp2PaymentInput(mandate_id="a" * 16, tx_id="TX1", network="bitcoin")  # type: ignore[arg-type]
+
+
+# ── fetch_agent_card (5 tests) ────────────────────────────────────────────────
+
+class TestFetchAgentCard:
+    def _make_resp(self, body: dict, status: int = 200):
+        """Minimal urllib response mock."""
+        import io
+        resp = MagicMock()
+        resp.__enter__ = lambda s: s
+        resp.__exit__  = MagicMock(return_value=False)
+        resp.read      = MagicMock(return_value=json.dumps(body).encode())
+        resp.status    = status
+        return resp
+
+    def test_returns_card_on_200(self, monkeypatch):
+        card = {"name": "Test Agent", "description": "hello"}
+        resp = self._make_resp(card)
+        monkeypatch.setattr(server, "urlopen", lambda *a, **kw: resp)
+        out = server.tool_fetch_agent_card(FetchAgentCardInput(agent_url="https://agent.example.com"))
+        assert out["card"]["name"] == "Test Agent"
+        assert out["error"] is None
+
+    def test_appends_well_known_path(self, monkeypatch):
+        captured = {}
+        def fake_urlopen(req, timeout=5):
+            captured["url"] = req.full_url
+            return self._make_resp({})
+        monkeypatch.setattr(server, "urlopen", fake_urlopen)
+        server.tool_fetch_agent_card(FetchAgentCardInput(agent_url="https://agent.example.com/"))
+        assert captured["url"] == "https://agent.example.com/.well-known/agent.json"
+
+    def test_returns_error_on_http_error(self, monkeypatch):
+        from urllib.error import HTTPError
+        def fake_urlopen(*a, **kw):
+            raise HTTPError("https://x.com", 404, "Not Found", {}, None)
+        monkeypatch.setattr(server, "urlopen", fake_urlopen)
+        out = server.tool_fetch_agent_card(FetchAgentCardInput(agent_url="https://agent.example.com"))
+        assert out["card"] is None
+        assert "404" in out["error"]
+
+    def test_handles_network_error(self, monkeypatch):
+        from urllib.error import URLError
+        monkeypatch.setattr(server, "urlopen", lambda *a, **kw: (_ for _ in ()).throw(URLError("ECONNREFUSED")))
+        out = server.tool_fetch_agent_card(FetchAgentCardInput(agent_url="https://agent.example.com"))
+        assert out["card"] is None
+        assert out["error"] is not None
+
+    def test_rejects_http_url(self):
+        with pytest.raises(ValidationError):
+            FetchAgentCardInput(agent_url="http://insecure.example.com")
+
+
+# ── send_a2a_message (7 tests) ────────────────────────────────────────────────
+
+class TestSendA2aMessage:
+    def _mock_urlopen(self, monkeypatch, body: dict, status: int = 200,
+                      headers: dict | None = None):
+        resp = MagicMock()
+        resp.__enter__ = lambda s: s
+        resp.__exit__  = MagicMock(return_value=False)
+        resp.read      = MagicMock(return_value=json.dumps(body).encode())
+        resp.status    = status
+        monkeypatch.setattr(server, "urlopen", lambda *a, **kw: resp)
+
+    def test_returns_task_on_200(self, monkeypatch):
+        self._mock_urlopen(monkeypatch, {"id": "task-1", "status": "completed"})
+        out = server.tool_send_a2a_message(
+            SendA2aMessageInput(agent_url="https://agent.example.com", text="Hello")
+        )
+        assert out["payment_required"] is False
+        assert out["task"]["id"] == "task-1"
+
+    def test_returns_challenge_on_402(self, monkeypatch):
+        from urllib.error import HTTPError
+        import io
+        exc = HTTPError("https://x.com", 402, "Payment Required", {}, None)
+        exc.read = MagicMock(return_value=json.dumps({"request_id": "req-1"}).encode())
+        exc.headers = {"WWW-Authenticate": 'Payment realm="AlgoVoi"'}
+        monkeypatch.setattr(server, "urlopen", lambda *a, **kw: (_ for _ in ()).throw(exc))
+        out = server.tool_send_a2a_message(
+            SendA2aMessageInput(agent_url="https://agent.example.com", text="Hello")
+        )
+        assert out["payment_required"] is True
+        assert out["request_id"] == "req-1"
+        assert "WWW-Authenticate" in out["challenge_headers"]
+
+    def test_returns_error_on_500(self, monkeypatch):
+        from urllib.error import HTTPError
+        exc = HTTPError("https://x.com", 500, "Server Error", {}, None)
+        monkeypatch.setattr(server, "urlopen", lambda *a, **kw: (_ for _ in ()).throw(exc))
+        out = server.tool_send_a2a_message(
+            SendA2aMessageInput(agent_url="https://agent.example.com", text="Hi")
+        )
+        assert out["payment_required"] is False
+        assert "500" in out["error"]
+
+    def test_includes_auth_header_when_proof_given(self, monkeypatch):
+        captured: dict = {}
+        def fake_urlopen(req, timeout=30):
+            captured["auth"] = req.get_header("Authorization")
+            resp = MagicMock()
+            resp.__enter__ = lambda s: s
+            resp.__exit__  = MagicMock(return_value=False)
+            resp.read      = MagicMock(return_value=b"{}")
+            return resp
+        monkeypatch.setattr(server, "urlopen", fake_urlopen)
+        server.tool_send_a2a_message(
+            SendA2aMessageInput(agent_url="https://agent.example.com", text="Hi", payment_proof="proof-xyz")
+        )
+        assert captured["auth"] == "Payment proof-xyz"
+
+    def test_posts_to_message_send_path(self, monkeypatch):
+        captured: dict = {}
+        def fake_urlopen(req, timeout=30):
+            captured["url"] = req.full_url
+            resp = MagicMock()
+            resp.__enter__ = lambda s: s
+            resp.__exit__  = MagicMock(return_value=False)
+            resp.read      = MagicMock(return_value=b"{}")
+            return resp
+        monkeypatch.setattr(server, "urlopen", fake_urlopen)
+        server.tool_send_a2a_message(
+            SendA2aMessageInput(agent_url="https://agent.example.com/", text="Hi")
+        )
+        assert captured["url"] == "https://agent.example.com/message:send"
+
+    def test_handles_network_error(self, monkeypatch):
+        from urllib.error import URLError
+        monkeypatch.setattr(server, "urlopen", lambda *a, **kw: (_ for _ in ()).throw(URLError("timeout")))
+        out = server.tool_send_a2a_message(
+            SendA2aMessageInput(agent_url="https://agent.example.com", text="Hi")
+        )
+        assert out["payment_required"] is False
+        assert out["error"] is not None
+
+    def test_rejects_http_url(self):
+        with pytest.raises(ValidationError):
+            SendA2aMessageInput(agent_url="http://bad.example.com", text="Hi")

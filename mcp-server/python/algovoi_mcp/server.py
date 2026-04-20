@@ -21,10 +21,13 @@ import hmac as _hmac
 import json
 import os
 import secrets
+import ssl
 import sys
 import time
 from time import monotonic
 from typing import Any, Optional
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import mcp.types as mcp_types
 from mcp.server.lowlevel import Server
@@ -38,12 +41,14 @@ from .networks import CAIP2, NETWORK_INFO, NETWORKS, PROTOCOLS
 from .redact import scrub
 from .schemas import (
     CreatePaymentLinkInput,
+    FetchAgentCardInput,
     GenerateAp2MandateInput,
     GenerateMppChallengeInput,
     GenerateX402ChallengeInput,
     ListNetworksInput,
     PrepareExtensionPaymentInput,
     SCHEMAS_BY_TOOL,
+    SendA2aMessageInput,
     VerifyAp2PaymentInput,
     VerifyMppReceiptInput,
     VerifyPaymentInput,
@@ -331,6 +336,83 @@ def tool_verify_ap2_payment(
     return {"verified": bool(resp.get("verified") or resp.get("valid"))}
 
 
+# ── 12. fetch_agent_card ─────────────────────────────────────────────────────
+
+def tool_fetch_agent_card(args: FetchAgentCardInput) -> dict:
+    url = args.agent_url.rstrip("/") + "/.well-known/agent.json"
+    try:
+        req = Request(
+            url,
+            headers={"Accept": "application/json", "User-Agent": "algovoi-mcp/1.2.0"},
+        )
+        with urlopen(req, timeout=5) as resp:
+            body = resp.read(64 * 1024)
+        card = json.loads(body)
+        return {"agent_url": args.agent_url, "card": card, "error": None}
+    except Exception as exc:
+        return {"agent_url": args.agent_url, "card": None, "error": str(exc)}
+
+
+# ── 13. send_a2a_message ──────────────────────────────────────────────────────
+
+def tool_send_a2a_message(args: SendA2aMessageInput) -> dict:
+    url        = args.agent_url.rstrip("/") + "/message:send"
+    message_id = args.message_id or secrets.token_hex(16)
+    payload    = json.dumps({
+        "message": {
+            "role":      "user",
+            "parts":     [{"type": "text", "text": args.text}],
+            "messageId": message_id,
+        },
+    }).encode()
+    headers = {
+        "Content-Type": "application/json",
+        "Accept":       "application/json",
+        "User-Agent":   "algovoi-mcp/1.2.0",
+    }
+    if args.payment_proof:
+        headers["Authorization"] = f"Payment {args.payment_proof}"
+
+    try:
+        req = Request(url, data=payload, headers=headers, method="POST")
+        with urlopen(req, timeout=30) as resp:
+            body = resp.read(256 * 1024)
+        task = json.loads(body)
+        return {"payment_required": False, "agent_url": args.agent_url, "task": task}
+    except HTTPError as exc:
+        if exc.code == 402:
+            challenge_headers = dict(exc.headers)
+            body402: dict = {}
+            try:
+                body402 = json.loads(exc.read(64 * 1024))
+            except Exception:
+                pass
+            return {
+                "payment_required":  True,
+                "challenge_headers": challenge_headers,
+                "request_id":        body402.get("request_id"),
+                "agent_url":         args.agent_url,
+                "note": (
+                    "Pay on-chain then retry with payment_proof set. "
+                    "Inspect challenge_headers — WWW-Authenticate = MPP, "
+                    "X-Payment-Required = x402, X-AP2-Cart-Mandate = AP2."
+                ),
+            }
+        return {
+            "payment_required": False,
+            "agent_url":        args.agent_url,
+            "task":             None,
+            "error":            f"HTTP {exc.code}: {exc.reason}",
+        }
+    except Exception as exc:
+        return {
+            "payment_required": False,
+            "agent_url":        args.agent_url,
+            "task":             None,
+            "error":            str(exc),
+        }
+
+
 # ── Tool schemas (MCP wire format — JSON Schema) ──────────────────────────────
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
@@ -530,6 +612,61 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "fetch_agent_card",
+        "description": (
+            "Fetch an A2A agent's public discovery card from {agent_url}/.well-known/agent.json. "
+            "Returns the agent's name, capabilities, skills, and supported payment schemes. "
+            "Use this before send_a2a_message to understand what the agent does and what it costs."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "agent_url": {
+                    "type":        "string",
+                    "description": "Base HTTPS URL of the A2A agent (e.g. https://api1.example.com). Must start with https://.",
+                },
+            },
+            "required":             ["agent_url"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "send_a2a_message",
+        "description": (
+            "Send a message to a payment-gated A2A v1.0 agent (POST {agent_url}/message:send). "
+            "First call with no payment_proof — if the agent requires payment it returns "
+            "payment_required=true with challenge_headers (MPP / x402 / AP2). "
+            "Inspect the challenge, pay on-chain using the matching generate_*_challenge tool, "
+            "then retry with the payment_proof. On success returns the task result."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "agent_url": {
+                    "type":        "string",
+                    "description": "Base HTTPS URL of the A2A agent. Must start with https://.",
+                },
+                "text": {
+                    "type":        "string",
+                    "description": "Message text to send (max 4096 chars).",
+                },
+                "payment_proof": {
+                    "type":        "string",
+                    "description": (
+                        "Optional payment proof to include as Authorization: Payment <proof>. "
+                        "Obtain after paying on-chain following a 402 challenge."
+                    ),
+                },
+                "message_id": {
+                    "type":        "string",
+                    "description": "Optional idempotency ID for the message (max 64 chars). Auto-generated if omitted.",
+                },
+            },
+            "required":             ["agent_url", "text"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -587,6 +724,10 @@ def _dispatch(
         result = tool_generate_ap2_mandate(client, args)           # type: ignore[arg-type]
     elif name == "verify_ap2_payment":
         result = tool_verify_ap2_payment(client, args)             # type: ignore[arg-type]
+    elif name == "fetch_agent_card":
+        result = tool_fetch_agent_card(args)                       # type: ignore[arg-type]
+    elif name == "send_a2a_message":
+        result = tool_send_a2a_message(args)                       # type: ignore[arg-type]
     else:
         raise ValueError(f"unknown tool: {name}")
 

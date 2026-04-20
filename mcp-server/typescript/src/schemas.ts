@@ -343,6 +343,46 @@ function expectObject(raw: unknown): Record<string, unknown> {
   return raw as Record<string, unknown>;
 }
 
+// ── 12. fetch_agent_card ──────────────────────────────────────────────────────
+
+export interface FetchAgentCardInput {
+  agent_url: string;
+}
+
+export function parseFetchAgentCard(raw: unknown): FetchAgentCardInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, ["agent_url"]);
+  const url = requireString(obj, "agent_url", { min: 10, max: 2048 })!;
+  if (!url.startsWith("https://")) {
+    throw new ValidationError('"agent_url" must start with https://');
+  }
+  return { agent_url: url };
+}
+
+// ── 13. send_a2a_message ──────────────────────────────────────────────────────
+
+export interface SendA2aMessageInput {
+  agent_url: string;
+  text: string;
+  payment_proof?: string;
+  message_id?: string;
+}
+
+export function parseSendA2aMessage(raw: unknown): SendA2aMessageInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, ["agent_url", "text", "payment_proof", "message_id"]);
+  const url = requireString(obj, "agent_url", { min: 10, max: 2048 })!;
+  if (!url.startsWith("https://")) {
+    throw new ValidationError('"agent_url" must start with https://');
+  }
+  return {
+    agent_url:     url,
+    text:          requireString(obj, "text",          { min: 1, max: 4096 })!,
+    payment_proof: requireString(obj, "payment_proof", { min: 1, max: 4096, optional: true }),
+    message_id:    requireString(obj, "message_id",    { min: 1, max: 64,   optional: true }),
+  };
+}
+
 export const PARSERS = {
   create_payment_link:       parseCreatePaymentLink,
   verify_payment:            parseVerifyPayment,
@@ -355,4 +395,6 @@ export const PARSERS = {
   generate_x402_challenge:   parseGenerateX402Challenge,
   generate_ap2_mandate:      parseGenerateAp2Mandate,
   verify_ap2_payment:        parseVerifyAp2Payment,
+  fetch_agent_card:          parseFetchAgentCard,
+  send_a2a_message:          parseSendA2aMessage,
 } as const;
