@@ -48,7 +48,7 @@ class Algovoi extends \Opencart\System\Engine\Controller {
             'currency'           => strtoupper($order['currency_code']),
             'label'              => 'Order #' . $order['order_id'],
             'preferred_network'  => $network,
-            'redirect_url'       => $this->url->link('checkout/success', 'language=' . $this->config->get('config_language'), true),
+            'redirect_url'       => $this->url->link('extension/algovoi/payment/algovoi.callback', 'language=' . $this->config->get('config_language'), true),
             'expires_in_seconds' => 3600,
         ]);
 
@@ -83,6 +83,10 @@ class Algovoi extends \Opencart\System\Engine\Controller {
                 $this->response->setOutput(json_encode($json));
                 return;
             }
+            // Stash token in session so callback() can verify payment on return
+            preg_match('#/checkout/([A-Za-z0-9_-]+)$#', $checkout_url, $tm);
+            $this->session->data['algovoi_token']    = isset($tm[1]) ? $tm[1] : ($body['id'] ?? '');
+            $this->session->data['algovoi_order_id'] = $this->session->data['order_id'];
             $pending_status = (int)$this->config->get('payment_algovoi_pending_status_id') ?: 1;
             $this->model_checkout_order->addHistory($this->session->data['order_id'], $pending_status, 'Awaiting AlgoVoi payment', false);
             $json['redirect'] = $checkout_url;
@@ -92,6 +96,61 @@ class Algovoi extends \Opencart\System\Engine\Controller {
 
         $this->response->addHeader('Content-Type: application/json');
         $this->response->setOutput(json_encode($json));
+    }
+
+    public function callback(): void {
+        $lang     = $this->config->get('config_language');
+        $token    = $this->session->data['algovoi_token'] ?? '';
+        $order_id = $this->session->data['algovoi_order_id'] ?? ($this->session->data['order_id'] ?? 0);
+        $api_base = rtrim($this->config->get('payment_algovoi_api_base_url'), '/');
+        $api_key  = $this->config->get('payment_algovoi_admin_api_key');
+
+        $paid = false;
+        $tx_id = '';
+
+        if ($token && $order_id && $api_base && strpos($api_base, 'https://') === 0) {
+            $ch = curl_init($api_base . '/checkout/' . rawurlencode($token) . '/status');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 15,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+                CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $api_key],
+            ]);
+            $resp      = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($http_code === 200) {
+                $data  = json_decode($resp, true);
+                $status = $data['status'] ?? '';
+                if (in_array($status, ['paid', 'completed', 'confirmed'], true)) {
+                    $paid  = true;
+                    $tx_id = $data['tx_id'] ?? '';
+                }
+            }
+        }
+
+        if ($paid) {
+            $this->load->model('checkout/order');
+            $order = $this->model_checkout_order->getOrder((int)$order_id);
+            if ($order && in_array($order['order_status_id'], [1, 2])) {
+                $complete_status = (int)$this->config->get('payment_algovoi_complete_status_id') ?: 5;
+                $this->model_checkout_order->addHistory(
+                    (int)$order_id,
+                    $complete_status,
+                    'AlgoVoi payment confirmed on return. TX: ' . $tx_id,
+                    true
+                );
+            }
+            unset($this->session->data['algovoi_token'], $this->session->data['algovoi_order_id']);
+            $this->response->redirect($this->url->link('checkout/success', 'language=' . $lang, true));
+        } else {
+            // Payment was cancelled or not yet confirmed — send back to checkout with a notice
+            unset($this->session->data['algovoi_token'], $this->session->data['algovoi_order_id']);
+            $this->session->data['error'] = 'Payment was cancelled or not completed. Please try again.';
+            $this->response->redirect($this->url->link('checkout/checkout', 'language=' . $lang, true));
+        }
     }
 
     public function webhook(): void {
