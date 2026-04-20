@@ -97,17 +97,19 @@ class AlgoVoi_GiveWP_Gateway {
         give_update_meta( $payment_id, '_algovoi_token', sanitize_text_field( $body['token'] ?? '' ) );
         give_update_payment_status( $payment_id, 'pending' );
 
-        wp_redirect( $checkout_url );
+        wp_safe_redirect( $checkout_url );
         exit;
     }
 
     // ── Return handler — verify payment on return ──────────────────────────────
 
     public static function handle_return() {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- return handler uses token-based verification, not nonce.
         if ( empty( $_GET['algovoi_givewp_return'] ) || empty( $_GET['payment_id'] ) ) {
             return;
         }
 
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         $payment_id = absint( $_GET['payment_id'] );
         $token      = sanitize_text_field( give_get_meta( $payment_id, '_algovoi_token', true ) );
         $settings   = self::get_settings();
@@ -152,7 +154,7 @@ class AlgoVoi_GiveWP_Gateway {
 
         // Verify HMAC signature if secret is configured
         if ( ! empty( $secret ) ) {
-            $signature = sanitize_text_field( $_SERVER['HTTP_X_ALGOVOI_SIGNATURE'] ?? '' );
+            $signature = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_ALGOVOI_SIGNATURE'] ?? '' ) );
             $expected  = hash_hmac( 'sha256', $raw_body, $secret );
             if ( ! hash_equals( $expected, $signature ) ) {
                 status_header( 401 );
@@ -173,11 +175,13 @@ class AlgoVoi_GiveWP_Gateway {
         }
 
         // Find the payment by token
+        // phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- one-shot webhook lookup on indexed meta.
         $payments = give_get_payments( [
             'meta_key'   => '_algovoi_token',
             'meta_value' => $token,
             'number'     => 1,
         ] );
+        // phpcs:enable WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 
         if ( ! empty( $payments ) ) {
             $payment_id = $payments[0]->ID;

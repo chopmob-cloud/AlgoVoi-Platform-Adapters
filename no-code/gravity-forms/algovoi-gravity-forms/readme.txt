@@ -1,8 +1,8 @@
 === AlgoVoi for Gravity Forms ===
 Contributors: algovoi
-Tags: gravity forms, crypto, usdc, algorand, stellar, payments, stablecoin, blockchain
+Tags: gravity forms, crypto, usdc, algorand, payments
 Requires at least: 5.8
-Tested up to: 6.9.4
+Tested up to: 6.9
 Requires PHP: 7.4
 Stable tag: 1.0.0
 License: GPLv2 or later

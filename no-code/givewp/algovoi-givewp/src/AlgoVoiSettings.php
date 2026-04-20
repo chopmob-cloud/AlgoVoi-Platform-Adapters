@@ -77,7 +77,8 @@ class AlgoVoi_GiveWP_Settings {
             [
                 'id'      => 'algovoi_webhook_secret',
                 'name'    => __( 'Webhook Secret', 'algovoi-givewp' ),
-                'desc'    => __( 'AlgoVoi webhook signing secret. Found in Settings → Webhooks. Webhook URL: ' . add_query_arg( 'algovoi_givewp_webhook', '1', site_url( '/' ) ), 'algovoi-givewp' ),
+                /* translators: %s: webhook URL */
+                'desc'    => sprintf( __( 'AlgoVoi webhook signing secret. Found in Settings → Webhooks. Webhook URL: %s', 'algovoi-givewp' ), add_query_arg( 'algovoi_givewp_webhook', '1', site_url( '/' ) ) ),
                 'type'    => 'text',
                 'default' => '',
             ],

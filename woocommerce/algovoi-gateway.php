@@ -6,7 +6,7 @@
  * Version:              2.4.2
  * Requires at least:    6.4
  * Requires PHP:         8.0
- * Tested up to:         6.9.4
+ * Tested up to:         6.9
  * Requires Plugins:     woocommerce
  * WC requires at least: 7.0
  * WC tested up to:      10.6.2
@@ -14,13 +14,14 @@
  * Author URI:           https://algovoi.co.uk
  * License:              GPL-2.0-or-later
  * License URI:          https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:          algovoi
+ * Text Domain:          algovoi-payment-gateway
+ */
 
+/*
  * AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  *
- * This WordPress plugin is dual-licensed: GPL-2.0-or-later (for WordPress.org
- * distribution and GPL compatibility) and BUSL-1.1 (for the wider AlgoVoi
- * Platform Adapters repository). See LICENSE-PLUGINS.md at the repo root.
+ * Dual-licensed: GPL-2.0-or-later (WordPress.org distribution) / BUSL-1.1 (repo).
+ * See LICENSE-PLUGINS.md at the repo root.
  */
 if (!defined('ABSPATH')) exit;
 
@@ -161,7 +162,7 @@ function algovoi_chain_selector_html($field_name, $chains = null) {
                 <div class="av-chain-card" data-colour="<?php echo esc_attr($colour); ?>"
                      style="padding:.85rem 1rem;background:#1e2130;border:2px solid #2a2d3a;
                             border-radius:10px;transition:border-color .15s,background .15s;text-align:center;">
-                    <span style="font-size:1.1rem;color:<?php echo esc_attr($colour); ?>;"><?php echo $icon; ?></span>
+                    <span style="font-size:1.1rem;color:<?php echo esc_attr($colour); ?>;"><?php echo wp_kses($icon, array()); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
                     <span style="font-weight:700;color:#f1f2f6;margin-left:.4rem;"><?php echo esc_html($label); ?></span>
                     <span style="display:block;font-size:.75rem;color:#6b7280;margin-top:.2rem;">
                         Pay with <?php echo esc_html($ticker); ?>
@@ -238,7 +239,8 @@ add_action('plugins_loaded', function () {
         }
 
         public function validate_fields() {
-            $net = isset($_POST['algovoi_network']) ? sanitize_text_field($_POST['algovoi_network']) : '';
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce verifies checkout nonce before calling this.
+            $net = isset($_POST['algovoi_network']) ? sanitize_text_field(wp_unslash($_POST['algovoi_network'])) : '';
             if (!in_array($net, array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet'), true)) {
                 wc_add_notice('Please select a network (Algorand, VOI, Hedera or Stellar) to continue.', 'error');
                 return false;
@@ -251,7 +253,8 @@ add_action('plugins_loaded', function () {
             $api_base = $this->get_option('api_base', 'https://api1.ilovechicken.co.uk');
             $api_key  = $this->get_option('api_key');
             $tid      = $this->get_option('tenant_id');
-            $network  = isset($_POST['algovoi_network']) ? sanitize_text_field($_POST['algovoi_network']) : 'algorand_mainnet';
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce verifies checkout nonce before calling this.
+            $network  = isset($_POST['algovoi_network']) ? sanitize_text_field(wp_unslash($_POST['algovoi_network'])) : 'algorand_mainnet';
 
             if (empty($api_key) || empty($tid)) { wc_add_notice('AlgoVoi not configured.', 'error'); return; }
 
@@ -308,7 +311,8 @@ add_action('plugins_loaded', function () {
         }
 
         public function validate_fields() {
-            $net = isset($_POST['algovoi_ext_network']) ? sanitize_text_field($_POST['algovoi_ext_network']) : '';
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce verifies checkout nonce before calling this.
+            $net = isset($_POST['algovoi_ext_network']) ? sanitize_text_field(wp_unslash($_POST['algovoi_ext_network'])) : '';
             if (!in_array($net, array('algorand_mainnet', 'voi_mainnet'), true)) {
                 wc_add_notice('Please select a network (Algorand or VOI) to continue.', 'error');
                 return false;
@@ -321,7 +325,8 @@ add_action('plugins_loaded', function () {
             $api_base = $this->get_option('api_base', 'https://api1.ilovechicken.co.uk');
             $api_key  = $this->get_option('api_key');
             $tid      = $this->get_option('tenant_id');
-            $network  = isset($_POST['algovoi_ext_network']) ? sanitize_text_field($_POST['algovoi_ext_network']) : 'algorand_mainnet';
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce verifies checkout nonce before calling this.
+            $network  = isset($_POST['algovoi_ext_network']) ? sanitize_text_field(wp_unslash($_POST['algovoi_ext_network'])) : 'algorand_mainnet';
 
             if (empty($api_key) || empty($tid)) { wc_add_notice('AlgoVoi not configured.', 'error'); return; }
 
@@ -361,6 +366,7 @@ add_action('plugins_loaded', function () {
         public function render_extension_payment_ui($order_id) {
             $order = wc_get_order($order_id);
             if (!$order || $order->get_payment_method() !== $this->id) return;
+            wp_enqueue_script('algovoi-algosdk', plugin_dir_url(__FILE__) . 'js/algosdk.min.js', array(), '2.9.0', true);
             if ($order->is_paid()) {
                 echo '<div style="margin:1.5rem 0;padding:1rem;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:8px;color:#10b981;">Payment received. Thank you!</div>';
                 return;
@@ -395,36 +401,35 @@ add_action('plugins_loaded', function () {
 <div id="av-ext-pay" style="margin:2rem 0;padding:1.5rem 1.75rem;background:#1e2130;border:1px solid #2a2d3a;border-radius:12px;color:#f1f2f6;font-family:system-ui,sans-serif;">
   <div style="font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;margin-bottom:.85rem;">
     <span style="color:<?php echo esc_attr($chain_colour); ?>;">AlgoVoi</span>
-    &middot; <?php echo $sc; ?> Extension Payment
+    &middot; <?php echo $sc; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_html()'d above. ?> Extension Payment
   </div>
   <p style="margin:0 0 1.25rem;color:#9ca3af;font-size:.9rem;line-height:1.6;">
-    Complete your order by sending <strong style="color:#10b981;"><?php echo $sa; ?></strong>
-    on <strong style="color:#f1f2f6;"><?php echo $sc; ?></strong> via the AlgoVoi browser extension.
+    Complete your order by sending <strong style="color:#10b981;"><?php echo $sa; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_html()'d above. ?></strong>
+    on <strong style="color:#f1f2f6;"><?php echo $sc; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_html()'d above. ?></strong> via the AlgoVoi browser extension.
   </p>
   <div id="av-no-ext" style="display:none;margin-bottom:1rem;padding:.75rem 1rem;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;font-size:.85rem;color:#ef4444;">
     AlgoVoi extension not detected.
-    <a href="<?php echo $sco; ?>" target="_blank" rel="noopener" style="color:#3b82f6;">Pay manually &rarr;</a>
+    <a href="<?php echo $sco; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_url()'d above. ?>" target="_blank" rel="noopener" style="color:#3b82f6;">Pay manually &rarr;</a>
   </div>
   <div id="av-msg" style="display:none;margin-bottom:.85rem;padding:.65rem .9rem;border-radius:8px;font-size:.85rem;"></div>
   <button id="av-pay-btn" onclick="avPayWithExtension()"
     style="display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1.6rem;background:<?php echo esc_attr($chain_colour); ?>;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;">
-    &#9889; Pay <?php echo $sa; ?> via Extension
+    &#9889; Pay <?php echo $sa; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_html()'d above. ?> via Extension
   </button>
   <p style="margin:.85rem 0 0;font-size:.75rem;color:#6b7280;">
-    No extension? <a href="<?php echo $sco; ?>" target="_blank" rel="noopener" style="color:#3b82f6;">Pay on the hosted checkout page</a> instead.
+    No extension? <a href="<?php echo $sco; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_url()'d above. ?>" target="_blank" rel="noopener" style="color:#3b82f6;">Pay on the hosted checkout page</a> instead.
   </p>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/algosdk@2/dist/browser/algosdk.min.js"></script>
 <script>
 (function () {
   var AV = {
-    receiver:   <?php echo $jr; ?>,
-    memo:       <?php echo $jm; ?>,
-    microunits: <?php echo $mu; ?>,
-    assetId:    <?php echo $asset_id; ?>,
-    algodUrl:   <?php echo $ja; ?>,
-    verifyUrl:  <?php echo $jv; ?>,
-    orderKey:   <?php echo $jk; ?>,
+    receiver:   <?php echo $jr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_json_encode()'d. ?>,
+    memo:       <?php echo $jm; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_json_encode()'d. ?>,
+    microunits: <?php echo (int) $mu; ?>,
+    assetId:    <?php echo (int) $asset_id; ?>,
+    algodUrl:   <?php echo $ja; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_json_encode()'d. ?>,
+    verifyUrl:  <?php echo $jv; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_json_encode()'d. ?>,
+    orderKey:   <?php echo $jk; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_json_encode()'d. ?>,
   };
   function showMsg(h, t) {
     var e = document.getElementById('av-msg');
