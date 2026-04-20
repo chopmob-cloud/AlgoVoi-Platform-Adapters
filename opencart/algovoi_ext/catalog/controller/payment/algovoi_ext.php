@@ -56,7 +56,7 @@ class AlgovoiExt extends \Opencart\System\Engine\Controller {
             'expires_in_seconds' => 3600,
         ]);
 
-        $api_base = rtrim($this->config->get('payment_algovoi_api_base_url'), '/');
+        $api_base = rtrim($this->config->get('payment_algovoi_api_base_url') ?: 'https://cloud.algovoi.co.uk', '/');
         $ch = curl_init($api_base . '/v1/payment-links');
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
@@ -222,7 +222,7 @@ class AlgovoiExt extends \Opencart\System\Engine\Controller {
         $token    = $this->session->data['algovoi_ext']['token'];
         $order_id = $this->session->data['algovoi_ext']['order_id'];
 
-        $api_base = rtrim($this->config->get('payment_algovoi_api_base_url'), '/');
+        $api_base = rtrim($this->config->get('payment_algovoi_api_base_url') ?: 'https://cloud.algovoi.co.uk', '/');
         $ch = curl_init($api_base . '/checkout/' . rawurlencode($token) . '/verify');
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,

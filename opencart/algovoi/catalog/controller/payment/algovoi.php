@@ -41,7 +41,7 @@ class Algovoi extends \Opencart\System\Engine\Controller {
         $allowed   = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet'];
         if (!in_array($network, $allowed, true)) $network = 'algorand_mainnet';
 
-        $api_base = rtrim($this->config->get('payment_algovoi_api_base_url'), '/');
+        $api_base = rtrim($this->config->get('payment_algovoi_api_base_url') ?: 'https://cloud.algovoi.co.uk', '/');
 
         $payload = json_encode([
             'amount'             => round((float)$order['total'], 2),
@@ -102,7 +102,7 @@ class Algovoi extends \Opencart\System\Engine\Controller {
         $lang     = $this->config->get('config_language');
         $token    = $this->session->data['algovoi_token'] ?? '';
         $order_id = $this->session->data['algovoi_order_id'] ?? ($this->session->data['order_id'] ?? 0);
-        $api_base = rtrim($this->config->get('payment_algovoi_api_base_url'), '/');
+        $api_base = rtrim($this->config->get('payment_algovoi_api_base_url') ?: 'https://cloud.algovoi.co.uk', '/');
         $api_key  = $this->config->get('payment_algovoi_admin_api_key');
 
         $paid = false;
