@@ -9,11 +9,13 @@ Ships as **two packages**:
 | [**TypeScript**](./typescript) | `npm i -g @algovoi/mcp-server` | `npx -y @algovoi/mcp-server` |
 | [**Python**](./python) | `pip install algovoi-mcp` | `uvx algovoi-mcp` or `algovoi-mcp` |
 
-Both expose the **same 11 tools** and the same API surface — pick whichever runtime your client prefers.
+Both expose the **same 13 tools** and the same API surface — pick whichever runtime your client prefers.
 
 ---
 
-## 11 tools
+## 13 tools
+
+### Payment tools
 
 | # | Tool | What it does |
 |---|------|-------------|
@@ -22,14 +24,42 @@ Both expose the **same 11 tools** and the same API surface — pick whichever ru
 | 3 | `prepare_extension_payment` | In-page wallet-flow params (Algorand / VOI) |
 | 4 | `verify_webhook` | HMAC-SHA256 signature check for AlgoVoi webhooks |
 | 5 | `list_networks` | Supported chains + asset IDs (offline, no API call) |
+
+### Protocol challenge tools
+
+| # | Tool | What it does |
+|---|------|-------------|
 | 6 | `generate_mpp_challenge` | IETF MPP 402 `WWW-Authenticate` headers + challenge_id |
-| 7 | `verify_mpp_receipt` | Verify an MPP on-chain receipt |
-| 8 | `verify_x402_proof` | Verify an x402 base64 payment proof |
+| 7 | `verify_mpp_receipt` | Verify an MPP on-chain receipt (direct indexer, no API call) |
+| 8 | `verify_x402_proof` | Verify an x402 base64 payment proof (direct indexer) |
 | 9 | `generate_x402_challenge` | x402 `X-Payment-Required` 402 headers + payload |
 | 10 | `generate_ap2_mandate` | AP2 v0.1 `PaymentMandate` for AI agent payment flows |
-| 11 | `verify_ap2_payment` | Verify an AP2 mandate payment receipt |
+| 11 | `verify_ap2_payment` | Verify an AP2 mandate payment receipt (direct indexer) |
 
-Supported networks: **Algorand**, **VOI**, **Hedera**, **Stellar** (USDC on all four).
+### A2A agent tools *(new in v1.2.0)*
+
+| # | Tool | What it does |
+|---|------|-------------|
+| 12 | `fetch_agent_card` | `GET {agent_url}/.well-known/agent.json` — discover an A2A agent's capabilities and payment requirements before calling it |
+| 13 | `send_a2a_message` | `POST {agent_url}/message:send` — call a payment-gated A2A v1.0 agent; returns the task result on 200, or `challenge_headers` on 402 so Claude can pay and retry |
+
+#### A2A pay-and-call flow
+
+```
+1. fetch_agent_card("https://agent.example.com")
+   → see agent costs $0.01, accepts MPP on Algorand
+
+2. send_a2a_message(agent_url, "What is the price of ALGO?")
+   → payment_required: true, challenge_headers: {WWW-Authenticate: ...}
+
+3. generate_mpp_challenge(...)   ← use tool #6
+   → user pays on-chain
+
+4. send_a2a_message(agent_url, text, payment_proof="<proof>")
+   → task result returned
+```
+
+Supported networks: **Algorand**, **VOI**, **Hedera**, **Stellar** (USDC on all four + native ALGO/VOI/HBAR/XLM).
 
 ---
 
@@ -76,7 +106,7 @@ Both packages read the same env vars:
 | `ALGOVOI_PAYOUT_STELLAR` | ✅* | Stellar payout address (`G...`) |
 | `ALGOVOI_PAYOUT_ADDRESS` | — | Universal fallback if per-chain vars are not set |
 | `ALGOVOI_WEBHOOK_SECRET` | — | For `verify_webhook` |
-| `ALGOVOI_API_BASE` | — | Override the AlgoVoi API base URL (default: `https://api1.ilovechicken.co.uk`) |
+| `ALGOVOI_API_BASE` | — | Override the AlgoVoi API base URL (default: `https://cloud.algovoi.co.uk`) |
 
 **\*** At least one per-chain address (or `ALGOVOI_PAYOUT_ADDRESS` as fallback) is required.
 
@@ -115,13 +145,13 @@ Config file locations:
 ## Testing
 
 ```bash
-# TypeScript unit tests
+# TypeScript unit tests (77/77)
 cd typescript && npm test
 
-# Python unit tests
+# Python unit tests (85/85)
 cd python && pytest
 
-# Stdio integration smoke — boots both servers and confirms all 11 tools list
+# Stdio integration smoke — boots both servers and confirms all 13 tools list
 python smoke_stdio.py
 ```
 
