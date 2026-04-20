@@ -204,6 +204,7 @@ add_action('plugins_loaded', function () {
     /* ════════════════════════════════════════════════════════════════════════
      * Gateway 1: Hosted checkout redirect
      * ════════════════════════════════════════════════════════════════════════ */
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound -- WC_ prefix required by WooCommerce payment gateway framework.
     class WC_AlgoVoi_Gateway extends WC_Payment_Gateway {
 
         public function __construct() {
@@ -280,6 +281,7 @@ add_action('plugins_loaded', function () {
     /* ════════════════════════════════════════════════════════════════════════
      * Gateway 2: AlgoVoi Browser Extension
      * ════════════════════════════════════════════════════════════════════════ */
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound -- WC_ prefix required by WooCommerce payment gateway framework.
     class WC_AlgoVoi_Extension_Gateway extends WC_Payment_Gateway {
 
         public function __construct() {
