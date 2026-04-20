@@ -10,12 +10,13 @@
  * License URI:     https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:     algovoi-givewp
  * Requires at least: 5.8
- * Tested up to:    6.9.4
+ * Tested up to:    6.9
  * Requires PHP:    7.4
- *
- * This WordPress plugin is dual-licensed: GPL-2.0-or-later (for WordPress.org
- * distribution and GPL compatibility) and BUSL-1.1 (for the wider AlgoVoi
- * Platform Adapters repository). See LICENSE-PLUGINS.md at the repo root.
+ */
+
+/*
+ * Dual-licensed: GPL-2.0-or-later (WordPress.org distribution) / BUSL-1.1 (repo).
+ * See LICENSE-PLUGINS.md at the repo root.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -51,6 +52,7 @@ add_action( 'plugins_loaded', function () {
 
     // Webhook endpoint
     add_action( 'init', function () {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- webhook endpoint uses HMAC signature, not nonce.
         if ( ! empty( $_GET['algovoi_givewp_webhook'] ) ) {
             AlgoVoi_GiveWP_Gateway::handle_webhook();
         }

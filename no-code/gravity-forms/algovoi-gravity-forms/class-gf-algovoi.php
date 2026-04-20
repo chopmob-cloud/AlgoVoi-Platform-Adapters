@@ -7,6 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * Extends GFPaymentAddOn so Gravity Forms handles all the order/entry management;
  * we only need to implement the redirect-to-checkout and post-payment flows.
  */
+// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound -- extends GFPaymentAddOn, name must follow GF convention.
 class GF_AlgoVoi extends GFPaymentAddOn {
 
     protected $_version     = ALGOVOI_GF_VERSION;
@@ -234,10 +235,12 @@ class GF_AlgoVoi extends GFPaymentAddOn {
 
     public function callback() {
         // AlgoVoi posts to our return URL with ?algovoi_callback=1&entry_id=X
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- GF callback uses HMAC signature verification, not nonce.
         if ( empty( $_GET['algovoi_callback'] ) || empty( $_GET['entry_id'] ) ) {
             return false;
         }
 
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         $entry_id = absint( $_GET['entry_id'] );
         $entry    = GFAPI::get_entry( $entry_id );
 
@@ -295,7 +298,7 @@ class GF_AlgoVoi extends GFPaymentAddOn {
         }
 
         $raw_body  = file_get_contents( 'php://input' );
-        $signature = sanitize_text_field( $_SERVER['HTTP_X_ALGOVOI_SIGNATURE'] ?? '' );
+        $signature = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_ALGOVOI_SIGNATURE'] ?? '' ) );
 
         if ( strlen( $raw_body ) > 65536 ) {
             return false;

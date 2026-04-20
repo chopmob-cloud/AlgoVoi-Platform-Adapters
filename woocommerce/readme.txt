@@ -1,8 +1,8 @@
 === AlgoVoi Payment Gateway ===
 Contributors: algovoi
-Tags: crypto, payment, stablecoin, USDC, algorand, blockchain, woocommerce
+Tags: woocommerce, crypto, usdc, algorand, stablecoin
 Requires at least: 6.4
-Tested up to: 6.9.4
+Tested up to: 6.9
 Requires PHP: 8.0
 WC requires at least: 7.0
 WC tested up to: 10.6.2

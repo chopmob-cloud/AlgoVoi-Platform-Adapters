@@ -1,8 +1,8 @@
 === AlgoVoi for GiveWP ===
 Contributors: algovoi
-Tags: donations, crypto, usdc, algorand, stellar, givewp, blockchain, payments, stablecoin
+Tags: donations, crypto, usdc, algorand, givewp
 Requires at least: 5.8
-Tested up to: 6.9.4
+Tested up to: 6.9
 Requires PHP: 7.4
 Stable tag: 1.0.0
 License: GPLv2 or later
