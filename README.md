@@ -111,7 +111,7 @@ platform-adapters/
 │   ├── pydantic-ai/      # Pydantic AI gate — any Agent, deps injection, provider:model strings
 │   ├── dspy/             # DSPy gate — any Predict / ChainOfThought / ReAct / compiled program
 │   ├── vercel-ai-sdk/    # Vercel AI SDK gate — generateText, streamText, tool() — TypeScript
-│   ├── a2a/              # Google A2A gate — JSON-RPC 2.0 server + client, agent card, task store
+│   ├── a2a/              # Google A2A gate — A2A v1.0 REST (6 routes), agent card + extended card, task store
 │   ├── langgraph/        # LangGraph gate — StateGraph invoke/stream, ToolNode, create_react_agent
 │   └── agno/             # Agno gate — pre_hooks, ASGI middleware (AgentOS), run_agent + arun_agent
 ├── no-code/              # No-code / automation adapters (Zapier, Make, n8n, X) — v1.0.0, 225+ tests
@@ -194,7 +194,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | Pydantic AI (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agent with deps injection, all provider:model strings, pydantic_ai.tools.Tool-compatible — 77/77 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar | — |
 | DSPy (AI agent frameworks) | — (MPP + AP2 + x402; gates any Predict / ChainOfThought / ReAct / compiled program; dspy.context isolation, plain callable tool for ReAct — 78/78 tests, Phase 1 9/9 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | Vercel AI SDK (AI agent frameworks) | — (MPP + AP2 + x402; TypeScript; generateText + streamText + tool() + nextHandler; any @ai-sdk/* provider — 79/79 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
-| Google A2A (AI agent frameworks) | — (MPP + AP2 + x402; JSON-RPC 2.0 server + client; message/send, tasks/get, tasks/cancel; agent card; payment tool — 84/84 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
+| Google A2A (AI agent frameworks) | — (MPP + AP2 + x402; A2A v1.0 REST server + client; 6 live endpoints: `/.well-known/agent.json`, `/extendedAgentCard`, `/message:send`, `/tasks`, `/tasks/{id}`, `/tasks/{id}:cancel`; extended agent card with payment auth metadata; legacy JSON-RPC 2.0 compat kept — 120/120 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | LangGraph (AI agent frameworks) | — (MPP + AP2 + x402; gates compiled StateGraph invoke/stream; AlgoVoiPaymentTool is BaseTool subclass, ToolNode-compatible, create_react_agent-compatible; flask_guard + flask_agent convenience wrappers — 77/77 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | Agno (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agno Agent via pre_hooks, ASGI middleware for AgentOS, run_agent/arun_agent wrappers, flask_guard + flask_agent; AgnoPaymentRequired exception — 88/88 tests, Phase 1 13/13 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar | — |
 | Zapier (no-code) | — (webhook bridge + action handlers: create_payment_link, verify_payment, list_networks, generate_challenge MPP/x402/AP2; ZapierActionResult return type — 77/77 tests, Phase 1+2 PASS 17 Apr 2026, Comet-validated) | 16 networks (8 mainnet + 8 testnet) | — |
