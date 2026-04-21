@@ -473,10 +473,14 @@ export const TOOL_SCHEMAS = [
   {
     name: "create_payment_link",
     description:
-      "Create a hosted AlgoVoi checkout URL for a given amount and chain. Returns a short token and public URL the customer can visit to pay in USDC or native tokens (Algorand / VOI / Hedera / Stellar). " +
-      "Use this when the customer will pay via a hosted checkout page. " +
-      "For in-page browser-wallet payments use prepare_extension_payment. " +
-      "For API-to-API agent payments use generate_mpp_challenge, generate_x402_challenge, or generate_ap2_mandate.",
+      "Create a hosted AlgoVoi checkout URL for a given amount and chain. " +
+      "Returns {checkout_url, token, chain, amount_microunits} — the customer visits checkout_url to pay in USDC or native tokens (ALGO, VOI, HBAR, XLM). " +
+      "Use this when the customer will pay via a hosted checkout page (redirect or iframe). " +
+      "For in-page browser-wallet payments (AVM chains only) use prepare_extension_payment instead. " +
+      "For server-to-server agent payments use generate_mpp_challenge, generate_x402_challenge, or generate_ap2_mandate instead. " +
+      "Authentication: requires ALGOVOI_API_KEY and ALGOVOI_TENANT_ID env vars (set once at server startup — never passed as tool args). " +
+      "Errors: throws if amount <= 0, currency is unrecognised, or network is unsupported. " +
+      "Rate limits: subject to tenant plan limits; use idempotency_key to avoid duplicate links on retry.",
     inputSchema: {
       type: "object",
       properties: {
@@ -494,7 +498,13 @@ export const TOOL_SCHEMAS = [
   {
     name: "verify_payment",
     description:
-      "Verify that a payment for a given checkout token has settled. Returns paid/unpaid status. If tx_id is supplied, verifies that specific on-chain transaction; otherwise uses hosted-checkout status.",
+      "Verify that a hosted checkout payment has settled on-chain. " +
+      "Returns {paid: bool, status: 'verified'|'unverified'|'pending'|'expired'}. " +
+      "If tx_id is supplied, verifies that specific on-chain transaction against the token; otherwise polls hosted-checkout status. " +
+      "Use this after create_payment_link (for hosted checkout) or after prepare_extension_payment + tx_id (for browser-wallet flows). " +
+      "For MPP 402-challenge flows use verify_mpp_receipt; for x402 use verify_x402_proof; for AP2 use verify_ap2_payment. " +
+      "Authentication: requires ALGOVOI_API_KEY env var. " +
+      "Errors: returns {paid: false, error: '...'} if the token is unknown or the transaction does not match.",
     inputSchema: {
       type: "object",
       properties: {
@@ -508,9 +518,14 @@ export const TOOL_SCHEMAS = [
   {
     name: "prepare_extension_payment",
     description:
-      "Prepare an in-page wallet-extension payment (Algorand / VOI only). Returns the token and chain parameters a frontend can use to ask a browser wallet (e.g. Pera, Defly) to sign and submit the on-chain transfer. " +
-      "After the user signs, call verify_payment with the returned token and the on-chain tx_id. " +
-      "Use this for browser-based dApp flows; for hosted checkout use create_payment_link; for server-to-server flows use generate_mpp_challenge or generate_x402_challenge.",
+      "Prepare an in-page wallet-extension payment for Algorand or VOI chains. " +
+      "Returns {token, chain, amount_microunits, recipient, asset_id} — pass these to the browser wallet (e.g. Pera, Defly) to sign and submit. " +
+      "After the user signs and the transaction confirms, call verify_payment with the returned token and the on-chain tx_id to confirm settlement. " +
+      "Use this for browser-based dApp flows where the user's wallet is in the browser. " +
+      "For hosted redirect checkout use create_payment_link. " +
+      "For server-to-server API flows use generate_mpp_challenge or generate_x402_challenge. " +
+      "Authentication: requires ALGOVOI_API_KEY env var. " +
+      "Errors: throws if network is not an AVM chain (Algorand or VOI only) or if amount <= 0.",
     inputSchema: {
       type: "object",
       properties: {
@@ -566,10 +581,14 @@ export const TOOL_SCHEMAS = [
   {
     name: "verify_mpp_receipt",
     description:
-      "Verify an MPP (IETF draft-ryan-httpauth-payment) receipt after an agent pays a 402 challenge. " +
-      "Returns {verified: true} if the on-chain transaction satisfies the resource's declared amount and recipient. " +
-      "Call this after generate_mpp_challenge once the paying agent supplies its tx_id. " +
-      "For x402 flows use verify_x402_proof; for AP2 flows use verify_ap2_payment.",
+      "Verify an MPP (IETF draft-ryan-httpauth-payment) payment receipt submitted by a paying agent. " +
+      "Returns {verified: true, access_token: '...'} on success; {verified: false, error: 'amount_mismatch'|'recipient_mismatch'|'tx_not_found'|'expired'} on failure. " +
+      "Call this after generate_mpp_challenge, once the paying agent sends its Payment header containing the on-chain tx_id. " +
+      "The access_token in the response can be passed back to the agent as proof of payment for protected resources. " +
+      "For x402 proof-of-payment flows use verify_x402_proof instead. " +
+      "For AP2 mandate flows use verify_ap2_payment instead. " +
+      "Authentication: requires ALGOVOI_API_KEY env var. " +
+      "Errors: returns verified=false (never throws) so payment failures can be communicated back to the paying agent without a server error.",
     inputSchema: {
       type: "object",
       properties: {
@@ -584,9 +603,14 @@ export const TOOL_SCHEMAS = [
   {
     name: "verify_x402_proof",
     description:
-      "Verify a base64-encoded x402 (spec v1) payment proof — returns {verified: true} if the proof corresponds to a confirmed on-chain transfer to the tenant's payout address. " +
-      "Call this after generate_x402_challenge once the client re-sends the request with X-Payment: <base64-proof>. " +
-      "For MPP flows use verify_mpp_receipt; for AP2 flows use verify_ap2_payment.",
+      "Verify a base64-encoded x402 (spec v1) payment proof submitted by a client in the X-Payment header. " +
+      "Returns {verified: true} if the proof decodes to a confirmed on-chain transfer matching the tenant's payout address and amount. " +
+      "Returns {verified: false, error: 'invalid_proof'|'amount_mismatch'|'recipient_mismatch'|'tx_not_found'} on failure. " +
+      "Call this after generate_x402_challenge, once the client re-submits the request with X-Payment: <base64-proof>. " +
+      "For MPP payment-header flows use verify_mpp_receipt instead. " +
+      "For AP2 mandate flows use verify_ap2_payment instead. " +
+      "Authentication: requires ALGOVOI_API_KEY env var. " +
+      "Errors: always returns {verified: bool} — never throws on proof format errors.",
     inputSchema: {
       type: "object",
       properties: {
@@ -634,9 +658,14 @@ export const TOOL_SCHEMAS = [
   {
     name: "verify_ap2_payment",
     description:
-      "Verify an AP2 v0.1 agent payment — returns {verified: true} if the on-chain transaction satisfies the mandate's declared amount and recipient. " +
-      "Call this after generate_ap2_mandate once the paying agent submits its tx_id. " +
-      "For MPP flows use verify_mpp_receipt; for x402 flows use verify_x402_proof.",
+      "Verify an AP2 v0.1 agent-to-agent payment against an existing mandate. " +
+      "Returns {verified: true} if the on-chain transaction satisfies the mandate's declared amount and recipient. " +
+      "Returns {verified: false, error: 'mandate_not_found'|'mandate_expired'|'amount_mismatch'|'tx_not_found'} on failure. " +
+      "Call this after generate_ap2_mandate once the paying agent submits its on-chain tx_id. " +
+      "For MPP payment-header flows use verify_mpp_receipt instead. " +
+      "For x402 proof-of-payment flows use verify_x402_proof instead. " +
+      "Authentication: requires ALGOVOI_API_KEY env var. " +
+      "Errors: always returns {verified: bool} — never throws on unknown mandate IDs.",
     inputSchema: {
       type: "object",
       properties: {
