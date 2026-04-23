@@ -40,6 +40,73 @@ Included:
 
 ---
 
+## AlgoVoi Cloud — No-Code Dashboard
+
+The fastest way to accept stablecoin payments — no server access or code required. **[dash.algovoi.co.uk](https://dash.algovoi.co.uk)** is the hosted SaaS version of AlgoVoi: sign up with your email, verify your identity, and connect your platforms through a guided dashboard wizard. Each wizard takes under 5 minutes.
+
+### Sign up
+
+1. Go to [dash.algovoi.co.uk/signup](https://dash.algovoi.co.uk/signup)
+2. Enter your email and choose your account type (Individual, Sole Trader, or Company)
+3. Your AlgoVoi API key is shown once on screen — copy it immediately
+4. Complete KYC/KYB verification in the dashboard to unlock mainnet payments
+
+Supported chains: Algorand, VOI, Hedera, Stellar, Base, Solana
+
+### Connect a platform
+
+After signing in, open **Connect** from the sidebar. Every integration has a setup badge:
+
+| Badge | Meaning |
+|-------|---------|
+| ⚡ 1-click | Connect through an existing account — no downloads |
+| 🔧 Upload | Download a zip and upload through your platform's admin UI |
+| ⌨️ CLI | Requires shell access — run commands on your server |
+
+#### E-commerce
+
+| Platform | Setup | Notes |
+|----------|-------|-------|
+| **WooCommerce** | 🔧 Upload | WordPress + WooCommerce |
+| **Magento 2** | ⌨️ CLI | Adobe Commerce / Magento Open Source |
+| **PrestaShop** | 🔧 Upload | PrestaShop 8.x — hosted + wallet checkout |
+| **OpenCart** | 🔧 Upload | OpenCart 4 payment extension |
+| **Shopware** | 🔧 Upload | Shopware 6 payment plugin |
+| **Gravity Forms** | 🔧 Upload | WordPress form builder with payments |
+| **GiveWP** | 🔧 Upload | WordPress donation & fundraising plugin |
+| Shopify | — | Coming soon (OAuth app install) |
+
+#### Automation
+
+| Platform | Setup | Notes |
+|----------|-------|-------|
+| **Zapier** | ⚡ 1-click | Connect 6,000+ apps via Zaps |
+| **n8n** | ⚡ 1-click | Open-source workflow automation |
+| **Make (Integromat)** | ⚡ 1-click | Visual automation platform |
+| **Pabbly Connect** | ⚡ 1-click | Affordable automation for 1,000+ apps |
+| **Activepieces** | ⚡ 1-click | Open-source automation (self-host or cloud) |
+| **X (Twitter)** | ⌨️ CLI | Auto-post tweets on payment confirmation |
+
+#### AI Assistants
+
+| Platform | Setup | Notes |
+|----------|-------|-------|
+| **Claude / Cursor / Windsurf** | ⚡ 1-click | AlgoVoi MCP server — 13 payment tools inside your AI assistant |
+
+### KYC / KYB verification
+
+Before your first mainnet payment, upload the required documents through the **Onboarding** page:
+
+| Account type | Required documents |
+|-------------|-------------------|
+| Individual | Government ID, Selfie, Proof of Address, Source of Funds |
+| Sole Trader | Same as Individual |
+| Company | Certificate of Incorporation, Director ID, Beneficial Owner Register, Memorandum of Association, plus director personal docs |
+
+Accepted formats: PDF, JPEG, PNG, WebP — max 50 MB per file. The dashboard auto-advances to active status when all required documents are collected.
+
+---
+
 ## Repository structure
 
 ```
