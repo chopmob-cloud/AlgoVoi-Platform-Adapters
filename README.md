@@ -1,12 +1,12 @@
 # AlgoVoi Platform Adapters
 
-Integration guides and drop-in payment plugins for connecting e-commerce platforms to **AlgoVoi Tenant Services** — enabling merchants to accept stablecoin payments settled on the Algorand, VOI, Hedera, Stellar, Base, and Solana blockchains.
+Integration guides and drop-in payment plugins for connecting e-commerce platforms to **AlgoVoi Tenant Services** — enabling merchants to accept stablecoin payments settled on the Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo, and Tempo blockchains.
 
 ---
 
 ## What is AlgoVoi?
 
-AlgoVoi is a multi-tenant payment infrastructure layer built on the Algorand Virtual Machine (AVM) with Hedera, Stellar, Base (EVM), and Solana support. It allows merchants and developers to accept on-chain stablecoin payments through hosted checkout or browser extension flows, without managing wallets or blockchain integrations directly.
+AlgoVoi is a multi-tenant payment infrastructure layer built on the Algorand Virtual Machine (AVM) with Hedera, Stellar, Base (EVM), Solana, and Tempo support. It allows merchants and developers to accept on-chain stablecoin payments through hosted checkout or browser extension flows, without managing wallets or blockchain integrations directly.
 
 Supported settlement assets:
 
@@ -18,6 +18,7 @@ Supported settlement assets:
 | USDC  | Stellar mainnet  | Credit asset issued by Circle (`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`); receiver must have a trust line before accepting |
 | USDC  | Base mainnet     | ERC-20 token (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`), issued by Circle |
 | USDC  | Solana mainnet   | SPL token (`EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`), issued by Circle |
+| USDCe | Tempo mainnet    | TIP-20 token (`0x20c000000000000000000000b9537d11c60e8b50`, 6 decimals); Tempo is a Stripe/Paradigm EVM L1 (chain ID 4217) with USDC as the native gas token |
 | ALGO / VOI / HBAR / XLM / ETH / SOL | Any mainnet | Native coin payments also supported on every chain (6/6/8/7/18/9 decimals respectively) |
 
 ---
@@ -51,7 +52,7 @@ The fastest way to accept stablecoin payments — no server access or code requi
 3. Your AlgoVoi API key is shown once on screen — copy it immediately
 4. Complete KYC/KYB verification in the dashboard to unlock mainnet payments
 
-Supported chains: Algorand, VOI, Hedera, Stellar, Base, Solana
+Supported chains: Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo, Tempo
 
 ### Connect a platform
 
@@ -137,7 +138,7 @@ platform-adapters/
 ├── shopify-app/          # Private — Shopify payment app (Cloudflare Pages, not distributed)
 ├── x402-widget/          # Embeddable payment widget (Web Component)
 │
-│   — Live-tested Python webhook adapters (4 original chains verified 2026-04-14; Base + Solana added 2026-04-22/23) —
+│   — Live-tested Python webhook adapters (4 original chains verified 2026-04-14; Base + Solana added 2026-04-22/23; Tempo added 2026-04-23) —
 ├── allegro/              # Allegro marketplace (Poland / CEE)
 ├── bigcommerce/          # BigCommerce webhook adapter (partial — see note)
 ├── bolcom/               # Bol.com (Netherlands / Belgium)
@@ -216,68 +217,68 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 
 | Platform | Demo store / notes | Hosted chains | Extension chains |
 |----------|--------------------|---------------|-----------------|
-| OpenCart 4 | opencart.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar, Base, Solana | Algorand, VOI |
-| PrestaShop 8.2.5 | prestashop.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar, Base, Solana | Algorand, VOI |
-| Shopware 6.7.8.2 | shopware.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar, Base, Solana | Algorand, VOI |
-| WooCommerce 10.6.2 / WordPress 6.9.4 | woo.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar, Base, Solana | Algorand, VOI |
-| Shopify (Cloudflare Pages) | algovoi-3.myshopify.com | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Magento 2 / Adobe Commerce | — | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Amazon SP-API | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| TikTok Shop | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Squarespace | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Wix eCommerce | — (SPI checkout) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Native PHP | — | Algorand, VOI, Hedera, Stellar, Base, Solana | Algorand, VOI |
-| Native Python | — | Algorand, VOI, Hedera, Stellar, Base, Solana | Algorand, VOI |
-| Native Go | — | Algorand, VOI, Hedera, Stellar, Base, Solana | Algorand, VOI |
-| Native Rust | — | Algorand, VOI, Hedera, Stellar, Base, Solana | Algorand, VOI |
-| AlgoVoi 1.0 | api1.ilovechicken.co.uk/shop-demo | Algorand, VOI, Hedera, Stellar, Base, Solana | Algorand, VOI |
-| QuickBooks Online | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Xero | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| FreshBooks | — (B2B webhook, form-urlencoded + fetch_order) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Sage Business Cloud | — (polling, no push webhooks) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Zoho Books | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Wave | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| MYOB | — (polling, no push webhooks) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| eBay | — (Platform Notifications webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Ecwid / Lightspeed E-Series | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Etsy | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Rakuten Ichiba | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| OnBuy | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Yapily | — (open banking webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Walmart Marketplace | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| CeX | — (operator bypass webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Printful | — (print-on-demand webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Wormhole | — (cross-chain bridge webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| WhatsApp Business | — (Meta webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Instagram Shops | — (Meta webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Telegram | — (Bot API webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Allegro | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Bol.com | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Cdiscount | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Flipkart | — (Seller API webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Lazada | — (open platform webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Mercado Libre | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Shopee | — (open platform webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Tokopedia | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| x402 AI Agent adapter | — (x402 spec v1: `accepts` array, CAIP-2 networks, microunit amounts, `payload.signature` proof) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| MPP Gate | — (100% IETF `draft-ryan-httpauth-payment`: challenge echo, CAIP-2 routing, HMAC IDs, on-chain verification — v2.1.0, 153/153 tests, live smoke-tested all 4 original chains 13 Apr 2026; Base + Solana added 2026-04-22/23) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
+| OpenCart 4 | opencart.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | Algorand, VOI |
+| PrestaShop 8.2.5 | prestashop.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | Algorand, VOI |
+| Shopware 6.7.8.2 | shopware.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | Algorand, VOI |
+| WooCommerce 10.6.2 / WordPress 6.9.4 | woo.ilovechicken.co.uk | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | Algorand, VOI |
+| Shopify (Cloudflare Pages) | algovoi-3.myshopify.com | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Magento 2 / Adobe Commerce | — | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Amazon SP-API | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| TikTok Shop | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Squarespace | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Wix eCommerce | — (SPI checkout) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Native PHP | — | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | Algorand, VOI |
+| Native Python | — | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | Algorand, VOI |
+| Native Go | — | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | Algorand, VOI |
+| Native Rust | — | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | Algorand, VOI |
+| AlgoVoi 1.0 | api1.ilovechicken.co.uk/shop-demo | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | Algorand, VOI |
+| QuickBooks Online | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Xero | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| FreshBooks | — (B2B webhook, form-urlencoded + fetch_order) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Sage Business Cloud | — (polling, no push webhooks) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Zoho Books | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Wave | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| MYOB | — (polling, no push webhooks) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| eBay | — (Platform Notifications webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Ecwid / Lightspeed E-Series | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Etsy | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Rakuten Ichiba | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| OnBuy | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Yapily | — (open banking webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Walmart Marketplace | — (B2B webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| CeX | — (operator bypass webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Printful | — (print-on-demand webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Wormhole | — (cross-chain bridge webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| WhatsApp Business | — (Meta webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Instagram Shops | — (Meta webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Telegram | — (Bot API webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Allegro | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Bol.com | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Cdiscount | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Flipkart | — (Seller API webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Lazada | — (open platform webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Mercado Libre | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Shopee | — (open platform webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Tokopedia | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| x402 AI Agent adapter | — (x402 spec v1: `accepts` array, CAIP-2 networks, microunit amounts, `payload.signature` proof) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| MPP Gate | — (100% IETF `draft-ryan-httpauth-payment`: challenge echo, CAIP-2 routing, HMAC IDs, on-chain verification — v2.1.0, 153/153 tests, live smoke-tested all 4 original chains 13 Apr 2026; Base + Solana added 2026-04-22/23; Tempo added 2026-04-23) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
 | AP2 Gate | — (payment request + local ed25519 verification) | Algorand, VOI | — |
-| LangChain (AI agent frameworks) | — (MPP + AP2 + x402; gates any ChatModel, LCEL chain, RAG pipeline, or ReAct agent tool — 76/77 tests, Phase 1+2 PASS 5/5 chains 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| LlamaIndex (AI agent frameworks) | — (MPP + AP2 + x402; gates LlamaIndex LLM, QueryEngine, ChatEngine, or ReAct agent tool — 80/80 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| CrewAI (AI agent frameworks) | — (MPP + AP2 + x402; gates crew.kickoff() + BaseTool with PaymentToolInput args_schema — 68/68 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Hugging Face (AI agent frameworks) | — (MPP + AP2 + x402; gates InferenceClient.chat_completion(), transformers pipeline, and smolagents Tool — 83/83 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| AutoGen (AI agent frameworks) | — (MPP + AP2 + x402; gates initiate_chat() + callable FunctionTool-compatible tool; llm_config property; 0.2.x + 0.4.x — 86/86 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Semantic Kernel (AI agent frameworks) | — (MPP + AP2 + x402; gates chat completion, kernel.invoke(), and @kernel_function plugin; asyncio.run() sync wrappers — 76/76 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Pydantic AI (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agent with deps injection, all provider:model strings, pydantic_ai.tools.Tool-compatible — 77/77 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| DSPy (AI agent frameworks) | — (MPP + AP2 + x402; gates any Predict / ChainOfThought / ReAct / compiled program; dspy.context isolation, plain callable tool for ReAct — 78/78 tests, Phase 1 9/9 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Vercel AI SDK (AI agent frameworks) | — (MPP + AP2 + x402; TypeScript; generateText + streamText + tool() + nextHandler; any @ai-sdk/* provider — 79/79 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Google A2A (AI agent frameworks) | — (MPP + AP2 + x402; A2A v1.0 REST server + client; 6 live endpoints: `/.well-known/agent.json`, `/extendedAgentCard`, `/message:send`, `/tasks`, `/tasks/{id}`, `/tasks/{id}:cancel`; extended agent card with payment auth metadata; legacy JSON-RPC 2.0 compat kept — 120/120 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| LangGraph (AI agent frameworks) | — (MPP + AP2 + x402; gates compiled StateGraph invoke/stream; AlgoVoiPaymentTool is BaseTool subclass, ToolNode-compatible, create_react_agent-compatible; flask_guard + flask_agent convenience wrappers — 77/77 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
-| Agno (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agno Agent via pre_hooks, ASGI middleware for AgentOS, run_agent/arun_agent wrappers, flask_guard + flask_agent; AgnoPaymentRequired exception — 88/88 tests, Phase 1 13/13 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
+| LangChain (AI agent frameworks) | — (MPP + AP2 + x402; gates any ChatModel, LCEL chain, RAG pipeline, or ReAct agent tool — 76/77 tests, Phase 1+2 PASS 5/5 chains 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| LlamaIndex (AI agent frameworks) | — (MPP + AP2 + x402; gates LlamaIndex LLM, QueryEngine, ChatEngine, or ReAct agent tool — 80/80 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| CrewAI (AI agent frameworks) | — (MPP + AP2 + x402; gates crew.kickoff() + BaseTool with PaymentToolInput args_schema — 68/68 tests, Comet-validated 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Hugging Face (AI agent frameworks) | — (MPP + AP2 + x402; gates InferenceClient.chat_completion(), transformers pipeline, and smolagents Tool — 83/83 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| AutoGen (AI agent frameworks) | — (MPP + AP2 + x402; gates initiate_chat() + callable FunctionTool-compatible tool; llm_config property; 0.2.x + 0.4.x — 86/86 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Semantic Kernel (AI agent frameworks) | — (MPP + AP2 + x402; gates chat completion, kernel.invoke(), and @kernel_function plugin; asyncio.run() sync wrappers — 76/76 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Pydantic AI (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agent with deps injection, all provider:model strings, pydantic_ai.tools.Tool-compatible — 77/77 tests, 16 Apr 2026) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| DSPy (AI agent frameworks) | — (MPP + AP2 + x402; gates any Predict / ChainOfThought / ReAct / compiled program; dspy.context isolation, plain callable tool for ReAct — 78/78 tests, Phase 1 9/9 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Vercel AI SDK (AI agent frameworks) | — (MPP + AP2 + x402; TypeScript; generateText + streamText + tool() + nextHandler; any @ai-sdk/* provider — 79/79 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Google A2A (AI agent frameworks) | — (MPP + AP2 + x402; A2A v1.0 REST server + client; 6 live endpoints: `/.well-known/agent.json`, `/extendedAgentCard`, `/message:send`, `/tasks`, `/tasks/{id}`, `/tasks/{id}:cancel`; extended agent card with payment auth metadata; legacy JSON-RPC 2.0 compat kept — 120/120 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| LangGraph (AI agent frameworks) | — (MPP + AP2 + x402; gates compiled StateGraph invoke/stream; AlgoVoiPaymentTool is BaseTool subclass, ToolNode-compatible, create_react_agent-compatible; flask_guard + flask_agent convenience wrappers — 77/77 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Agno (AI agent frameworks) | — (MPP + AP2 + x402; gates any Agno Agent via pre_hooks, ASGI middleware for AgentOS, run_agent/arun_agent wrappers, flask_guard + flask_agent; AgnoPaymentRequired exception — 88/88 tests, Phase 1 13/13 PASS 16 Apr 2026, Comet-validated) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
 | Zapier (no-code) | — (webhook bridge + action handlers: create_payment_link, verify_payment, list_networks, generate_challenge MPP/x402/AP2; ZapierActionResult return type — 77/77 tests, Phase 1+2 PASS 17 Apr 2026, Comet-validated) | 24 networks (12 mainnet + 12 testnet) | — |
 | Make / Integromat (no-code) | — (module handlers: create_payment_link, verify_payment, list_networks, generate_challenge MPP/x402/AP2; Make bundle dict return type — 71/71 tests, Phase 1+2 PASS 17 Apr 2026, Comet-validated) | 24 networks (12 mainnet + 12 testnet) | — |
 | n8n (no-code) | — (operation handlers: create_payment_link, verify_payment, list_networks, generate MPP/x402/AP2 challenges; n8n item dict return type — 77/77 tests, Phase 1+2 PASS 17 Apr 2026, Comet-validated) | 24 networks (12 mainnet + 12 testnet) | — |
-| X / Twitter (no-code) | — (webhook adapter + OAuth 1.0a tweet posting; auto-posts payment confirmations &amp; checkout links when AlgoVoi fires a webhook; 62/62 unit tests; 4-chain mainnet e2e verified 18 Apr 2026; Base + Solana added 2026-04-22/23 — payments confirmed on-chain, tweets posted automatically) | Algorand, VOI, Hedera, Stellar, Base, Solana | — |
+| X / Twitter (no-code) | — (webhook adapter + OAuth 1.0a tweet posting; auto-posts payment confirmations &amp; checkout links when AlgoVoi fires a webhook; 62/62 unit tests; 4-chain mainnet e2e verified 18 Apr 2026; Base + Solana added 2026-04-22/23; Tempo added 2026-04-23 — payments confirmed on-chain, tweets posted automatically) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
 
 **Last webhook test:** 14 April 2026 — all 39 testable adapters passed on all 4 original chains (`algorand_mainnet`, `voi_mainnet`, `hedera_mainnet`, `stellar_mainnet`); Base and Solana added 2026-04-22/23. Checkout pages validated live via Comet CDP. 6 adapters skipped: BigCommerce (partial — order-amount fetch needs real API credentials), Discord (Ed25519), TrueLayer (ES512), Faire/Jumia/Printify (docs only).
 
@@ -395,7 +396,7 @@ All 7 accounting adapters are end-to-end tested on **14 April 2026** against `ap
 |---------|-------|-------------|--------|
 | **x402** | [x402-ai-agents.md](./x402-ai-agents.md) / [x402-ai-agents/](./x402-ai-agents/) | Autonomous AI agent payments via the x402 protocol (spec v1 — `accepts` array, CAIP-2 IDs, microunit amounts, `payload.signature`) | **Production ready** — real payments smoke-tested on all 4 original chains (Algorand, VOI, Stellar, Hedera); Base and Solana added 2026-04-22/23, `x402/verify` confirmed on each. Adapter v2.0.0, 76/76 tests. |
 | **MPP** | [mpp-adapter/mpp-adapter.md](./mpp-adapter/mpp-adapter.md) / [mpp-adapter/](./mpp-adapter/) | Machine Payments Protocol server middleware — 100% IETF `draft-ryan-httpauth-payment` compliant (challenge echo validation, CAIP-2 network routing, HMAC challenge IDs, on-chain verification, replay protection) | **Production ready** — 0.01 USDC live smoke-tested on all 4 original chains (Algorand, VOI, Hedera, Stellar) 13 Apr 2026; Base and Solana added 2026-04-22/23. Adapter v2.1.0, 153/153 tests. |
-| **AP2** | [ap2-adapter/ap2-adapter.md](./ap2-adapter/ap2-adapter.md) / [ap2-adapter/](./ap2-adapter/) | AP2 v0.1 CartMandate/PaymentMandate server middleware with AlgoVoi crypto-algo extension. ed25519 mandate signing + on-chain tx verification across all 6 chains (Algorand, VOI, Hedera, Stellar, Base, Solana). | **Production ready** — 0.01 USDC live smoke-tested on all 4 original chains 13 Apr 2026; Base + Solana added 2026-04-22/23. Real ed25519 sig verified. v2.0.0, 81/81 tests. |
+| **AP2** | [ap2-adapter/ap2-adapter.md](./ap2-adapter/ap2-adapter.md) / [ap2-adapter/](./ap2-adapter/) | AP2 v0.1 CartMandate/PaymentMandate server middleware with AlgoVoi crypto-algo extension. ed25519 mandate signing + on-chain tx verification across all 6 chains (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo). | **Production ready** — 0.01 USDC live smoke-tested on all 4 original chains 13 Apr 2026; Base + Solana added 2026-04-22/23; Tempo added 2026-04-23. Real ed25519 sig verified. v2.0.0, 81/81 tests. |
 
 ## AI Platform Adapters
 
@@ -403,15 +404,15 @@ Drop-in payment gates for AI provider APIs. Each adapter wraps the AI call behin
 
 | Platform | Class | SDK install | Protocol support | Files | Status |
 |----------|-------|-------------|-----------------|-------|--------|
-| **OpenAI** + compatible | `AlgoVoiMppAI` / `AlgoVoiAp2AI` / `AlgoVoiOpenAI` | `pip install openai` | MPP, AP2, x402 | [ai-adapters/openai/](./ai-adapters/openai/) | **Available** — 101/101 tests + smoke-tested all 4 original chains 14 Apr 2026; Base + Solana added 2026-04-22/23 |
-| **Anthropic Claude** | `AlgoVoiClaude` | `pip install anthropic` | MPP, AP2, x402 | [ai-adapters/claude/](./ai-adapters/claude/) | **Available** — 76/76 tests + smoke-tested all 4 original chains 14 Apr 2026; Base + Solana added 2026-04-22/23 |
+| **OpenAI** + compatible | `AlgoVoiMppAI` / `AlgoVoiAp2AI` / `AlgoVoiOpenAI` | `pip install openai` | MPP, AP2, x402 | [ai-adapters/openai/](./ai-adapters/openai/) | **Available** — 101/101 tests + smoke-tested all 4 original chains 14 Apr 2026; Base + Solana added 2026-04-22/23; Tempo added 2026-04-23 |
+| **Anthropic Claude** | `AlgoVoiClaude` | `pip install anthropic` | MPP, AP2, x402 | [ai-adapters/claude/](./ai-adapters/claude/) | **Available** — 76/76 tests + smoke-tested all 4 original chains 14 Apr 2026; Base + Solana added 2026-04-22/23; Tempo added 2026-04-23 |
 | **Google Gemini** | `AlgoVoiGemini` | `pip install google-genai` | MPP, AP2, x402 | [ai-adapters/gemini/](./ai-adapters/gemini/) | **Available** — 75/75 tests (Phase 2 pending billing-enabled key) |
 | **Amazon Bedrock** | `AlgoVoiBedrock` | `pip install boto3` | MPP, AP2, x402 | [ai-adapters/bedrock/](./ai-adapters/bedrock/) | **Available** — 57/57 tests, Converse API (Nova / Claude / Llama / Titan models) |
 | **Cohere** | `AlgoVoiCohere` | `pip install cohere` | MPP, AP2, x402 | [ai-adapters/cohere/](./ai-adapters/cohere/) | **Available** — Phase 1 + 1.5 + 2 PASS 4/4 chains 15 Apr 2026 |
 | **xAI (Grok)** | `AlgoVoiXai` | `pip install xai-sdk` | MPP, AP2, x402 | [ai-adapters/xai/](./ai-adapters/xai/) | **Available** — 70/70 tests + Phase 1+2 PASS 4/4 chains 15 Apr 2026 (Comet-validated) |
 | **Mistral** | `AlgoVoiMistral` | `pip install mistralai` | MPP, AP2, x402 | [ai-adapters/mistral/](./ai-adapters/mistral/) | **Available** — 70/70 tests + Phase 1 PASS 4/4 chains 15 Apr 2026 (Comet-validated) |
 
-All adapters support all 6 chains (Algorand, VOI, Hedera, Stellar, Base, Solana) and all 3 payment protocols (MPP, AP2, x402).
+All adapters support all 6 chains (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) and all 3 payment protocols (MPP, AP2, x402).
 
 ### OpenAI — MPP Quick start
 
