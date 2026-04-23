@@ -1,6 +1,6 @@
 # AlgoVoi Platform Adapters
 
-Integration guides and drop-in payment plugins for connecting e-commerce platforms to **AlgoVoi Tenant Services** — enabling merchants to accept stablecoin payments settled on the Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo, and Tempo blockchains.
+Integration guides and drop-in payment plugins for connecting e-commerce platforms to **AlgoVoi Tenant Services** — enabling merchants to accept stablecoin payments settled on the Algorand, VOI, Hedera, Stellar, Base, Solana, and Tempo blockchains.
 
 ---
 
@@ -32,12 +32,12 @@ Included:
 - **CMS payment gateways** for Drupal Commerce, Easy Digital Downloads (WordPress), and Ghost — all Comet-validated 2026-04-15
 - **Native adapters** for PHP, Python, Go, and Rust (zero external dependencies) — all hardened to v1.1.0 on 2026-04-15
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
-- **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 6 chains)
-- **AI agent framework adapters** for LangChain, LlamaIndex, CrewAI, Hugging Face, AutoGen, Semantic Kernel, Pydantic AI, DSPy, Vercel AI SDK, Google A2A, LangGraph, and Agno — gate LLM-agnostic pipelines, RAG chains, multi-agent crews, and autonomous agents (MPP + AP2 + x402, all 6 chains)
-- **No-code / automation adapters** for Zapier, Make (Integromat), n8n, and **X (Twitter)** — drop-in Python classes that bridge AlgoVoi payment flows into any no-code workflow, with webhook verification, MPP + x402 + AP2 challenge generation, and all 24 networks; the X adapter auto-posts payment confirmations and checkout links to X via webhook (OAuth 1.0a, stdlib-only, 4-chain mainnet verified 2026-04-18)
+- **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 7 chains)
+- **AI agent framework adapters** for LangChain, LlamaIndex, CrewAI, Hugging Face, AutoGen, Semantic Kernel, Pydantic AI, DSPy, Vercel AI SDK, Google A2A, LangGraph, and Agno — gate LLM-agnostic pipelines, RAG chains, multi-agent crews, and autonomous agents (MPP + AP2 + x402, all 7 chains)
+- **No-code / automation adapters** for Zapier, Make (Integromat), n8n, and **X (Twitter)** — drop-in Python classes that bridge AlgoVoi payment flows into any no-code workflow, with webhook verification, MPP + x402 + AP2 challenge generation, and all 28 networks; the X adapter auto-posts payment confirmations and checkout links to X via webhook (OAuth 1.0a, stdlib-only, 4-chain mainnet verified 2026-04-18)
 - **MCP server** (`@algovoi/mcp-server` / `algovoi-mcp`) — exposes 13 AlgoVoi tools natively inside Claude Desktop, Claude Code, Cursor, and Windsurf via the Model Context Protocol
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
-- **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 6 chains
+- **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api1.ilovechicken.co.uk` across all 7 chains
 
 ---
 
@@ -52,7 +52,7 @@ The fastest way to accept stablecoin payments — no server access or code requi
 3. Your AlgoVoi API key is shown once on screen — copy it immediately
 4. Complete KYC/KYB verification in the dashboard to unlock mainnet payments
 
-Supported chains: Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo, Tempo
+Supported chains: Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo
 
 ### Connect a platform
 
@@ -291,7 +291,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 
 ### Two payment flows
 
-**Hosted checkout** — Customer is redirected to a secure AlgoVoi-hosted payment page. Supports Algorand, VOI, Hedera, Stellar, Base, and Solana. Works with any wallet (Pera, Defly, Lute, HashPack, Freighter, LOBSTR, MetaMask, Phantom, …). Payment confirmed via webhook or API status check. Used by all platforms including Shopify.
+**Hosted checkout** — Customer is redirected to a secure AlgoVoi-hosted payment page. Supports Algorand, VOI, Hedera, Stellar, Base, Solana, and Tempo. Works with any wallet (Pera, Defly, Lute, HashPack, Freighter, LOBSTR, MetaMask, Phantom, …). Payment confirmed via webhook or API status check. Used by all platforms including Shopify.
 
 **Extension payment** — Customer pays directly on the store page using the AlgoVoi browser extension and algosdk. Supports Algorand and VOI only (AVM chains). Buyers paying on Hedera or Stellar use hosted checkout with their chain-native wallet. No redirect required for extension flow. Available on WooCommerce, OpenCart, PrestaShop, and Shopware.
 
@@ -396,7 +396,7 @@ All 7 accounting adapters are end-to-end tested on **14 April 2026** against `ap
 |---------|-------|-------------|--------|
 | **x402** | [x402-ai-agents.md](./x402-ai-agents.md) / [x402-ai-agents/](./x402-ai-agents/) | Autonomous AI agent payments via the x402 protocol (spec v1 — `accepts` array, CAIP-2 IDs, microunit amounts, `payload.signature`) | **Production ready** — real payments smoke-tested on all 4 original chains (Algorand, VOI, Stellar, Hedera); Base and Solana added 2026-04-22/23, `x402/verify` confirmed on each. Adapter v2.0.0, 76/76 tests. |
 | **MPP** | [mpp-adapter/mpp-adapter.md](./mpp-adapter/mpp-adapter.md) / [mpp-adapter/](./mpp-adapter/) | Machine Payments Protocol server middleware — 100% IETF `draft-ryan-httpauth-payment` compliant (challenge echo validation, CAIP-2 network routing, HMAC challenge IDs, on-chain verification, replay protection) | **Production ready** — 0.01 USDC live smoke-tested on all 4 original chains (Algorand, VOI, Hedera, Stellar) 13 Apr 2026; Base and Solana added 2026-04-22/23. Adapter v2.1.0, 153/153 tests. |
-| **AP2** | [ap2-adapter/ap2-adapter.md](./ap2-adapter/ap2-adapter.md) / [ap2-adapter/](./ap2-adapter/) | AP2 v0.1 CartMandate/PaymentMandate server middleware with AlgoVoi crypto-algo extension. ed25519 mandate signing + on-chain tx verification across all 6 chains (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo). | **Production ready** — 0.01 USDC live smoke-tested on all 4 original chains 13 Apr 2026; Base + Solana added 2026-04-22/23; Tempo added 2026-04-23. Real ed25519 sig verified. v2.0.0, 81/81 tests. |
+| **AP2** | [ap2-adapter/ap2-adapter.md](./ap2-adapter/ap2-adapter.md) / [ap2-adapter/](./ap2-adapter/) | AP2 v0.1 CartMandate/PaymentMandate server middleware with AlgoVoi crypto-algo extension. ed25519 mandate signing + on-chain tx verification across all 7 chains (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo). | **Production ready** — 0.01 USDC live smoke-tested on all 4 original chains 13 Apr 2026; Base + Solana added 2026-04-22/23; Tempo added 2026-04-23. Real ed25519 sig verified. v2.0.0, 81/81 tests. |
 
 ## AI Platform Adapters
 
@@ -412,7 +412,7 @@ Drop-in payment gates for AI provider APIs. Each adapter wraps the AI call behin
 | **xAI (Grok)** | `AlgoVoiXai` | `pip install xai-sdk` | MPP, AP2, x402 | [ai-adapters/xai/](./ai-adapters/xai/) | **Available** — 70/70 tests + Phase 1+2 PASS 4/4 chains 15 Apr 2026 (Comet-validated) |
 | **Mistral** | `AlgoVoiMistral` | `pip install mistralai` | MPP, AP2, x402 | [ai-adapters/mistral/](./ai-adapters/mistral/) | **Available** — 70/70 tests + Phase 1 PASS 4/4 chains 15 Apr 2026 (Comet-validated) |
 
-All adapters support all 6 chains (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) and all 3 payment protocols (MPP, AP2, x402).
+All adapters support all 7 chains (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) and all 3 payment protocols (MPP, AP2, x402).
 
 ### OpenAI — MPP Quick start
 
@@ -496,7 +496,7 @@ def chat():
     return jsonify({"content": gate.complete(body["messages"])})
 ```
 
-Models: `claude-opus-4-5` · `claude-sonnet-4-5` (default) · `claude-haiku-4-5`
+Models: `claude-opus-4-7` · `claude-sonnet-4-6` (default) · `claude-haiku-4-5-20251001`
 
 ### Gemini — Quick start
 
@@ -655,6 +655,8 @@ Gate entire orchestration frameworks behind on-chain payment — not just a sing
 | **DSPy** | `AlgoVoiDSPy` + `AlgoVoiPaymentTool` | `pip install dspy` | MPP, AP2, x402 | [ai-agent-frameworks/dspy/](./ai-agent-frameworks/dspy/) | **Available** — 78/78 tests, Phase 1 9/9 PASS 16 Apr 2026, Comet-validated |
 | **Vercel AI SDK** | `AlgoVoiVercelAI` + `VercelAIResult` | `npm i ai zod` | MPP, AP2, x402 | [ai-agent-frameworks/vercel-ai-sdk/](./ai-agent-frameworks/vercel-ai-sdk/) | **Available** — 79/79 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated — **TypeScript** |
 | **Google A2A** | `AlgoVoiA2A` + `AlgoVoiPaymentTool` | `pip install flask` | MPP, AP2, x402 | [ai-agent-frameworks/a2a/](./ai-agent-frameworks/a2a/) | **Available** — 84/84 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated |
+| **LangGraph** | `AlgoVoiLangGraph` + `AlgoVoiPaymentTool` | `pip install langgraph` | MPP, AP2, x402 | [ai-agent-frameworks/langgraph/](./ai-agent-frameworks/langgraph/) | **Available** — 77/77 tests, Phase 1 12/12 PASS 16 Apr 2026, Comet-validated |
+| **Agno** | `AlgoVoiAgno` + `AlgoVoiPaymentTool` | `pip install agno` | MPP, AP2, x402 | [ai-agent-frameworks/agno/](./ai-agent-frameworks/agno/) | **Available** — 88/88 tests, Phase 1 13/13 PASS 16 Apr 2026, Comet-validated |
 
 ### LangChain — Quick start
 
@@ -689,7 +691,7 @@ gate = AlgoVoiLangChain(
     algovoi_key    = "algv_...",
     tenant_id      = "...",
     payout_address = "...",
-    llm            = ChatAnthropic(model="claude-opus-4-5"),
+    llm            = ChatAnthropic(model="claude-opus-4-7"),
 )
 ```
 
@@ -715,7 +717,7 @@ executor = AgentExecutor(agent=agent, tools=[tool])
 
 The tool accepts `{"query": "...", "payment_proof": "<base64>"}`. Returns a challenge JSON dict if proof is absent or invalid; calls `resource_fn(query)` and returns the result if verified.
 
-All 6 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/langchain/README.md](./ai-agent-frameworks/langchain/README.md)
+All 7 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/langchain/README.md](./ai-agent-frameworks/langchain/README.md)
 
 ### LlamaIndex — Quick start
 
@@ -762,11 +764,11 @@ gate = AlgoVoiLlamaIndex(
     algovoi_key    = "algv_...",
     tenant_id      = "...",
     payout_address = "...",
-    llm            = Anthropic(model="claude-opus-4-5"),
+    llm            = Anthropic(model="claude-opus-4-7"),
 )
 ```
 
-All 6 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/llamaindex/README.md](./ai-agent-frameworks/llamaindex/README.md)
+All 7 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/llamaindex/README.md](./ai-agent-frameworks/llamaindex/README.md)
 
 ### CrewAI — Quick start
 
@@ -811,7 +813,7 @@ researcher = Agent(
 
 The tool uses `PaymentToolInput` (Pydantic `args_schema`) — the agent generates `{"query": "...", "payment_proof": "<base64>"}`, CrewAI validates it, and `_run(query, payment_proof)` is called directly as kwargs. Any `crewai.LLM` provider (OpenAI, Anthropic, Gemini, Bedrock, Groq, Together AI, …) is supported via the LiteLLM router.
 
-All 6 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/crewai/README.md](./ai-agent-frameworks/crewai/README.md)
+All 7 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/crewai/README.md](./ai-agent-frameworks/crewai/README.md)
 
 ### Hugging Face — Quick start
 
@@ -854,7 +856,7 @@ agent.run("Use premium_kb to answer my question.")
 
 The tool accepts `query` and `payment_proof` (base64) as kwargs. Returns challenge JSON if proof absent/invalid; calls `resource_fn(query)` and returns the result if verified. Works with any `smolagents` agent type (`ToolCallingAgent`, `CodeAgent`, custom).
 
-All 6 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/huggingface/README.md](./ai-agent-frameworks/huggingface/README.md)
+All 7 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/huggingface/README.md](./ai-agent-frameworks/huggingface/README.md)
 
 ### AutoGen — Quick start
 
@@ -902,7 +904,7 @@ from autogen_core.tools import FunctionTool
 fn_tool = FunctionTool(tool, description=tool.description, name=tool.name)
 ```
 
-All 6 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/autogen/README.md](./ai-agent-frameworks/autogen/README.md)
+All 7 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/autogen/README.md](./ai-agent-frameworks/autogen/README.md)
 
 ### Semantic Kernel — Quick start
 
@@ -939,7 +941,7 @@ kernel.add_plugin(plugin, plugin_name="premium_kb")
 
 The `gate` function accepts `query` and `payment_proof` (base64). Returns challenge JSON if proof absent/invalid; calls `resource_fn(query)` and returns the result if verified.
 
-All 6 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/semantic-kernel/README.md](./ai-agent-frameworks/semantic-kernel/README.md)
+All 7 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/semantic-kernel/README.md](./ai-agent-frameworks/semantic-kernel/README.md)
 
 ### Pydantic AI — Quick start
 
@@ -964,7 +966,7 @@ if not result.requires_payment:
 
 # Gate any pre-built Agent (with optional dependency injection)
 from pydantic_ai import Agent
-my_agent = Agent("anthropic:claude-opus-4-5", system_prompt="Be concise.")
+my_agent = Agent("anthropic:claude-opus-4-7", system_prompt="Be concise.")
 output   = gate.run_agent(my_agent, body["prompt"], deps=my_deps)
 ```
 
@@ -979,7 +981,7 @@ agent = Agent("openai:gpt-4o", tools=[Tool(tool, name=tool.name, description=too
 
 The tool accepts `query` and `payment_proof` (base64). Returns challenge JSON if proof absent/invalid; calls `resource_fn(query)` if verified. Supports all Pydantic AI providers — OpenAI, Anthropic, Google, Groq, Ollama, and any OpenAI-compatible endpoint via `base_url`.
 
-All 6 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/pydantic-ai/README.md](./ai-agent-frameworks/pydantic-ai/README.md)
+All 7 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/pydantic-ai/README.md](./ai-agent-frameworks/pydantic-ai/README.md)
 
 ### DSPy — Quick start
 
@@ -1030,7 +1032,7 @@ with dspy.context(lm=lm):
 
 All LLM calls use `dspy.context(lm=...)` — global `dspy.configure()` state is never modified. DSPy's `provider/model` string format is supported for OpenAI, Anthropic, Google, Cohere, Groq, Ollama, and Azure OpenAI.
 
-All 6 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/dspy/README.md](./ai-agent-frameworks/dspy/README.md)
+All 7 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/dspy/README.md](./ai-agent-frameworks/dspy/README.md)
 
 ### Vercel AI SDK — Quick start
 
@@ -1075,7 +1077,7 @@ const tool = gate.asTool(
 
 Supports any `@ai-sdk/*` provider — OpenAI, Anthropic, Google, Groq, Mistral, Cohere, Ollama, Azure. Uses `node:crypto` for MPP HMAC; requires Node.js runtime (not Edge) for MPP. x402 and AP2 work on Edge runtimes.
 
-All 6 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/vercel-ai-sdk/README.md](./ai-agent-frameworks/vercel-ai-sdk/README.md)
+All 7 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/vercel-ai-sdk/README.md](./ai-agent-frameworks/vercel-ai-sdk/README.md)
 
 ---
 
@@ -1114,7 +1116,7 @@ task = response["result"]  # {"id": "...", "status": {"state": "completed"}, "ar
 tool = gate.as_tool(lambda q: fetch_kb(q), tool_name="premium_kb")
 ```
 
-All 6 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/a2a/README.md](./ai-agent-frameworks/a2a/README.md)
+All 7 chains and all 3 protocols supported. Full reference: [ai-agent-frameworks/a2a/README.md](./ai-agent-frameworks/a2a/README.md)
 
 ---
 
@@ -1132,7 +1134,7 @@ All three adapters were shipped on **17 April 2026** and are Comet-validated end
 
 **Total: 225/225 tests · 21/21 smoke checks (Phase 1) · 3/3 live create_payment_link + verify_payment (Phase 2)**
 
-Supported across all 24 networks (12 mainnet + 12 testnet) on Algorand, VOI, Hedera, Stellar, Base, and Solana. All three adapters support MPP, x402, and AP2 challenge generation.
+Supported across all 28 networks (14 mainnet + 14 testnet) on Algorand, VOI, Hedera, Stellar, Base, Solana, and Tempo. All three adapters support MPP, x402, and AP2 challenge generation.
 
 ### Zapier — Quick start
 
