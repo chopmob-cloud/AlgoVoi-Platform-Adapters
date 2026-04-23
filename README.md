@@ -87,6 +87,14 @@ After signing in, open **Connect** from the sidebar. Every integration has a set
 | **Activepieces** | ⚡ 1-click | Open-source automation (self-host or cloud) |
 | **X (Twitter)** | ⌨️ CLI | Auto-post tweets on payment confirmation |
 
+#### Messaging Bots
+
+| Platform | Setup | Notes |
+|----------|-------|-------|
+| **X (Twitter) Bot** | ⚡ 1-click | Customers tweet `pay £X` → hosted USDC checkout link auto-replied |
+| **Telegram Bot** | ⚡ 1-click | Payment-confirmed reply after Telegram-initiated checkout |
+| **Viber Bot** | ⚡ 1-click | Viber webhook — payment links and confirmations via Viber messages |
+
 #### AI Assistants
 
 | Platform | Setup | Notes |
