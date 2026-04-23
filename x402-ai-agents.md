@@ -259,4 +259,4 @@ Both flows use the same tenant network configs, payout addresses, and on-chain v
 
 - [x402 Protocol specification](https://www.x402.org)
 - [Coinbase x402 reference](https://docs.cdp.coinbase.com/x402/docs/welcome)
-- [AlgoVoi hosted checkout](https://av.ilc-n.xyz)
+- [AlgoVoi hosted checkout](https://www.algovoi.co.uk)
