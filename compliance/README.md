@@ -6,6 +6,8 @@ auditors, and security researchers can review them without NDA.
 
 ## Document set
 
+### Security (Tier A — fully public)
+
 | Policy | Maps to SOC 2 criteria | Last reviewed |
 |---|---|---|
 | [Information Security Policy](INFORMATION_SECURITY_POLICY.md) | Security (CC1–CC9) | 2026-04-19 |
@@ -15,6 +17,35 @@ auditors, and security researchers can review them without NDA.
 | [Business Continuity & Disaster Recovery](BUSINESS_CONTINUITY_PLAN.md) | Availability | 2026-04-19 |
 | [Vendor Management Policy](VENDOR_MANAGEMENT_POLICY.md) | Security (CC9) | 2026-04-19 |
 | [Acceptable Use Policy](ACCEPTABLE_USE_POLICY.md) | Security (CC1) | 2026-04-19 |
+
+### AML / Privacy (Tier A — fully public)
+
+| Policy | Last reviewed |
+|---|---|
+| [AML Policy](AML_POLICY.md) | 2026-04-26 |
+| [DPA Template](DPA_TEMPLATE.md) | 2026-04-26 |
+| [Data Breach Procedure](DATA_BREACH_PROCEDURE.md) | 2026-04-26 |
+| [Complaints Procedure](COMPLAINTS_PROCEDURE.md) | 2026-04-26 |
+| [Retention Procedure](RETENTION_PROCEDURE.md) | 2026-04-26 |
+
+### AML / Privacy (Tier B — public summary, full document under NDA)
+
+| Document | Last reviewed |
+|---|---|
+| [Business-Wide Risk Assessment (BWRA)](BWRA.md) | 2026-04-26 |
+| [CDD/EDD Procedure](CDD_EDD_PROCEDURE.md) | 2026-04-26 |
+| [Transaction Monitoring Procedure](TRANSACTION_MONITORING_PROCEDURE.md) | 2026-04-26 |
+| [Record of Processing Activities (RoPA)](ROPA.md) | 2026-04-26 |
+| [Customer Risk Scoring Matrix](CUSTOMER_RISK_SCORING_MATRIX.md) | 2026-04-26 |
+| [Sanctions Screening Procedure](SANCTIONS_PROCEDURE.md) | 2026-04-26 |
+| [PEP Screening Procedure](PEP_SCREENING_PROCEDURE.md) | 2026-04-26 |
+
+### Tier C — statement only on the public compliance page
+
+- SAR Procedure (operational; not published in detail per UKFIU guidance — capability statement only)
+- MLRO designation (MLRO name and contact published on the compliance page)
+- IP Assignment (statement: IP fully assigned to the operating company; document held internally)
+- Training Log (statement: annual AML / security training completed; log held internally)
 
 ## Scope
 
