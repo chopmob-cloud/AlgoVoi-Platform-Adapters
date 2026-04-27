@@ -115,6 +115,56 @@ The wallet-level screening pipeline is open in this repository
 The commercial provider's identity (once selected) and full
 match-handling logic will be held under NDA.
 
+## 8a. URL / IP screening and lawful basis
+
+AlgoVoi screens four surfaces against threat-intelligence and
+sanctioned-jurisdiction signals as part of its risk-based approach:
+
+| Surface | When | What is checked |
+|---|---|---|
+| Signup IP | At `/cloud-signup/create` | Tor exit-node membership; SpamHaus DROP/EDROP CIDR; sanctioned-jurisdiction GeoIP (DPRK / Iran / Syria / Cuba → block; FATF grey-list → escalate to MLRO) |
+| Merchant `redirect_url` | At every checkout creation | Sanctioned TLD; URLhaus / PhishTank / OpenPhish threat feeds; UK bank-brand homograph; redirect-chain following (5 hops); MLRO deny list |
+| Webhook destination URL | At configuration + at every delivery attempt | SSRF defense (private IPs, link-local, cloud metadata, RFC 6761 reserved suffixes, non-HTTPS); DNS-rebinding guard at delivery time |
+| Tenant signup IP geolocation | At signup | Country-level sanctioned-jurisdiction screening |
+
+**Lawful basis (UK GDPR Art. 6(1)(f) — legitimate interests):**
+
+The processing of an IP address (Art. 4(1) personal data) and of URL
+strings (which may contain personal data in query parameters) is
+necessary for the legitimate interest of preventing the use of
+AlgoVoi for money laundering, terrorist financing, sanctions
+evasion, fraud, and Article 5(1)(f) integrity / confidentiality
+of the platform.
+
+**Balancing test (LIA summary):**
+
+- Necessity — without this processing, AlgoVoi cannot meet its
+  AML/CTF or its Article 32 security obligations. There is no
+  less-intrusive alternative that achieves the same outcome.
+- Proportionality — only the IP and URL strings necessary for the
+  check are processed; query strings are stripped before audit-log
+  retention; results are stored as machine-readable reason codes,
+  not as full-content snapshots.
+- Data subject impact — minimal. Legitimate users hitting clean
+  endpoints from clean IPs see no friction. Users on blocked surfaces
+  receive a refusal with an appeal-email path so the automated
+  decision is not the final word (UK GDPR Art. 22 mitigation —
+  see `URL_SCREENING_TIER1_2026-04-27.md` for the operational detail).
+- Retention — IP-derived audit events follow the platform's general
+  audit-log policy (1 year general; 5 years AML-sensitive).
+
+**Article 22 (automated individual decision-making):** Hard-block
+outcomes (Tor exit IP, sanctioned-jurisdiction TLD, confirmed
+threat-feed match) constitute an automated decision with significant
+effect on the data subject (refusal of service). Each block response
+includes a clear human-review appeal route via
+`security@algovoi.co.uk`. The policy framework (this document) is the
+"suitable measures" prong of Art. 22(2)(b)/(3) requirements.
+
+**A DPIA-summary** for IP/URL screening is included in the BWRA
+update; the screening-specific portion is recorded as an Annex to
+the RoPA.
+
 ## 9. Transaction monitoring
 
 All payment activity is monitored against a defined ruleset that targets

@@ -89,6 +89,20 @@ level detail, is held under NDA.
 | Categories | Vendor contact data, contract metadata, due-diligence outputs |
 | Retention | 6 years from end of vendor relationship |
 
+### 3.7 URL / IP screening (financial-crime prevention)
+
+| Field | Value |
+|---|---|
+| Purpose | Detect and refuse the use of AlgoVoi for money laundering, terrorist financing, sanctions evasion, fraud, and SSRF / DNS-rebinding attacks against the platform. Four enforcement points: signup IP, checkout `redirect_url`, webhook configuration URL, webhook delivery-time DNS-rebinding guard. |
+| Lawful basis | Legitimate interests (UK GDPR Art. 6(1)(f)) for fraud and financial-crime prevention; integrity / confidentiality of processing (Art. 5(1)(f)). LIA balancing test recorded in `AML_POLICY.md` §8a. |
+| Categories of personal data | IP address (Art. 4(1) personal data per Breyer line of cases); URL strings (which may incidentally contain identifiers in query parameters — these are stripped via `redact_url_for_audit` before any audit-log persistence) |
+| Categories of data subjects | Prospective merchants (signup IP); end-customers (checkout `redirect_url` is configured by the merchant but reflects routing for the customer); merchants' configured webhook destinations (typically server-side, no personal data) |
+| Recipients | Internal: MLRO + ISO. External (read-only references against public lists): UK OFSI, US OFAC, EU consolidated sanctions lists, Tor Project public exit list, SpamHaus DROP/EDROP, abuse.ch URLhaus / ThreatFox, OpenPhish, PhishTank. No personal data is sent to these external sources — they are read-only feed providers. |
+| International transfers | None initiated by AlgoVoi; the screening data feeds are downloaded as public files to local cache (read-only, no upload of any AlgoVoi data) |
+| Retention | Reason-coded audit events follow the general audit-log policy (1 year general, 5 years AML-sensitive). The IP value itself is logged at WARNING level per the platform logging policy (90-day retention). Full URL strings are NEVER persisted in the audit log — only scheme + host + path after `redact_url_for_audit` strips query string and fragment. |
+| Security measures | TLS in transit (read-only feed downloads from public sources); encrypted at rest at the volume layer; access on need-to-know basis. Reason codes are machine-readable and contain no PII. |
+| Article 22 compliance | Automated decisions with significant effect (signup refusal, checkout refusal, webhook configuration refusal) include a human-review appeal route via `security@algovoi.co.uk` printed in the block response. The framework is documented in `AML_POLICY.md` §8a. |
+
 ## 4. Data subject rights
 
 AlgoVoi supports the rights of access, rectification, erasure (subject
