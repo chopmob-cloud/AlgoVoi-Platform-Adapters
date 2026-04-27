@@ -98,8 +98,8 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(
-            viewport={"width": 600, "height": 720},
-            device_scale_factor=2,
+            viewport={"width": 720, "height": 900},
+            device_scale_factor=3,   # 3x DPR for crisp HQ output
         )
         page = context.new_page()
 

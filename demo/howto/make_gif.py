@@ -22,10 +22,11 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 CAPTURES = os.path.join(ROOT, "captures")
 ASSETS   = os.path.join(ROOT, "assets")
 LOGO     = os.path.join(ASSETS, "algovoi_logo.png")   # canonical AV+wordmark
-OUTPUT   = os.path.join(ROOT, "algovoi_howto.gif")
+OUTPUT_GIF = os.path.join(ROOT, "algovoi_howto.gif")
+OUTPUT_MP4 = os.path.join(ROOT, "algovoi_howto.mp4")
 
 # ── Theme (matches canonical AlgoVoi panel palette) ──────────────────────────
-W, H = 900, 600
+W, H = 1800, 1200    # 2x previous; sharp on retina + scales down crisply
 BG          = (15,  17,  23)    # #0f1117
 PANEL_BG    = (20,  22,  34)    # #141622
 PANEL_BORD  = (31,  34,  53)    # #1f2235
@@ -37,7 +38,7 @@ ACCENT      = ( 99, 102, 241)   # indigo
 ACCENT_2    = (139,  92, 246)   # purple
 BRAND       = ( 59, 130, 246)   # canonical AlgoVoi blue
 
-FPS = 20
+FPS = 30
 def F(seconds: float) -> int: return int(seconds * FPS)
 
 
@@ -97,11 +98,11 @@ def make_canvas() -> Image.Image:
     return img
 
 
-def draw_brand_header(draw: ImageDraw.ImageDraw, img: Image.Image, y_offset: int = 28) -> int:
+def draw_brand_header(draw: ImageDraw.ImageDraw, img: Image.Image, y_offset: int = 56) -> int:
     """Place the canonical AlgoVoi wordmark logo top-left.  Returns y_after."""
-    logo = load_logo(target_height=44)
-    img.paste(logo, (28, y_offset), logo)
-    return y_offset + logo.height + 16
+    logo = load_logo(target_height=88)
+    img.paste(logo, (56, y_offset), logo)
+    return y_offset + logo.height + 32
 
 
 def paste_centered(canvas: Image.Image, image: Image.Image, *, top: int) -> tuple[int, int]:
@@ -125,19 +126,19 @@ def scene_title() -> Image.Image:
     img = make_canvas()
     draw = ImageDraw.Draw(img)
     # Centred wordmark logo
-    logo = load_logo(target_height=140)
-    img.paste(logo, ((W - logo.width) // 2, 110), logo)
+    logo = load_logo(target_height=280)
+    img.paste(logo, ((W - logo.width) // 2, 220), logo)
     # Tagline
-    f_title = load_font(48, bold=True)
-    f_sub   = load_font(20)
+    f_title = load_font(96, bold=True)
+    f_sub   = load_font(40)
     title = "Pay with Crypto"
-    draw.text(((W - text_w(draw, title, f_title)) // 2, 290), title, font=f_title, fill=TEXT_BRIGHT)
+    draw.text(((W - text_w(draw, title, f_title)) // 2, 580), title, font=f_title, fill=TEXT_BRIGHT)
     sub = "USDC / aUSDC / USDCe  -  7 chains  -  one design"
-    draw.text(((W - text_w(draw, sub, f_sub)) // 2, 358), sub, font=f_sub, fill=TEXT_DIM)
+    draw.text(((W - text_w(draw, sub, f_sub)) // 2, 716), sub, font=f_sub, fill=TEXT_DIM)
     # Footer URL
-    f_foot = load_font(14)
+    f_foot = load_font(28)
     foot = "github.com/chopmob-cloud/AlgoVoi-Platform-Adapters"
-    draw.text(((W - text_w(draw, foot, f_foot)) // 2, H - 60), foot, font=f_foot, fill=TEXT_MUTED)
+    draw.text(((W - text_w(draw, foot, f_foot)) // 2, H - 120), foot, font=f_foot, fill=TEXT_MUTED)
     return img
 
 
@@ -147,20 +148,20 @@ def scene_panel(capture_name: str, headline: str, sub: str) -> Image.Image:
     draw = ImageDraw.Draw(img)
     draw_brand_header(draw, img)
     # Headline / sub
-    f_head = load_font(28, bold=True)
-    f_sub  = load_font(15)
-    draw.text((32, 100), headline, font=f_head, fill=TEXT_BRIGHT)
-    draw.text((32, 140), sub, font=f_sub, fill=TEXT_DIM)
+    f_head = load_font(56, bold=True)
+    f_sub  = load_font(28)
+    draw.text((64, 200), headline, font=f_head, fill=TEXT_BRIGHT)
+    draw.text((64, 280), sub, font=f_sub, fill=TEXT_DIM)
     # Panel image
     panel = Image.open(os.path.join(CAPTURES, capture_name)).convert("RGB")
     pw, ph = panel.size
-    # Panel screenshots from playwright at 2x DPR — scale down for canvas fit
-    target_w = 460
+    # Panel screenshots from playwright at 3x DPR — scale to fit canvas
+    target_w = 920
     scale = target_w / pw
     panel = panel.resize((target_w, int(ph * scale)), Image.LANCZOS)
     pw, ph = panel.size
     px = (W - pw) // 2
-    py = 195
+    py = 390
     img.paste(panel, (px, py))
     return img
 
@@ -169,18 +170,18 @@ def scene_widget() -> Image.Image:
     img = make_canvas()
     draw = ImageDraw.Draw(img)
     draw_brand_header(draw, img)
-    f_head = load_font(28, bold=True)
-    f_sub  = load_font(15)
-    draw.text((32, 100), "Embeddable on any site", font=f_head, fill=TEXT_BRIGHT)
-    draw.text((32, 140),
-              "<script src='widget.algovoi.co.uk/widget.js'></script>  + one HTML element.  No backend.",
+    f_head = load_font(56, bold=True)
+    f_sub  = load_font(26)
+    draw.text((64, 200), "Embeddable on any site", font=f_head, fill=TEXT_BRIGHT)
+    draw.text((64, 280),
+              "<script src='widget.algovoi.co.uk/widget.js'></script>  +  one HTML element.  No backend.",
               font=f_sub, fill=TEXT_DIM)
     widget = Image.open(os.path.join(CAPTURES, "widget_default.png")).convert("RGB")
     ww, wh = widget.size
-    target_w = 480
+    target_w = 960
     scale = target_w / ww
     widget = widget.resize((target_w, int(wh * scale)), Image.LANCZOS)
-    img.paste(widget, ((W - target_w) // 2, 185))
+    img.paste(widget, ((W - target_w) // 2, 380))
     return img
 
 
@@ -188,22 +189,22 @@ def scene_end() -> Image.Image:
     img = make_canvas()
     draw = ImageDraw.Draw(img)
     # Canonical wordmark logo, centred
-    logo = load_logo(target_height=110)
-    img.paste(logo, ((W - logo.width) // 2, 90), logo)
+    logo = load_logo(target_height=220)
+    img.paste(logo, ((W - logo.width) // 2, 180), logo)
     # Tagline
-    f_h = load_font(38, bold=True)
+    f_h = load_font(76, bold=True)
     line1 = "Same panel."
     line2 = "Every platform."
-    draw.text(((W - text_w(draw, line1, f_h)) // 2, 240), line1, font=f_h, fill=TEXT_BRIGHT)
-    draw.text(((W - text_w(draw, line2, f_h)) // 2, 290), line2, font=f_h, fill=TEXT_BRIGHT)
+    draw.text(((W - text_w(draw, line1, f_h)) // 2, 480), line1, font=f_h, fill=TEXT_BRIGHT)
+    draw.text(((W - text_w(draw, line2, f_h)) // 2, 580), line2, font=f_h, fill=TEXT_BRIGHT)
     # Platform list
-    f_p = load_font(14)
+    f_p = load_font(28)
     plats = ["Shopify", "WooCommerce", "PrestaShop", "OpenCart", "Shopware", "Magento 2", "x402 widget"]
-    line = "  |  ".join(plats)
-    draw.text(((W - text_w(draw, line, f_p)) // 2, 380), line, font=f_p, fill=TEXT_DIM)
-    f_url = load_font(15, bold=True)
+    line = "   |   ".join(plats)
+    draw.text(((W - text_w(draw, line, f_p)) // 2, 760), line, font=f_p, fill=TEXT_DIM)
+    f_url = load_font(30, bold=True)
     url = "github.com/chopmob-cloud/AlgoVoi-Platform-Adapters"
-    draw.text(((W - text_w(draw, url, f_url)) // 2, 440), url, font=f_url, fill=BRAND)
+    draw.text(((W - text_w(draw, url, f_url)) // 2, 880), url, font=f_url, fill=BRAND)
     return img
 
 
@@ -255,19 +256,49 @@ def main():
 
     print(f"  total frames: {len(frames)}  (~{len(frames) / FPS:.1f}s @ {FPS}fps)")
 
-    # Quantise to GIF palette in one batch
-    print("Quantising + writing GIF...")
-    quantised = [f.quantize(colors=256, method=Image.MEDIANCUT, dither=Image.Dither.FLOYDSTEINBERG) for f in frames]
+    # ── MP4 export (H.264) ───────────────────────────────────────────────
+    # Much smaller filesize and far higher quality than the GIF for the
+    # same canvas — preferred for social media and embedded README hero.
+    print("Encoding MP4 (H.264 via imageio_ffmpeg)...")
+    try:
+        import imageio.v2 as imageio   # type: ignore
+        import numpy as np             # type: ignore
+        writer = imageio.get_writer(
+            OUTPUT_MP4,
+            fps=FPS,
+            codec="libx264",
+            quality=8,                 # 1-10 (low-high), 8 = visually lossless
+            macro_block_size=1,         # allow non-multiple-of-16 dimensions
+            pixelformat="yuv420p",      # max compatibility
+            ffmpeg_params=["-movflags", "+faststart"],
+        )
+        for f in frames:
+            writer.append_data(np.array(f))
+        writer.close()
+        mp4_kb = os.path.getsize(OUTPUT_MP4) // 1024
+        print(f"  MP4: {OUTPUT_MP4}  ({mp4_kb} KB)")
+    except Exception as exc:
+        print(f"  MP4 skipped: {exc}")
+
+    # ── GIF export (downscale for size — full HQ stays in the MP4) ───────
+    # Animated GIFs blow up exponentially with resolution.  Render the GIF
+    # at half-canvas (900x600) so it stays embeddable on GitHub READMEs.
+    print("Encoding GIF (downsampled to 900x600 for GitHub-friendly size)...")
+    gif_frames = [f.resize((W // 2, H // 2), Image.LANCZOS) for f in frames]
+    quantised = [
+        f.quantize(colors=256, method=Image.MEDIANCUT, dither=Image.Dither.FLOYDSTEINBERG)
+        for f in gif_frames
+    ]
     quantised[0].save(
-        OUTPUT,
+        OUTPUT_GIF,
         save_all=True,
         append_images=quantised[1:],
         duration=int(1000 / FPS),
         loop=0,
         optimize=True,
     )
-    size_kb = os.path.getsize(OUTPUT) // 1024
-    print(f"\nWritten: {OUTPUT}  ({size_kb} KB)")
+    gif_kb = os.path.getsize(OUTPUT_GIF) // 1024
+    print(f"  GIF: {OUTPUT_GIF}  ({gif_kb} KB)")
 
 
 if __name__ == "__main__":
