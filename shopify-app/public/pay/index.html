@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Your Crypto Payment — AlgoVoi</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f1117;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* ── AlgoVoi panel — same canonical design as Woo/PS/OC/SW/M2 ─────────── */
+    .panel {
+      background: #141622;
+      border: 1px solid #1f2235;
+      border-radius: 8px;
+      padding: 18px 20px;
+      max-width: 440px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Single inline-flow header */
+    .header {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .header .icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .header .brand {
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .badge {
+      font-size: 11px;
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+    .badge.type    { color: #6b7280; border: 1px solid #1f2235; }
+    .badge.secure  { background: rgba(99,102,241,.1); color: #818cf8; font-weight: 600; }
+    .badge.redir   { background: rgba(245,158,11,.1); color: #fbbf24; font-weight: 600; }
+
+    /* Title and order info inside the panel */
+    .order-line {
+      font-size: 12.5px;
+      color: #9ca3af;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .order-line strong { color: #f1f2f6; font-weight: 600; }
+
+    /* Extension auto-pay badge */
+    .ext-badge {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #34d399;
+      background: rgba(16,185,129,.1);
+      border: 1px solid rgba(16,185,129,.3);
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+    }
+    .ext-badge.visible { display: flex; }
+    .ext-badge::before { content: '⚡'; }
+
+    /* Success panel after extension pays */
+    .success-panel {
+      display: none;
+      padding: 16px;
+      background: rgba(16,185,129,.08);
+      border: 1px solid rgba(16,185,129,.3);
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+    .success-panel.visible { display: block; }
+    .success-panel h2 {
+      font-size: 16px;
+      color: #34d399;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .success-panel p { font-size: 13px; color: #86efac; }
+    .success-panel .tx-id {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 8px;
+      word-break: break-all;
+    }
+
+    /* Network dropdown row — matches OpenCart reference */
+    .net-row { margin-bottom: 14px; }
+    .net-label {
+      display: block;
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #6b7280;
+      margin-bottom: .4rem;
+    }
+    .net-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: background .2s;
+    }
+    .select-wrap { position: relative; flex: 1; }
+    .select-wrap select {
+      width: 100%;
+      padding: .55rem .75rem;
+      background: #0d0e1a;
+      border: 1px solid #2a2d3a;
+      border-radius: 7px;
+      color: #f1f2f6;
+      font-size: .92rem;
+      font-family: inherit;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color .15s;
+    }
+    .select-wrap select:focus { border-color: #6366f1; }
+    .select-wrap .chev {
+      position: absolute;
+      right: .8rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6b7280;
+      pointer-events: none;
+      font-size: .8rem;
+    }
+
+    /* Pay button */
+    .btn-pay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 16px;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background .15s, transform .08s;
+      min-height: 48px;
+      margin-bottom: 10px;
+      font-family: inherit;
+    }
+    .btn-pay:hover  { background: #2563eb; }
+    .btn-pay:active { transform: scale(.99); }
+    .btn-pay.loading { opacity: .65; pointer-events: none; }
+    .btn-pay .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    .btn-pay.loading .spinner { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Footer */
+    .footer {
+      padding-top: .65rem;
+      border-top: 1px solid #1f2235;
+      font-size: .68rem;
+      color: #4b5563;
+      line-height: 1.5;
+    }
+    .footer a {
+      color: #6366f1;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .footer .dim { color: #374151; }
+
+    /* Error */
+    .error {
+      display: none;
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      color: #fca5a5;
+      margin-bottom: 14px;
+    }
+    .error.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+
+    <!-- Single-flow header -->
+    <div class="header">
+      <span class="icon">&#9670;</span>
+      <strong class="brand">AlgoVoi</strong>
+      <span class="badge type">Hosted</span>
+      <span class="badge secure">Secure</span>
+      <span class="badge redir">Redirect</span>
+    </div>
+
+    <!-- Order info line -->
+    <div class="order-line" id="order-info">Loading order details…</div>
+
+    <!-- Extension auto-pay badge -->
+    <div class="ext-badge" id="ext-badge">
+      AlgoVoi extension detected — paying automatically…
+    </div>
+
+    <!-- Success panel (shown after extension pays) -->
+    <div class="success-panel" id="success-panel">
+      <h2>&#10003; Payment Confirmed</h2>
+      <p>Your order has been marked as paid.</p>
+      <div class="tx-id" id="tx-id"></div>
+    </div>
+
+    <!-- Error -->
+    <div class="error" id="error">Missing order information. Please return to your order confirmation email.</div>
+
+    <!-- Manual selector + button (always shown as fallback) -->
+    <div id="manual-flow">
+      <div class="net-row">
+        <label for="net-sel" class="net-label">Select network</label>
+        <div class="net-select-wrap">
+          <span id="net-dot" class="dot" style="background:#3b82f6;"></span>
+          <div class="select-wrap">
+            <select id="net-sel">
+              <option value="ALGO" data-colour="#3b82f6">Algorand — USDC</option>
+              <option value="VOI"  data-colour="#8b5cf6">VOI — aUSDC</option>
+              <option value="HBAR" data-colour="#10b981">Hedera — USDC</option>
+              <option value="XLM"  data-colour="#06b6d4">Stellar — USDC</option>
+              <option value="BASE" data-colour="#2563eb">Base — USDC</option>
+              <option value="SOL"  data-colour="#9333ea">Solana — USDC</option>
+              <option value="TEMPO" data-colour="#f59e0b">Tempo — USDCe</option>
+            </select>
+            <span class="chev">&#9662;</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-pay" class="btn-pay" type="button">
+        Pay with Crypto
+        <span class="spinner"></span>
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      Secured by <a href="https://www.algovoi.co.uk" target="_blank" rel="noopener">AlgoVoi</a>
+      &mdash; instant on-chain settlement
+      <span class="dim">&middot; No chargebacks &middot; No FX fees</span>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var BASE    = 'https://worker.algovoi.co.uk';
+    var params  = new URLSearchParams(window.location.search);
+    var shop    = params.get('shop');
+    var orderId = params.get('order_id');
+
+    // No params → show error
+    if (!shop || !orderId) {
+      document.getElementById('order-info').style.display    = 'none';
+      document.getElementById('manual-flow').style.display   = 'none';
+      document.getElementById('error').classList.add('visible');
+      return;
+    }
+
+    // Order info
+    document.getElementById('order-info').innerHTML =
+      'Order <strong>#' + orderId + '</strong> · ' + shop.replace('.myshopify.com', '');
+
+    // Live colour-dot indicator on dropdown change
+    var sel = document.getElementById('net-sel');
+    var dot = document.getElementById('net-dot');
+    sel.addEventListener('change', function () {
+      var opt = sel.options[sel.selectedIndex];
+      dot.style.background = opt.getAttribute('data-colour') || '#3b82f6';
+    });
+
+    // Pay button → /api/pay-redirect with chosen chain
+    function makeRedirectUrl(chain) {
+      return BASE + '/api/pay-redirect?' +
+        new URLSearchParams({ shop: shop, order_id: orderId, chain: chain }).toString();
+    }
+    var btn = document.getElementById('btn-pay');
+    btn.addEventListener('click', function () {
+      btn.classList.add('loading');
+      setTimeout(function () {
+        window.location.href = makeRedirectUrl(sel.value);
+      }, 80);
+    });
+
+    // ── x402 auto-pay via extension ──────────────────────────────────────────
+    // The AlgoVoi browser extension intercepts the 402 response, handles
+    // on-chain payment, then retries with X-Payment header. If retry returns
+    // 200, we show success and redirect.
+
+    function attemptX402(chain) {
+      var sessionUrl = BASE + '/api/x402/session?' +
+        new URLSearchParams({ shop: shop, order_id: orderId, chain: chain }).toString();
+
+      document.getElementById('ext-badge').textContent =
+        'AlgoVoi extension detected — paying automatically (' + chain + ')…';
+      document.getElementById('ext-badge').classList.add('visible');
+
+      fetch(sessionUrl, {
+        method:  'GET',
+        headers: { 'Accept': 'application/json' },
+      })
+      .then(function (res) {
+        if (res.ok) {
+          return res.json().then(function (data) { onPaymentSuccess(data); });
+        }
+        document.getElementById('ext-badge').classList.remove('visible');
+      })
+      .catch(function () {
+        document.getElementById('ext-badge').classList.remove('visible');
+      });
+    }
+
+    function onPaymentSuccess(data) {
+      document.getElementById('manual-flow').style.display = 'none';
+      document.getElementById('ext-badge').style.display   = 'none';
+
+      document.getElementById('success-panel').classList.add('visible');
+      if (data.txId) {
+        document.getElementById('tx-id').textContent = 'Transaction: ' + data.txId;
+      }
+      if (data.order_status_url) {
+        setTimeout(function () { window.location.href = data.order_status_url; }, 2500);
+      }
+    }
+
+    // Detect extension via window.algovoi flag — only AVM (Algorand/VOI) auto-pay
+    function checkExtensionAndAttempt() {
+      if (window.algovoi && window.algovoi.x402) {
+        var preferredChain = (window.algovoi.preferredChain || 'ALGO').toUpperCase();
+        attemptX402(preferredChain);
+      }
+    }
+    setTimeout(checkExtensionAndAttempt, 300);
+  })();
+  </script>
+</body>
+</html>

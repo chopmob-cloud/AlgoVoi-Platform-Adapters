@@ -29,7 +29,6 @@ Thumbs.db
 
 # Nginx server configs (contain server-specific IPs and paths)
 nginx/
-shopify-app/
 
 # WooCommerce dev/test helpers — not for distribution
 woocommerce/wc-basic-auth.php
@@ -61,3 +60,12 @@ no-code/n8n/n8n-nodes-algovoi/dist/
 no-code/activepieces/algovoi-piece/node_modules/
 no-code/activepieces/algovoi-piece/dist/
 no-code/**/package-lock.json
+
+# Local Shopify merchant credentials (never commit)
+shopify-details.txt
+
+# Shopify app build/cache artefacts (source is committed, build outputs are not)
+shopify-app/node_modules/
+shopify-app/.shopify/
+shopify-app/extensions/*/dist/
+shopify-app/package-lock.json

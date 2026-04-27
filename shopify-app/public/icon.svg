@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#00C8FF"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dark background -->
+  <rect width="512" height="512" rx="80" fill="#0D1117"/>
+
+  <!-- Gradient rounded square background for AV badge -->
+  <rect x="80" y="80" width="352" height="352" rx="60" fill="url(#grad)"/>
+
+  <!-- AV text in dark -->
+  <text
+    x="256"
+    y="320"
+    text-anchor="middle"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-weight="900"
+    font-size="220"
+    fill="#0D1117"
+    letter-spacing="-6"
+  >AV</text>
+</svg>

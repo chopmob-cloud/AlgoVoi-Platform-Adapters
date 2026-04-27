@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoVoi — Privacy Policy</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f6f6f7; color: #1a1a2e; line-height: 1.7; padding: 40px 20px; }
+    .container { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,0.06); padding: 48px 40px; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    .updated { font-size: 13px; color: #637381; margin-bottom: 32px; }
+    h2 { font-size: 18px; margin: 28px 0 12px; color: #1a1a2e; }
+    p, li { font-size: 15px; color: #3c4257; margin-bottom: 12px; }
+    ul { padding-left: 24px; }
+    a { color: #5c6ac4; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #637381; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: April 7, 2026</p>
+
+    <h2>Who we are</h2>
+    <p>AlgoVoi is a cryptocurrency payment platform operated by iLoveChicken.co.uk ("we", "us", "our"). This policy covers the AlgoVoi Shopify App.</p>
+
+    <h2>What data we collect</h2>
+    <p>When a merchant installs the AlgoVoi Shopify App, we collect and store:</p>
+    <ul>
+      <li><strong>Shop domain</strong> — your .myshopify.com address</li>
+      <li><strong>Shopify access token</strong> — used to read and update orders on your behalf</li>
+      <li><strong>AlgoVoi credentials</strong> — your Tenant ID and API key (entered by you during setup)</li>
+    </ul>
+    <p>This data is stored in Cloudflare Workers KV, encrypted at rest.</p>
+
+    <h2>What data we do NOT collect</h2>
+    <p>We do <strong>not</strong> collect, store, or process any customer personal data, including:</p>
+    <ul>
+      <li>Customer names, email addresses, or phone numbers</li>
+      <li>Billing or shipping addresses</li>
+      <li>Payment card details</li>
+      <li>Browser fingerprints or tracking data</li>
+    </ul>
+    <p>Order data (amounts, order numbers) is processed transiently to create payment links but is not stored by AlgoVoi.</p>
+
+    <h2>How we use your data</h2>
+    <ul>
+      <li>Create cryptocurrency payment links for your customers' orders</li>
+      <li>Update order notes with payment links</li>
+      <li>Mark orders as paid when payment is confirmed on-chain</li>
+      <li>Verify webhook signatures for security</li>
+    </ul>
+
+    <h2>Data sharing</h2>
+    <p>We do not sell, rent, or share your data with third parties. Payment transactions are processed on public blockchains (Algorand, VOI, Hedera, Stellar) which are inherently transparent.</p>
+
+    <h2>Data retention</h2>
+    <p>Merchant credentials are retained while the app is installed. When you uninstall the app, Shopify sends a <code>shop/redact</code> webhook and we delete all stored data for your shop within 48 hours.</p>
+
+    <h2>Data security</h2>
+    <ul>
+      <li>All communication uses HTTPS/TLS</li>
+      <li>Webhook signatures verified via HMAC-SHA256</li>
+      <li>Access tokens stored in Cloudflare Workers KV (encrypted at rest)</li>
+      <li>No customer PII stored at any point</li>
+    </ul>
+
+    <h2>Your rights</h2>
+    <p>Under GDPR, you have the right to access, rectify, or delete your data. Contact us at the address below.</p>
+
+    <h2>GDPR compliance</h2>
+    <p>We implement all three mandatory Shopify GDPR webhooks:</p>
+    <ul>
+      <li><strong>customers/data_request</strong> — we confirm no customer data is stored</li>
+      <li><strong>customers/redact</strong> — we confirm no customer data to delete</li>
+      <li><strong>shop/redact</strong> — we delete all merchant data from our systems</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>For privacy questions or data requests:<br>
+    <a href="https://x.com/AlgoVoi">@AlgoVoi on X</a><br>
+    iLoveChicken.co.uk</p>
+
+    <div class="footer">
+      AlgoVoi &copy; 2026 iLoveChicken.co.uk. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

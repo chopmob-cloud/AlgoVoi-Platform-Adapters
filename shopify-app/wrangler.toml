@@ -1,0 +1,7 @@
+name = "algovoi-shopify-app"
+compatibility_date = "2026-04-05"
+pages_build_output_dir = "public"
+
+[[kv_namespaces]]
+binding = "MERCHANTS"
+id = "YOUR_KV_NAMESPACE_ID"

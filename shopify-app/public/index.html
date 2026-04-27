@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoVoi Payments — Setup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f6f6f7; color: #202223; }
+    .container { max-width: 560px; margin: 60px auto; padding: 0 20px; }
+    .card { background: white; border-radius: 8px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    p.sub { color: #6d7175; font-size: 14px; margin-bottom: 28px; }
+    label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #c9cccf; border-radius: 6px; font-size: 14px; margin-bottom: 18px; }
+    input:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,.15); }
+    button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 500; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    button:disabled { background: #c9cccf; cursor: not-allowed; }
+    .status { margin-top: 18px; padding: 12px 16px; border-radius: 6px; font-size: 14px; display: none; }
+    .status.success { background: #e3f5e1; color: #1a6b1a; display: block; }
+    .status.error   { background: #fce8e6; color: #b81c1c; display: block; }
+    .badge { display: inline-block; background: #e3f5e1; color: #1a6b1a; font-size: 12px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h1>AlgoVoi Payments <span id="installed-badge" style="display:none" class="badge">Installed</span></h1>
+    <p class="sub">Accept ALGO, VOI and other crypto payments in your Shopify store.</p>
+
+    <label for="tenant">AlgoVoi Tenant ID</label>
+    <input type="text" id="tenant" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+
+    <label for="apikey">AlgoVoi API Key</label>
+    <input type="password" id="apikey" placeholder="algv_...">
+
+    <button id="save-btn" onclick="connect()">Connect Store</button>
+    <div class="status" id="status"></div>
+  </div>
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const shop   = params.get('shop') || '';
+
+  if (params.get('installed')) {
+    document.getElementById('installed-badge').style.display = 'inline-block';
+  }
+
+  if (!shop) {
+    document.getElementById('save-btn').disabled = true;
+    showStatus('No shop detected. Install this app from your Shopify admin.', 'error');
+  }
+
+  async function connect() {
+    const tenantId = document.getElementById('tenant').value.trim();
+    const apiKey   = document.getElementById('apikey').value.trim();
+    const btn      = document.getElementById('save-btn');
+
+    if (!tenantId || !apiKey) {
+      showStatus('Please enter both your Tenant ID and API Key.', 'error');
+      return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Connecting...';
+
+    try {
+      const res = await fetch('/api/connect', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ shop, tenantId, apiKey }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showStatus(data.message || 'Connected successfully!', 'success');
+        btn.textContent = 'Connected';
+      } else {
+        showStatus(data.error || 'Connection failed.', 'error');
+        btn.disabled    = false;
+        btn.textContent = 'Connect Store';
+      }
+    } catch (e) {
+      showStatus('Network error — please try again.', 'error');
+      btn.disabled    = false;
+      btn.textContent = 'Connect Store';
+    }
+  }
+
+  function showStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent  = msg;
+    el.className    = 'status ' + type;
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+{% comment %}
+  ============================================================
+  AlgoVoi Crypto Payment — Shopify Additional Scripts
+  ============================================================
+  Paste this into: Shopify Admin → Settings → Checkout
+                   → Order status page → Additional scripts
+
+  Shows a "Pay with Crypto" button immediately on the thank-you
+  page after checkout — no email delay.
+
+  For customers with the AlgoVoi browser extension installed,
+  x402 auto-payment fires silently in the background. If the
+  extension pays successfully, the page reloads to show the
+  updated order status. For all other customers, clicking the
+  button goes to the /pay page where they can choose ALGO or VOI.
+  ============================================================
+{% endcomment %}
+
+{% if first_time_accessed %}
+<script>
+(function () {
+  var APP   = 'https://worker.algovoi.co.uk';
+  var shop  = '{{ shop.permanent_domain }}';
+  var oId   = '{{ order.id }}';
+
+  if (!shop || !oId) return;
+
+  // ── Inject the Pay with Crypto button ─────────────────────────────────────
+  var payUrl = APP + '/pay?shop=' + encodeURIComponent(shop) + '&order_id=' + encodeURIComponent(oId);
+
+  var wrapper = document.createElement('div');
+  wrapper.id  = 'algovoi-pay-block';
+  wrapper.style.cssText = [
+    'text-align:center',
+    'margin:28px auto',
+    'padding:24px 20px',
+    'max-width:480px',
+    'background:#fff',
+    'border:1px solid #e5e7eb',
+    'border-radius:10px',
+  ].join(';');
+
+  wrapper.innerHTML = [
+    '<p style="font-size:16px;font-weight:600;color:#1a1a2e;margin-bottom:6px;">',
+      'Pay with Crypto',
+    '</p>',
+    '<p style="font-size:13px;color:#637381;margin-bottom:16px;">',
+      'USDC / aUSDC / USDCe &nbsp;·&nbsp; 7 chains supported',
+    '</p>',
+    '<div id="algovoi-status" style="display:none;margin-bottom:12px;',
+      'padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;',
+      'border-radius:6px;font-size:13px;color:#166534;">',
+      '&#9889; AlgoVoi extension detected — paying automatically…',
+    '</div>',
+    '<a id="algovoi-btn" href="' + payUrl + '" ',
+      'style="display:inline-block;padding:13px 28px;background:#5c6ac4;',
+      'color:#fff;border-radius:8px;text-decoration:none;',
+      'font-size:15px;font-weight:600;">',
+      'Pay with Crypto &#8594;',
+    '</a>',
+    '<p style="font-size:11px;color:#9ca3af;margin-top:10px;">',
+      'Secure · On-chain · Instant',
+    '</p>',
+  ].join('');
+
+  // Insert after the first section on the page, or append to body
+  var anchor = document.querySelector('.os-order-actions, .section, main, body');
+  if (anchor && anchor !== document.body) {
+    anchor.parentNode.insertBefore(wrapper, anchor.nextSibling);
+  } else {
+    document.body.appendChild(wrapper);
+  }
+
+  // ── x402 auto-pay attempt (extension users only) ───────────────────────────
+  // The AlgoVoi extension injects window.algovoi = { x402: true } on load.
+  // If present, we fire the x402 session request so the extension can intercept
+  // and pay without the customer having to click anything.
+
+  function attemptX402() {
+    if (!window.algovoi || !window.algovoi.x402) return;
+
+    var chain      = window.algovoi.preferredChain || 'algo';
+    var sessionUrl = APP + '/api/x402/session?shop=' + encodeURIComponent(shop) +
+                     '&order_id=' + encodeURIComponent(oId) + '&chain=' + chain;
+
+    document.getElementById('algovoi-status').style.display = 'block';
+
+    fetch(sessionUrl, { method: 'GET', headers: { 'Accept': 'application/json' } })
+      .then(function (res) {
+        if (res.ok) {
+          return res.json().then(function (data) {
+            // Extension paid — update UI
+            var status = document.getElementById('algovoi-status');
+            status.style.background = '#f0fdf4';
+            status.style.borderColor = '#86efac';
+            status.innerHTML = '&#10003; Payment confirmed! Redirecting…';
+
+            var btn = document.getElementById('algovoi-btn');
+            if (btn) btn.style.display = 'none';
+
+            if (data.order_status_url) {
+              setTimeout(function () {
+                window.location.href = data.order_status_url;
+              }, 2000);
+            }
+          });
+        }
+        // 402 returned to us — extension not present or declined, hide status
+        document.getElementById('algovoi-status').style.display = 'none';
+      })
+      .catch(function () {
+        document.getElementById('algovoi-status').style.display = 'none';
+      });
+  }
+
+  // Give extension ~300ms to inject into the page before checking
+  setTimeout(attemptX402, 300);
+
+})();
+</script>
+{% endif %}

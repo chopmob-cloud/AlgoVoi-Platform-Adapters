@@ -1,0 +1,15 @@
+api_version = "2026-04"
+uid = "4cef6c39-c895-319d-3396-2acd8668b2250c78ff8c"
+
+[[extensions]]
+type = "ui_extension"
+name = "AlgoVoi Pay Button"
+handle = "algovoi-pay-button"
+
+[[extensions.targeting]]
+module = "./src/index.jsx"
+target = "customer-account.order-status.block.render"
+
+[[extensions.targeting]]
+module = "./src/thank-you.jsx"
+target = "purchase.thank-you.block.render"

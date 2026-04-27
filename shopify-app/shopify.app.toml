@@ -1,0 +1,23 @@
+name = "AlgoVoi"
+client_id = "a73cb6ec560449d89bffa39b3cc038f5"
+application_url = "https://worker.algovoi.co.uk"
+embedded = false
+
+[access_scopes]
+scopes = "read_orders,write_orders"
+
+[auth]
+redirect_urls = [
+  "https://worker.algovoi.co.uk/auth/callback"
+]
+
+[webhooks]
+api_version = "2026-04"
+
+  [webhooks.privacy_compliance]
+  customer_data_request_url = "https://worker.algovoi.co.uk/webhooks/gdpr/customers-data-request"
+  customer_deletion_url = "https://worker.algovoi.co.uk/webhooks/gdpr/customers-redact"
+  shop_deletion_url = "https://worker.algovoi.co.uk/webhooks/gdpr/shop-redact"
+
+[pos]
+embedded = false

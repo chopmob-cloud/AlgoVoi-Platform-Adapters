@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "build": "shopify app build",
+    "deploy": "shopify app deploy --allow-updates",
+    "dev": "shopify app dev"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.9.0",
+    "@shopify/ui-extensions": "~2026.4.0",
+    "preact": "^10.29.1"
+  }
+}
