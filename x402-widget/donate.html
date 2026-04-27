@@ -199,7 +199,7 @@
     async function mnDonate() {
       mnSetAction('<button class="mn-btn" disabled><div class="mn-spinner"></div>&nbsp;Creating payment link&hellip;</button>');
       try {
-        var res = await fetch('https://worker.ilovechicken.co.uk/api/manndeshi/donate', {
+        var res = await fetch('https://widget.algovoi.co.uk/api/manndeshi/donate', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ amount: 2.75, chain: 'ALGO', currency: 'USD' })

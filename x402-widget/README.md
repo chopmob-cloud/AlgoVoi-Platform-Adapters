@@ -4,14 +4,14 @@ A drop-in Web Component for accepting crypto payments on any website. One `<scri
 
 Supports **all 7 AlgoVoi chains**: USDC on **Algorand**, **Hedera**, **Stellar**, **Base**, **Solana**; **aUSDC** on **VOI**; **USDCe** on **Tempo**.
 
-Live demo: [worker.ilovechicken.co.uk](https://worker.ilovechicken.co.uk)
+Live demo: [widget.algovoi.co.uk](https://widget.algovoi.co.uk)
 
 ---
 
 ## Quick start
 
 ```html
-<script type="module" src="https://worker.ilovechicken.co.uk/widget.js"></script>
+<script type="module" src="https://widget.algovoi.co.uk/widget.js"></script>
 <algovoi-x402
   amount="29.99"
   currency="USD"
@@ -34,7 +34,7 @@ That's it. The widget renders chain buttons, creates a payment link via the Algo
 | `chains`    | Yes      | —                                                         | Comma-separated chain codes: `ALGO`, `VOI`, `HBAR`, `XLM`, `BASE`, `SOL`, `TEMPO` |
 | `tenant-id` | *        | —                                                         | Your AlgoVoi tenant UUID                                  |
 | `api-key`   | *        | —                                                         | Your AlgoVoi API key (`algv_` or `algvw_`)                |
-| `api-url`   | No       | `https://worker.ilovechicken.co.uk/api/x402/pay`         | Override to point at your own backend proxy               |
+| `api-url`   | No       | `https://widget.algovoi.co.uk/api/x402/pay`         | Override to point at your own backend proxy               |
 
 \* Required when using the default `/api/x402/pay` endpoint. Omit both when using `api-url` with a backend that supplies credentials server-side.
 
@@ -82,7 +82,7 @@ Use an `algvw_` prefixed key from the AlgoVoi dashboard. These keys are **domain
 
 ```html
 <!-- The key only works from your registered domain — safe to publish in HTML -->
-<script type="module" src="https://worker.ilovechicken.co.uk/widget.js"></script>
+<script type="module" src="https://widget.algovoi.co.uk/widget.js"></script>
 <algovoi-x402
   amount="29.99"
   currency="USD"
@@ -102,7 +102,7 @@ Point `api-url` at your own backend endpoint. Your backend holds the credentials
 
 ```html
 <!-- No credentials in HTML at all -->
-<script type="module" src="https://worker.ilovechicken.co.uk/widget.js"></script>
+<script type="module" src="https://widget.algovoi.co.uk/widget.js"></script>
 <algovoi-x402
   amount="29.99"
   currency="USD"
@@ -298,11 +298,11 @@ Both endpoints return `Access-Control-Allow-Origin: *` — the widget is embedda
 
 ## Live instance
 
-The reference deployment is at `https://worker.ilovechicken.co.uk`:
+The reference deployment is at `https://widget.algovoi.co.uk`:
 
-- Demo page: `https://worker.ilovechicken.co.uk`
-- Widget JS: `https://worker.ilovechicken.co.uk/widget.js`
-- Demo endpoint: `POST https://worker.ilovechicken.co.uk/api/x402/demo`
-- Pay endpoint: `POST https://worker.ilovechicken.co.uk/api/x402/pay`
+- Demo page: `https://widget.algovoi.co.uk`
+- Widget JS: `https://widget.algovoi.co.uk/widget.js`
+- Demo endpoint: `POST https://widget.algovoi.co.uk/api/x402/demo`
+- Pay endpoint: `POST https://widget.algovoi.co.uk/api/x402/pay`
 
 Source: [github.com/chopmob-cloud/AlgoVoi-Platform-Adapters](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters)

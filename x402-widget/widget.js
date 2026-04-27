@@ -2,7 +2,7 @@
  * AlgoVoi x402 Payment Widget
  *
  * Embed on any page:
- *   <script type="module" src="https://worker.ilovechicken.co.uk/widget.js"></script>
+ *   <script type="module" src="https://widget.algovoi.co.uk/widget.js"></script>
  *   <algovoi-x402
  *     amount="29.99"
  *     currency="USD"
@@ -21,7 +21,7 @@
  *   TEMPO → USDCe on Tempo
  */
 
-const DEFAULT_API_URL = 'https://worker.ilovechicken.co.uk/api/x402/pay';
+const DEFAULT_API_URL = 'https://widget.algovoi.co.uk/api/x402/pay';
 
 // Canonical chain palette — matches the AlgoVoi panel design used by all
 // e-commerce adapter checkouts (WooCommerce / PrestaShop / OpenCart /

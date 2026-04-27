@@ -145,7 +145,7 @@ def _title_bar(d, right_label="x402 Embeddable Widget"):
     d.text((W//2, 23), f"AlgoVoi — {right_label}",
            font=FONT_B, fill=TITLE_FG, anchor="mm")
     d.rectangle([0, H-28, W, H], fill=TITLE_BG)
-    d.text((LPAD, H-20), "worker.ilovechicken.co.uk",
+    d.text((LPAD, H-20), "widget.algovoi.co.uk",
            font=FONT_SM, fill=MUTED, anchor="lm")
     d.text((W-LPAD, H-20),
            "github.com/chopmob-cloud/AlgoVoi-Platform-Adapters",
@@ -296,7 +296,7 @@ CODE = [
     (8,  [("  <",SYN_TAG),("script ",SYN_TAG),
           ("type",SYN_ATTR),('="',SYN_PUNCT),("module",SYN_VAL),('" ',SYN_PUNCT),
           ("src",SYN_ATTR),('="',SYN_PUNCT),
-          ("https://worker.ilovechicken.co.uk/widget.js",SYN_VAL),('"',SYN_PUNCT),
+          ("https://widget.algovoi.co.uk/widget.js",SYN_VAL),('"',SYN_PUNCT),
           ("></",SYN_TAG),("script",SYN_TAG),(">",SYN_TAG)]),
     (9,  [("",                                          SYN_PLAIN)]),
     (10, [("  <!-- 2. Drop in the element -->",         SYN_COMMENT)]),
@@ -391,7 +391,7 @@ def scene_editor():
         img_full,
         "That's the entire integration",
         [
-            "One <script> tag loads the widget from worker.ilovechicken.co.uk",
+            "One <script> tag loads the widget from widget.algovoi.co.uk",
             "One <algovoi-x402> element drops the payment card onto your page",
             "Set amount, chains, tenant-id and api-key — or use api-url for a backend proxy",
             "See README: Option A (algvw_ domain key) or Option B (api-url proxy, zero creds in HTML)",
@@ -747,7 +747,7 @@ def scene_cta():
         if i >= 36:
             url_alpha = min(1.0, (i-36)/8)
             def fu(c): return tuple(int(v*url_alpha) for v in c)
-            d.text((RX, 380), "worker.ilovechicken.co.uk",
+            d.text((RX, 380), "widget.algovoi.co.uk",
                    font=FONT, fill=fu(BLUE))
             d.text((RX, 400), "Full docs in the repo README",
                    font=FONT_SM, fill=fu(MUTED))

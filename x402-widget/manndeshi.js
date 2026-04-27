@@ -3,7 +3,7 @@
  * Empowering rural women to become successful entrepreneurs.
  *
  * Embed on any page:
- *   <script type="module" src="https://worker.ilovechicken.co.uk/manndeshi.js"></script>
+ *   <script type="module" src="https://widget.algovoi.co.uk/manndeshi.js"></script>
  *   <algovoi-manndeshi></algovoi-manndeshi>
  */
 
@@ -194,7 +194,7 @@ class AlgoVoiManndeshi extends HTMLElement {
     this._render();
 
     try {
-      const res = await fetch('https://worker.ilovechicken.co.uk/api/manndeshi/donate', {
+      const res = await fetch('https://widget.algovoi.co.uk/api/manndeshi/donate', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ amount: 2.75, chain: 'ALGO', currency: 'USD' }),
