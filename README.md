@@ -95,6 +95,7 @@ After signing in, open **Connect** from the sidebar. Every integration has a set
 | **X (Twitter) Bot** | ⚡ 1-click | Customers tweet `pay £X` → hosted USDC checkout link auto-replied |
 | **Telegram Bot** | ⚡ 1-click | Payment-confirmed reply after Telegram-initiated checkout |
 | **Viber Bot** | ⚡ 1-click | Viber webhook — payment links and confirmations via Viber messages |
+| **Discord Bot** | ⚡ 1-click | Shared multi-tenant bot — invite, claim guild, type `pay £X` in any channel for an instant checkout link |
 
 #### AI Assistants
 
@@ -144,7 +145,7 @@ platform-adapters/
 ├── bolcom/               # Bol.com (Netherlands / Belgium)
 ├── cdiscount/            # Cdiscount (France / Belgium)
 ├── cex/                  # CeX (webstore operator bypass)
-├── discord/              # Discord interactions payment adapter (Ed25519 — needs real app keypair)
+├── discord/              # Discord interactions payment adapter (Ed25519 — live bot, app `1497106074740850759`)
 ├── ebay/                 # eBay Platform Notifications adapter
 ├── ecwid/                # Ecwid / Lightspeed E-Series adapter
 ├── etsy/                 # Etsy webhook adapter
@@ -252,6 +253,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | WhatsApp Business | — (Meta webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
 | Instagram Shops | — (Meta webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
 | Telegram | — (Bot API webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
+| Discord | — (Gateway WebSocket + shared bot) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
 | Allegro | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
 | Bol.com | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
 | Cdiscount | — (marketplace webhook) | Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo | — |
@@ -378,7 +380,7 @@ All 7 accounting adapters are end-to-end tested on **14 April 2026** against `ap
 | Platform | Guide | Status |
 |----------|-------|--------|
 | **Telegram** | [telegram.md](./telegram.md) | **Available** — [telegram/](./telegram/) |
-| Discord | [discord.md](./discord.md) | [discord/](./discord/) — Ed25519 signature; requires real Discord application keypair |
+| **Discord** | [discord.md](./discord.md) | **Available** — [discord/](./discord/) — shared multi-tenant bot live (application `1497106074740850759`); `pay £X` in any claimed guild returns a hosted checkout |
 | **WhatsApp Business** | [whatsapp.md](./whatsapp.md) | **Available** — [whatsapp/](./whatsapp/) |
 | **Instagram & Facebook Shops** | [instagram-shops.md](./instagram-shops.md) | **Available** — [instagram-shops/](./instagram-shops/) |
 

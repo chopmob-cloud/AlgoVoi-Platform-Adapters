@@ -65,7 +65,7 @@ import os
 import sys
 from typing import Any, Optional
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = ["AlgoVoiSemanticKernel", "AlgoVoiPaymentPlugin", "SemanticKernelResult"]
 
 # ── Path helpers ──────────────────────────────────────────────────────────────
@@ -88,6 +88,9 @@ NETWORKS = frozenset({
     "voi-mainnet",
     "hedera-mainnet",
     "stellar-mainnet",
+    "base-mainnet",
+    "solana-mainnet",
+    "tempo-mainnet",
 })
 
 PROTOCOLS = frozenset({"mpp", "ap2", "x402"})

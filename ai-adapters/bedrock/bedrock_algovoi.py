@@ -65,7 +65,7 @@ Networks:
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
 
-Version: 1.0.0
+Version: 1.1.0
 """
 
 from __future__ import annotations
@@ -75,7 +75,7 @@ import sys
 import json
 from typing import Any, Optional
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 _API_BASE = "https://api1.ilovechicken.co.uk"
 
@@ -84,6 +84,9 @@ NETWORKS = [
     "voi-mainnet",
     "hedera-mainnet",
     "stellar-mainnet",
+    "base-mainnet",
+    "solana-mainnet",
+    "tempo-mainnet",
 ]
 
 PROTOCOLS = ["x402", "mpp", "ap2"]
@@ -93,6 +96,9 @@ _SNAKE = {
     "voi-mainnet":      "voi_mainnet",
     "hedera-mainnet":   "hedera_mainnet",
     "stellar-mainnet":  "stellar_mainnet",
+    "base-mainnet":     "base_mainnet",
+    "solana-mainnet":   "solana_mainnet",
+    "tempo-mainnet":    "tempo_mainnet",
 }
 
 MODELS = [

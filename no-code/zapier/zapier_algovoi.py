@@ -66,7 +66,7 @@ Networks:
 AlgoVoi repo: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
 
-Version: 1.0.0
+Version: 1.1.0
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 _API_BASE    = "https://api1.ilovechicken.co.uk"
 _MAX_BODY    = 1_048_576   # 1 MiB
@@ -97,6 +97,7 @@ SUPPORTED_NETWORKS = {
     "algorand_mainnet_algo", "voi_mainnet_voi", "hedera_mainnet_hbar", "stellar_mainnet_xlm",
     "algorand_testnet", "voi_testnet", "hedera_testnet", "stellar_testnet",
     "algorand_testnet_algo", "voi_testnet_voi", "hedera_testnet_hbar", "stellar_testnet_xlm",
+    "base_mainnet", "solana_mainnet", "tempo_mainnet",
 }
 
 NETWORK_INFO = {
@@ -104,6 +105,9 @@ NETWORK_INFO = {
     "voi_mainnet":           {"label": "VOI",      "asset": "aUSDC", "asset_id": "302190",     "decimals": 6},
     "hedera_mainnet":        {"label": "Hedera",   "asset": "USDC",  "asset_id": "0.0.456858", "decimals": 6},
     "stellar_mainnet":       {"label": "Stellar",  "asset": "USDC",  "asset_id": "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN", "decimals": 7},
+    "base_mainnet":          {"label": "Base",     "asset": "USDC",  "asset_id": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "decimals": 6},
+    "solana_mainnet":        {"label": "Solana",   "asset": "USDC",  "asset_id": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "decimals": 6},
+    "tempo_mainnet":         {"label": "Tempo",    "asset": "USDC",  "asset_id": "0x20c000000000000000000000b9537d11c60e8b50", "decimals": 6},
     "algorand_mainnet_algo": {"label": "Algorand", "asset": "ALGO",  "asset_id": None, "decimals": 6},
     "voi_mainnet_voi":       {"label": "VOI",      "asset": "VOI",   "asset_id": None, "decimals": 6},
     "hedera_mainnet_hbar":   {"label": "Hedera",   "asset": "HBAR",  "asset_id": None, "decimals": 8},

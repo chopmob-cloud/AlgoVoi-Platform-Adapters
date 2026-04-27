@@ -64,7 +64,8 @@ Three integration modes:
          # output = ChatResult.summary or last message content (str)
 
 Networks:
-    algorand-mainnet, voi-mainnet, hedera-mainnet, stellar-mainnet
+    algorand-mainnet, voi-mainnet, hedera-mainnet, stellar-mainnet,
+    base-mainnet, solana-mainnet, tempo-mainnet
 
 Protocols:
     mpp  — IETF draft-ryan-httpauth-payment (WWW-Authenticate: Payment)
@@ -79,7 +80,7 @@ import os
 import sys
 from typing import Any, Optional
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = ["AlgoVoiAutoGen", "AlgoVoiPaymentTool", "AutoGenResult"]
 
 # ── Path helpers ──────────────────────────────────────────────────────────────
@@ -102,6 +103,9 @@ NETWORKS = frozenset({
     "voi-mainnet",
     "hedera-mainnet",
     "stellar-mainnet",
+    "base-mainnet",
+    "solana-mainnet",
+    "tempo-mainnet",
 })
 
 PROTOCOLS = frozenset({"mpp", "ap2", "x402"})

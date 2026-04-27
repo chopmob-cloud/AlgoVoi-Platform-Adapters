@@ -28,13 +28,14 @@ Works with Flask, Django, FastAPI, or any WSGI/ASGI framework.
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
 
-Version: 2.0.0
+Version: 2.1.0
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 import ssl
 import time
 from base64 import b64decode, b64encode
@@ -42,7 +43,7 @@ from typing import Any, Callable, Optional
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 # ── AP2 constants ─────────────────────────────────────────────────────────────
 
@@ -81,6 +82,30 @@ NETWORKS: dict[str, dict] = {
         "chain":    "stellar",
         "indexer":  "https://horizon.stellar.org",
     },
+    "base-mainnet": {
+        "asset_id": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "ticker":   "USDC",
+        "chain":    "evm",
+        "indexer":  "https://mainnet.base.org",
+    },
+    "solana-mainnet": {
+        "asset_id": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "ticker":   "USDC",
+        "chain":    "solana",
+        "indexer":  "https://api.mainnet-beta.solana.com",
+    },
+    "tempo-mainnet": {
+        "asset_id": "0x20c000000000000000000000b9537d11c60e8b50",
+        "ticker":   "USDC",
+        "chain":    "evm",
+        "indexer":  os.environ.get("ALGOVOI_TEMPO_RPC", "https://tempo-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_KEY"),
+    },
+}
+
+# EVM USDC contract addresses (Base and Tempo)
+_EVM_USDC: dict[str, str] = {
+    "base-mainnet":  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "tempo-mainnet": "0x20c000000000000000000000b9537d11c60e8b50",
 }
 
 
@@ -465,6 +490,10 @@ class Ap2Gate:
             return self._verify_hedera(tx_id, network)
         if chain == "stellar":
             return self._verify_stellar(tx_id, network)
+        if chain == "evm":
+            return self._verify_evm(tx_id, network)
+        if chain == "solana":
+            return self._verify_solana(tx_id, network)
         return False
 
     def _verify_avm(self, tx_id: str, network: str) -> bool:
@@ -563,6 +592,82 @@ class Ap2Gate:
                 continue
             amount_micro = int(float(op.get("amount", "0")) * 1_000_000)
             if amount_micro >= self.amount_microunits:
+                return True
+        return False
+
+    def _verify_evm(self, tx_id: str, network: str) -> bool:
+        """Verify Base or Tempo ERC-20/TIP-20 USDC transfer via JSON-RPC."""
+        cfg = NETWORKS.get(network)
+        if not cfg:
+            return False
+        rpc = cfg["indexer"]
+        TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+        usdc_contract = _EVM_USDC.get(network, "").lower()
+        try:
+            payload = json.dumps({
+                "jsonrpc": "2.0", "id": 1,
+                "method": "eth_getTransactionReceipt",
+                "params": [tx_id if tx_id.startswith("0x") else "0x" + tx_id],
+            }).encode()
+            req = Request(rpc, data=payload, headers={"Content-Type": "application/json"})
+            with urlopen(req, timeout=15, context=self._ssl_ctx) as r:  # nosec B310
+                data = json.loads(r.read())
+        except Exception:
+            return False
+        result = data.get("result") or {}
+        if not result or result.get("status") != "0x1":
+            return False
+        for log in result.get("logs", []):
+            topics = log.get("topics", [])
+            if (
+                log.get("address", "").lower() == usdc_contract
+                and len(topics) >= 3
+                and topics[0].lower() == TRANSFER_TOPIC
+            ):
+                to_addr = "0x" + topics[2][-40:]
+                payout = self.payout_address.lower().lstrip("0x")
+                if to_addr.lower() == "0x" + payout:
+                    raw = int(log.get("data", "0x0"), 16)
+                    if raw >= self.amount_microunits:
+                        return True
+        return False
+
+    def _verify_solana(self, tx_id: str, network: str) -> bool:
+        """Verify Solana SPL-USDC transfer via JSON-RPC getTransaction."""
+        cfg = NETWORKS.get(network)
+        if not cfg:
+            return False
+        rpc = cfg["indexer"]
+        USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+        try:
+            payload = json.dumps({
+                "jsonrpc": "2.0", "id": 1,
+                "method": "getTransaction",
+                "params": [tx_id, {"encoding": "json", "commitment": "finalized", "maxSupportedTransactionVersion": 0}],
+            }).encode()
+            req = Request(rpc, data=payload, headers={"Content-Type": "application/json"})
+            with urlopen(req, timeout=20, context=self._ssl_ctx) as r:  # nosec B310
+                data = json.loads(r.read())
+        except Exception:
+            return False
+        result = data.get("result") or {}
+        if not result:
+            return False
+        meta = result.get("meta") or {}
+        if meta.get("err") is not None:
+            return False
+        pre  = {b["accountIndex"]: b for b in (meta.get("preTokenBalances")  or [])}
+        post = {b["accountIndex"]: b for b in (meta.get("postTokenBalances") or [])}
+        for idx, pb in post.items():
+            if pb.get("mint") != USDC_MINT:
+                continue
+            owner = pb.get("owner", "")
+            if owner != self.payout_address:
+                continue
+            pre_amt  = int((pre.get(idx)  or {}).get("uiTokenAmount", {}).get("amount", "0"))
+            post_amt = int(pb.get("uiTokenAmount", {}).get("amount", "0"))
+            delta = post_amt - pre_amt
+            if delta >= self.amount_microunits:
                 return True
         return False
 

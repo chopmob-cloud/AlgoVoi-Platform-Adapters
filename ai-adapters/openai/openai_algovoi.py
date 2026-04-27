@@ -40,6 +40,9 @@ Networks:
     "voi-mainnet"       aUSDC (ARC200 302190)
     "hedera-mainnet"    USDC  (HTS 0.0.456858)
     "stellar-mainnet"   USDC  (Circle)
+    "base-mainnet"      USDC  (ERC-20 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
+    "solana-mainnet"    USDC  (SPL EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v)
+    "tempo-mainnet"     USDC  (TIP-20 0x20c000000000000000000000b9537d11c60e8b50)
 
 OpenAI-compatible APIs (pass base_url=):
     OpenAI      https://api.openai.com/v1        (default)
@@ -51,7 +54,7 @@ OpenAI-compatible APIs (pass base_url=):
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
 
-Version: 1.0.0
+Version: 1.1.0
 """
 
 from __future__ import annotations
@@ -66,7 +69,7 @@ from typing import Any, Optional
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 _API_BASE = "https://api1.ilovechicken.co.uk"
 
@@ -76,6 +79,9 @@ NETWORKS = [
     "voi-mainnet",
     "hedera-mainnet",
     "stellar-mainnet",
+    "base-mainnet",
+    "solana-mainnet",
+    "tempo-mainnet",
 ]
 
 PROTOCOLS = ["x402", "mpp", "ap2"]
@@ -86,6 +92,9 @@ _CAIP2 = {
     "voi-mainnet":      "voi:mainnet",
     "hedera-mainnet":   "hedera:mainnet",
     "stellar-mainnet":  "stellar:pubnet",
+    "base-mainnet":     "eip155:8453",
+    "solana-mainnet":   "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    "tempo-mainnet":    "tempo:mainnet",
 }
 
 # Chain-native USDC asset IDs for x402 header
@@ -94,6 +103,9 @@ _ASSET_ID = {
     "voi-mainnet":      "302190",
     "hedera-mainnet":   "0.0.456858",
     "stellar-mainnet":  "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    "base-mainnet":     "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "solana-mainnet":   "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "tempo-mainnet":    "0x20c000000000000000000000b9537d11c60e8b50",
 }
 
 # snake_case network keys used by MppGate
@@ -102,6 +114,9 @@ _SNAKE = {
     "voi-mainnet":      "voi_mainnet",
     "hedera-mainnet":   "hedera_mainnet",
     "stellar-mainnet":  "stellar_mainnet",
+    "base-mainnet":     "base_mainnet",
+    "solana-mainnet":   "solana_mainnet",
+    "tempo-mainnet":    "tempo_mainnet",
 }
 
 # Path to the adapters root (platform-adapters/)
@@ -147,12 +162,21 @@ _INDEXERS = {
     "voi-mainnet":      "https://mainnet-idx.voi.nodely.dev/v2",
     "hedera-mainnet":   "https://mainnet-public.mirrornode.hedera.com/api/v1",
     "stellar-mainnet":  "https://horizon.stellar.org",
+    "base-mainnet":     "https://mainnet.base.org",
+    "solana-mainnet":   "https://api.mainnet-beta.solana.com",
+    "tempo-mainnet":    os.environ.get("ALGOVOI_TEMPO_RPC", "https://tempo-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_KEY"),
 }
 
 # Integer asset IDs for AVM chains (for indexer comparison)
 _ASSET_ID_INT = {
     "algorand-mainnet": 31566704,
     "voi-mainnet":      302190,
+}
+
+# EVM USDC contract addresses (Base and Tempo)
+_EVM_USDC = {
+    "base-mainnet":  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "tempo-mainnet": "0x20c000000000000000000000b9537d11c60e8b50",
 }
 
 # Stellar USDC issuer
@@ -329,6 +353,80 @@ class _X402Gate:
                 return True
         return False
 
+    def _verify_evm(self, tx_id: str) -> bool:
+        """Verify Base or Tempo ERC-20/TIP-20 USDC transfer via JSON-RPC."""
+        rpc = _INDEXERS.get(self._network)
+        if not rpc:
+            return False
+        TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+        usdc_contract = _EVM_USDC.get(self._network, "").lower()
+        try:
+            payload = json.dumps({
+                "jsonrpc": "2.0", "id": 1,
+                "method": "eth_getTransactionReceipt",
+                "params": [tx_id if tx_id.startswith("0x") else "0x" + tx_id],
+            }).encode()
+            req = Request(rpc, data=payload, headers={"Content-Type": "application/json"})
+            with urlopen(req, timeout=15, context=self._ssl) as resp:  # nosec B310
+                data = json.loads(resp.read())
+        except Exception:
+            return False
+        result = data.get("result") or {}
+        if not result or result.get("status") != "0x1":
+            return False
+        for log in result.get("logs", []):
+            topics = log.get("topics", [])
+            if (
+                log.get("address", "").lower() == usdc_contract
+                and len(topics) >= 3
+                and topics[0].lower() == TRANSFER_TOPIC
+            ):
+                to_addr = "0x" + topics[2][-40:]
+                payout = self._payout_address.lower().lstrip("0x")
+                if to_addr.lower() == "0x" + payout:
+                    raw = int(log.get("data", "0x0"), 16)
+                    if raw >= self._amount:
+                        return True
+        return False
+
+    def _verify_solana(self, tx_id: str) -> bool:
+        """Verify Solana SPL-USDC transfer via JSON-RPC getTransaction."""
+        rpc = _INDEXERS.get(self._network)
+        if not rpc:
+            return False
+        USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+        try:
+            payload = json.dumps({
+                "jsonrpc": "2.0", "id": 1,
+                "method": "getTransaction",
+                "params": [tx_id, {"encoding": "json", "commitment": "finalized", "maxSupportedTransactionVersion": 0}],
+            }).encode()
+            req = Request(rpc, data=payload, headers={"Content-Type": "application/json"})
+            with urlopen(req, timeout=20, context=self._ssl) as resp:  # nosec B310
+                data = json.loads(resp.read())
+        except Exception:
+            return False
+        result = data.get("result") or {}
+        if not result:
+            return False
+        meta = result.get("meta") or {}
+        if meta.get("err") is not None:
+            return False
+        pre  = {b["accountIndex"]: b for b in (meta.get("preTokenBalances")  or [])}
+        post = {b["accountIndex"]: b for b in (meta.get("postTokenBalances") or [])}
+        for idx, pb in post.items():
+            if pb.get("mint") != USDC_MINT:
+                continue
+            owner = pb.get("owner", "")
+            if owner != self._payout_address:
+                continue
+            pre_amt  = int((pre.get(idx)  or {}).get("uiTokenAmount", {}).get("amount", "0"))
+            post_amt = int(pb.get("uiTokenAmount", {}).get("amount", "0"))
+            delta = post_amt - pre_amt
+            if delta >= self._amount:
+                return True
+        return False
+
     def _verify_on_chain(self, tx_id: str) -> bool:
         """Route to the correct chain verifier."""
         if "algorand" in self._network or "voi" in self._network:
@@ -337,6 +435,10 @@ class _X402Gate:
             return self._verify_hedera(tx_id)
         if "stellar" in self._network:
             return self._verify_stellar(tx_id)
+        if "base" in self._network or "tempo" in self._network:
+            return self._verify_evm(tx_id)
+        if "solana" in self._network:
+            return self._verify_solana(tx_id)
         return False
 
     def check(self, headers: dict, body: Optional[dict] = None) -> _X402Result:
@@ -451,7 +553,8 @@ class AlgoVoiOpenAI:
             payout_address:    On-chain address to receive payments
             protocol:          Payment protocol — "x402", "mpp", or "ap2"
             network:           Chain — "algorand-mainnet", "voi-mainnet",
-                               "hedera-mainnet", or "stellar-mainnet"
+                               "hedera-mainnet", "stellar-mainnet",
+                               "base-mainnet", "solana-mainnet", or "tempo-mainnet"
             amount_microunits: Price per call in USDC microunits (10000 = 0.01 USDC)
             model:             Default AI model (e.g. "gpt-4o", "mistral-large-latest")
             base_url:          Override API base URL for OpenAI-compatible providers

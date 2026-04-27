@@ -12,7 +12,7 @@
  * Verification uses public blockchain indexers directly — no AlgoVoi server
  * dependency for the proof verification step.
  *
- * Version: 1.0.0
+ * Version: 1.1.0
  *
  * @example
  * ```ts
@@ -46,7 +46,7 @@ import {
 } from "ai";
 import { z } from "zod";
 
-export const VERSION = "1.0.0";
+export const VERSION = "1.1.0";
 
 const MAX_BODY_BYTES = 1_048_576; // 1 MiB
 
@@ -85,6 +85,24 @@ const NETWORKS: Record<string, NetworkConfig> = {
     caip2: "stellar:pubnet",
     indexerBase: "https://horizon.stellar.org",
   },
+  "base-mainnet": {
+    assetId: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    ticker: "USDC",
+    caip2: "eip155:8453",
+    indexerBase: "https://mainnet.base.org",
+  },
+  "solana-mainnet": {
+    assetId: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    ticker: "USDC",
+    caip2: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    indexerBase: "https://api.mainnet-beta.solana.com",
+  },
+  "tempo-mainnet": {
+    assetId: "0x20c000000000000000000000b9537d11c60e8b50",
+    ticker: "USDC",
+    caip2: "tempo:mainnet",
+    indexerBase: process.env.ALGOVOI_TEMPO_RPC ?? "https://tempo-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_KEY",
+  },
 };
 
 const CAIP2_TO_NETWORK: Record<string, string> = {
@@ -92,6 +110,9 @@ const CAIP2_TO_NETWORK: Record<string, string> = {
   "voi:mainnet": "voi-mainnet",
   "hedera:mainnet": "hedera-mainnet",
   "stellar:pubnet": "stellar-mainnet",
+  "eip155:8453": "base-mainnet",
+  "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "solana-mainnet",
+  "tempo:mainnet": "tempo-mainnet",
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -301,6 +322,107 @@ async function verifyStellar(
   }
 }
 
+async function verifyEvm(
+  txId: string,
+  network: string,
+  payoutAddress: string,
+  amountMicrounits: number,
+  cfg: NetworkConfig
+): Promise<VerifiedPayment | null> {
+  const TRANSFER_TOPIC =
+    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+  const usdcContract = String(cfg.assetId).toLowerCase();
+  const txParam = txId.startsWith("0x") ? txId : "0x" + txId;
+  try {
+    const resp = await fetch(cfg.indexerBase, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_getTransactionReceipt",
+        params: [txParam],
+      }),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const result = data?.result;
+    if (!result || result.status !== "0x1") return null;
+    for (const log of (result.logs ?? []) as Record<string, unknown>[]) {
+      const topics = (log["topics"] ?? []) as string[];
+      if (
+        String(log["address"] ?? "").toLowerCase() === usdcContract &&
+        topics.length >= 3 &&
+        topics[0].toLowerCase() === TRANSFER_TOPIC
+      ) {
+        const toAddr = "0x" + topics[2].slice(-40);
+        const payout = payoutAddress.toLowerCase().replace(/^0x/, "");
+        if (toAddr.toLowerCase() === "0x" + payout) {
+          const raw = parseInt(String(log["data"] ?? "0x0"), 16);
+          if (raw >= amountMicrounits) {
+            return { txId, payer: "", network, amount: raw };
+          }
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function verifySolana(
+  txId: string,
+  network: string,
+  payoutAddress: string,
+  amountMicrounits: number,
+  cfg: NetworkConfig
+): Promise<VerifiedPayment | null> {
+  const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+  try {
+    const resp = await fetch(cfg.indexerBase, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTransaction",
+        params: [txId, { encoding: "json", commitment: "finalized", maxSupportedTransactionVersion: 0 }],
+      }),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const result = data?.result;
+    if (!result) return null;
+    const meta = result?.meta;
+    if (meta?.err != null) return null;
+    const pre = new Map<number, Record<string, unknown>>(
+      ((meta?.preTokenBalances ?? []) as Record<string, unknown>[]).map(
+        (b) => [b["accountIndex"] as number, b]
+      )
+    );
+    const post = (meta?.postTokenBalances ?? []) as Record<string, unknown>[];
+    for (const pb of post) {
+      if (pb["mint"] !== USDC_MINT) continue;
+      if (pb["owner"] !== payoutAddress) continue;
+      const idx = pb["accountIndex"] as number;
+      const preAmt = parseInt(
+        String((pre.get(idx) as Record<string, unknown> | undefined)?.["uiTokenAmount"]?.["amount"] ?? "0")
+      );
+      const postAmt = parseInt(
+        String((pb["uiTokenAmount"] as Record<string, unknown>)?.["amount"] ?? "0")
+      );
+      const delta = postAmt - preAmt;
+      if (delta >= amountMicrounits) {
+        return { txId, payer: "", network, amount: delta };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function verifyPayment(
   txId: string,
   network: string,
@@ -314,6 +436,12 @@ async function verifyPayment(
   }
   if (network === "stellar-mainnet") {
     return verifyStellar(txId, payoutAddress, amountMicrounits, cfg);
+  }
+  if (network === "base-mainnet" || network === "tempo-mainnet") {
+    return verifyEvm(txId, network, payoutAddress, amountMicrounits, cfg);
+  }
+  if (network === "solana-mainnet") {
+    return verifySolana(txId, network, payoutAddress, amountMicrounits, cfg);
   }
   return verifyAvm(txId, network, payoutAddress, amountMicrounits, cfg);
 }

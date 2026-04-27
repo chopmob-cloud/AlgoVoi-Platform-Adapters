@@ -52,7 +52,8 @@ Three integration modes:
          # output = crew_result.raw (str)
 
 Networks:
-    algorand-mainnet, voi-mainnet, hedera-mainnet, stellar-mainnet
+    algorand-mainnet, voi-mainnet, hedera-mainnet, stellar-mainnet,
+    base-mainnet, solana-mainnet, tempo-mainnet
 
 Protocols:
     mpp  — IETF draft-ryan-httpauth-payment (WWW-Authenticate: Payment)
@@ -67,7 +68,7 @@ import os
 import sys
 from typing import Any, Optional, Type
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = ["AlgoVoiCrewAI", "AlgoVoiPaymentTool", "CrewAIResult"]
 
 # ── Path helpers ──────────────────────────────────────────────────────────────
@@ -90,6 +91,9 @@ NETWORKS = frozenset({
     "voi-mainnet",
     "hedera-mainnet",
     "stellar-mainnet",
+    "base-mainnet",
+    "solana-mainnet",
+    "tempo-mainnet",
 })
 
 PROTOCOLS = frozenset({"mpp", "ap2", "x402"})

@@ -72,7 +72,7 @@ Networks:
 AlgoVoi repo: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
 
-Version: 1.0.0
+Version: 1.1.0
 """
 
 from __future__ import annotations
@@ -90,7 +90,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 _ALGOVOI_BASE = "https://api1.ilovechicken.co.uk"
 _X_API_BASE   = "https://api.twitter.com"
@@ -107,6 +107,7 @@ SUPPORTED_NETWORKS = {
     "algorand_mainnet_algo", "voi_mainnet_voi", "hedera_mainnet_hbar", "stellar_mainnet_xlm",
     "algorand_testnet", "voi_testnet", "hedera_testnet", "stellar_testnet",
     "algorand_testnet_algo", "voi_testnet_voi", "hedera_testnet_hbar", "stellar_testnet_xlm",
+    "base_mainnet", "solana_mainnet", "tempo_mainnet",
 }
 
 NETWORK_INFO = {
@@ -114,6 +115,9 @@ NETWORK_INFO = {
     "voi_mainnet":           {"label": "VOI",              "asset": "aUSDC", "decimals": 6},
     "hedera_mainnet":        {"label": "Hedera",           "asset": "USDC",  "decimals": 6},
     "stellar_mainnet":       {"label": "Stellar",          "asset": "USDC",  "decimals": 7},
+    "base_mainnet":          {"label": "Base",             "asset": "USDC",  "decimals": 6},
+    "solana_mainnet":        {"label": "Solana",           "asset": "USDC",  "decimals": 6},
+    "tempo_mainnet":         {"label": "Tempo",            "asset": "USDC",  "decimals": 6},
     "algorand_mainnet_algo": {"label": "Algorand",         "asset": "ALGO",  "decimals": 6},
     "voi_mainnet_voi":       {"label": "VOI",              "asset": "VOI",   "decimals": 6},
     "hedera_mainnet_hbar":   {"label": "Hedera",           "asset": "HBAR",  "decimals": 8},

@@ -41,7 +41,7 @@ Usage:
     if result.requires_payment:
         status, headers, body = result.as_wsgi_response()
 
-Version: 2.1.0
+Version: 2.3.0
 """
 
 from __future__ import annotations
@@ -49,6 +49,7 @@ from __future__ import annotations
 import hashlib
 import hmac as _hmac
 import json
+import os
 import ssl
 import time
 from base64 import b64decode, b64encode
@@ -57,7 +58,7 @@ from typing import Any, Callable, Optional
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "2.2.0"
+__version__ = "2.3.0"
 
 # Payment intent identifier per charge intent spec
 INTENT = "charge"
@@ -68,6 +69,9 @@ _CAIP2_TO_INTERNAL: dict[str, str] = {
     "voi:mainnet":      "voi-mainnet",
     "hedera:mainnet":   "hedera-mainnet",
     "stellar:pubnet":   "stellar-mainnet",
+    "eip155:8453":      "base-mainnet",
+    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "solana-mainnet",
+    "tempo:mainnet":    "tempo-mainnet",
 }
 
 
@@ -246,6 +250,36 @@ class MppGate:
             "native": True,
             "decimals": 7,
         },
+        # ── EVM / Solana chains ──────────────────────────────────────────────
+        "base_mainnet": {
+            "asset_id": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            "ticker": "USDC",
+            "network": "base-mainnet",
+            "native": False,
+            "decimals": 6,
+        },
+        "solana_mainnet": {
+            "asset_id": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "ticker": "USDC",
+            "network": "solana-mainnet",
+            "native": False,
+            "decimals": 6,
+        },
+        "tempo_mainnet": {
+            "asset_id": "0x20c000000000000000000000b9537d11c60e8b50",
+            "ticker": "USDC",
+            "network": "tempo-mainnet",
+            "native": False,
+            "decimals": 6,
+        },
+    }
+
+    # EVM USDC contract addresses (Base and Tempo)
+    _EVM_USDC: dict[str, str] = {
+        "base-mainnet":  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "base_mainnet":  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "tempo-mainnet": "0x20c000000000000000000000b9537d11c60e8b50",
+        "tempo_mainnet": "0x20c000000000000000000000b9537d11c60e8b50",
     }
 
     # Public API base URLs for direct on-chain verification
@@ -262,6 +296,12 @@ class MppGate:
         "stellar-mainnet":       "https://horizon.stellar.org",
         "stellar_mainnet":       "https://horizon.stellar.org",
         "stellar_mainnet_xlm":   "https://horizon.stellar.org",
+        "base-mainnet":          "https://mainnet.base.org",
+        "base_mainnet":          "https://mainnet.base.org",
+        "solana-mainnet":        "https://api.mainnet-beta.solana.com",
+        "solana_mainnet":        "https://api.mainnet-beta.solana.com",
+        "tempo-mainnet":         os.environ.get("ALGOVOI_TEMPO_RPC", "https://tempo-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_KEY"),
+        "tempo_mainnet":         os.environ.get("ALGOVOI_TEMPO_RPC", "https://tempo-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_KEY"),
     }
 
     def __init__(
@@ -490,6 +530,16 @@ class MppGate:
             return self._verify_hedera(tx_id, network)
         if "stellar" in norm:
             return self._verify_stellar(tx_id, network)
+        if "base" in norm or "tempo" in norm:
+            ok = self._verify_evm(tx_id, network)
+            if not ok:
+                return None
+            return MppReceipt(tx_id=tx_id, payer="", network=network, amount=self.amount_microunits, method=self.method)
+        if "solana" in norm:
+            ok = self._verify_solana(tx_id, network)
+            if not ok:
+                return None
+            return MppReceipt(tx_id=tx_id, payer="", network=network, amount=self.amount_microunits, method=self.method)
         return None
 
     def _verify_avm(self, tx_id: str, network: str) -> Optional[MppReceipt]:
@@ -708,6 +758,81 @@ class MppGate:
                     method=self.method,
                 )
         return None
+
+    def _verify_evm(self, tx_id: str, network: str) -> bool:
+        """Verify Base or Tempo ERC-20/TIP-20 USDC transfer via JSON-RPC."""
+        import json as _json
+        rpc = self.INDEXERS.get(network)
+        if not rpc:
+            return False
+        TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+        usdc_contract = self._EVM_USDC.get(network, "").lower()
+        try:
+            payload = json.dumps({
+                "jsonrpc": "2.0", "id": 1,
+                "method": "eth_getTransactionReceipt",
+                "params": [tx_id if tx_id.startswith("0x") else "0x" + tx_id],
+            }).encode()
+            req = Request(rpc, data=payload, headers={"Content-Type": "application/json"})
+            with urlopen(req, timeout=15, context=self._ssl_ctx) as resp:  # nosec B310
+                data = json.loads(resp.read())
+        except Exception:
+            return False
+        result = data.get("result") or {}
+        if not result or result.get("status") != "0x1":
+            return False
+        for log in result.get("logs", []):
+            topics = log.get("topics", [])
+            if (
+                log.get("address", "").lower() == usdc_contract
+                and len(topics) >= 3
+                and topics[0].lower() == TRANSFER_TOPIC
+            ):
+                to_addr = "0x" + topics[2][-40:]
+                payout = self.payout_address.lower().lstrip("0x")
+                if to_addr.lower() == "0x" + payout:
+                    raw = int(log.get("data", "0x0"), 16)
+                    if raw >= self.amount_microunits:
+                        return True
+        return False
+
+    def _verify_solana(self, tx_id: str, network: str) -> bool:
+        """Verify Solana SPL-USDC transfer via JSON-RPC getTransaction."""
+        rpc = self.INDEXERS.get(network)
+        if not rpc:
+            return False
+        USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+        try:
+            payload = json.dumps({
+                "jsonrpc": "2.0", "id": 1,
+                "method": "getTransaction",
+                "params": [tx_id, {"encoding": "json", "commitment": "finalized", "maxSupportedTransactionVersion": 0}],
+            }).encode()
+            req = Request(rpc, data=payload, headers={"Content-Type": "application/json"})
+            with urlopen(req, timeout=20, context=self._ssl_ctx) as resp:  # nosec B310
+                data = json.loads(resp.read())
+        except Exception:
+            return False
+        result = data.get("result") or {}
+        if not result:
+            return False
+        meta = result.get("meta") or {}
+        if meta.get("err") is not None:
+            return False
+        pre  = {b["accountIndex"]: b for b in (meta.get("preTokenBalances")  or [])}
+        post = {b["accountIndex"]: b for b in (meta.get("postTokenBalances") or [])}
+        for idx, pb in post.items():
+            if pb.get("mint") != USDC_MINT:
+                continue
+            owner = pb.get("owner", "")
+            if owner != self.payout_address:
+                continue
+            pre_amt  = int((pre.get(idx)  or {}).get("uiTokenAmount", {}).get("amount", "0"))
+            post_amt = int(pb.get("uiTokenAmount", {}).get("amount", "0"))
+            delta = post_amt - pre_amt
+            if delta >= self.amount_microunits:
+                return True
+        return False
 
     # ── Framework helpers ────────────────────────────────────────────────
 
