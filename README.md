@@ -75,7 +75,7 @@ After signing in, open **Connect** from the sidebar. Every integration has a set
 | **Shopware** | 🔧 Upload | Shopware 6 payment plugin |
 | **Gravity Forms** | 🔧 Upload | WordPress form builder with payments |
 | **GiveWP** | 🔧 Upload | WordPress donation & fundraising plugin |
-| Shopify | — | Coming soon (OAuth app install) |
+| **Shopify** | 🔌 OAuth app | Source: [shopify-app/](./shopify-app/). Pending Shopify App Store listing |
 
 #### Automation
 
@@ -136,7 +136,7 @@ platform-adapters/
 ├── wix/                  # Wix Payment Provider SPI (Velo)
 ├── mpp-adapter/          # MPP server middleware (Python)
 ├── ap2-adapter/          # AP2 server middleware (Python)
-├── shopify-app/          # Private — Shopify payment app (Cloudflare Pages, not distributed)
+├── shopify-app/          # Shopify payment app (Cloudflare Pages + Checkout UI Extension)
 ├── x402-widget/          # Embeddable payment widget (Web Component)
 │
 │   — Live-tested Python webhook adapters (4 original chains verified 2026-04-14; Base + Solana added 2026-04-22/23; Tempo added 2026-04-23) —
@@ -309,7 +309,7 @@ The following adapters have been end-to-end tested against a live AlgoVoi tenant
 | **Native Python** | — | [native-python/](./native-python/) | **Available — stdlib only, no pip install** |
 | **Native Go** | — | [native-go/](./native-go/) | **Available — stdlib only, no go get** |
 | **Native Rust** | — | [native-rust/](./native-rust/) | **Available — zero crates, pure stdlib** |
-| **Shopify** | [shopify.md](./shopify.md) | Private (hosted service) | **Available — managed by AlgoVoi** |
+| **Shopify** | [shopify.md](./shopify.md) | [shopify-app/](./shopify-app/) | **Available — open source, all 7 chains, deploys to Cloudflare Pages** |
 | **WooCommerce** | [woocommerce.md](./woocommerce.md) | [woocommerce/](./woocommerce/) | **Available — hosted + extension** |
 | **Magento 2 / Adobe Commerce** | [magento.md](./magento.md) | [magento2/](./magento2/) | **Available — hosted checkout, Knockout.js** |
 | BigCommerce | [bigcommerce.md](./bigcommerce.md) | [bigcommerce/](./bigcommerce/) | **Partial** — webhook sig verified; order-amount fetch requires real `store_hash` / `access_token` |
@@ -1470,8 +1470,7 @@ This repository is licensed under the [Business Source License 1.1](./LICENSE).
 
 ### Not distributed
 
-- **Shopify app** — proprietary hosted service operated by AlgoVoi. Merchants install via the Shopify App Store; source code is not publicly distributed.
-- **Accounting adapters** (QuickBooks Online, Xero, FreshBooks, Sage Business Cloud, Zoho Books, Wave, MYOB) — source code is not publicly distributed. Integration guides are in this repository. Download your adapter from the [AlgoVoi dashboard](https://api1.ilovechicken.co.uk/dashboard/downloads) after signing in.
+- **Accounting adapters** (QuickBooks Online, Xero, FreshBooks, Sage Business Cloud, Zoho Books, Wave, MYOB) — source code is not publicly distributed. Integration guides are in this repository. Download your adapter from the [AlgoVoi dashboard](https://dash.algovoi.co.uk/downloads) after signing in.
 
 ---
 
