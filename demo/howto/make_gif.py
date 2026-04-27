@@ -166,6 +166,150 @@ def scene_panel(capture_name: str, headline: str, sub: str) -> Image.Image:
     return img
 
 
+def load_mono_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    """Load a monospaced font for code blocks."""
+    candidates = [
+        "C:/Windows/Fonts/consolab.ttf" if bold else "C:/Windows/Fonts/consola.ttf",
+        "C:/Windows/Fonts/cour.ttf",
+        "/System/Library/Fonts/Menlo.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+    return ImageFont.load_default()
+
+
+# Syntax-highlight palette (matches the existing AI-adapters demo GIFs)
+SYN_BG     = (13, 17, 23)      # GitHub dark code bg
+SYN_BORDER = (48, 54, 61)
+SYN_TAG    = (88, 166, 255)    # blue   — <tag>
+SYN_ATTR   = (255, 123, 114)   # red    — attr=
+SYN_VAL    = (165, 214, 122)   # green  — "string"
+SYN_PUNCT  = (201, 209, 217)   # white  — = " /
+SYN_COMMENT= (110, 118, 135)   # muted
+
+def scene_code() -> Image.Image:
+    """Code-sample scene — shows the exact embed snippet for the widget."""
+    img = make_canvas()
+    draw = ImageDraw.Draw(img)
+    draw_brand_header(draw, img)
+
+    # Heading
+    f_head = load_font(56, bold=True)
+    f_sub  = load_font(28)
+    draw.text((64, 200), "Embed in 8 lines of HTML", font=f_head, fill=TEXT_BRIGHT)
+    draw.text((64, 280),
+              "One <script>, one <algovoi-x402> element. No build step. No npm install.",
+              font=f_sub, fill=TEXT_DIM)
+
+    # Code block frame
+    code_x, code_y, code_w, code_h = 96, 380, W - 192, 700
+    # Drop shadow
+    shadow = Image.new("RGBA", (code_w + 16, code_h + 16), (0, 0, 0, 120))
+    img.paste(shadow, (code_x - 8, code_y - 4), shadow)
+    # Background card with rounded corners
+    card = Image.new("RGBA", (code_w, code_h), SYN_BG + (255,))
+    mask = Image.new("L", (code_w, code_h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, code_w, code_h), radius=20, fill=255)
+    card.putalpha(mask)
+    img.paste(card, (code_x, code_y), card)
+    # Border (drawn on the canvas itself)
+    draw.rounded_rectangle(
+        (code_x, code_y, code_x + code_w, code_y + code_h),
+        radius=20, outline=SYN_BORDER, width=2,
+    )
+
+    # Mac-style window dots (red/yellow/green)
+    for i, c in enumerate([(255, 95, 86), (255, 189, 46), (39, 201, 63)]):
+        cx = code_x + 32 + i * 28
+        cy = code_y + 28
+        draw.ellipse((cx, cy, cx + 14, cy + 14), fill=c)
+
+    # File name in title bar
+    f_title_bar = load_mono_font(20)
+    draw.text((code_x + 130, code_y + 24), "embed.html", font=f_title_bar, fill=TEXT_MUTED)
+
+    # Code content — manually tokenised so we can colour each piece.
+    # Each entry is a list of (text, colour) pairs to render on one line.
+    f_mono      = load_mono_font(28)
+    f_mono_bold = load_mono_font(28, bold=True)
+    line_h      = 44
+    pad_x       = code_x + 48
+    pad_y       = code_y + 90
+
+    lines = [
+        # 1: opening comment
+        [("<!-- Drop in anywhere on your page -->", SYN_COMMENT)],
+        [("",                                            SYN_PUNCT)],
+        # 3: <script>
+        [("<",                                            SYN_PUNCT),
+         ("script ",                                      SYN_TAG),
+         ("type",                                         SYN_ATTR),
+         ('=',                                            SYN_PUNCT),
+         ('"module"',                                     SYN_VAL),
+         (" ",                                            SYN_PUNCT),
+         ("src",                                          SYN_ATTR),
+         ('=',                                            SYN_PUNCT),
+         ('"https://widget.algovoi.co.uk/widget.js"',     SYN_VAL),
+         (">",                                            SYN_PUNCT),
+         ("</",                                           SYN_PUNCT),
+         ("script",                                       SYN_TAG),
+         (">",                                            SYN_PUNCT)],
+        [("",                                            SYN_PUNCT)],
+        # 5: <algovoi-x402  ...
+        [("<",                                            SYN_PUNCT),
+         ("algovoi-x402",                                 SYN_TAG)],
+        [("  ",                                           SYN_PUNCT),
+         ("amount",                                       SYN_ATTR),
+         ('=',                                            SYN_PUNCT),
+         ('"29.99"',                                      SYN_VAL)],
+        [("  ",                                           SYN_PUNCT),
+         ("currency",                                     SYN_ATTR),
+         ('=',                                            SYN_PUNCT),
+         ('"USD"',                                        SYN_VAL)],
+        [("  ",                                           SYN_PUNCT),
+         ("chains",                                       SYN_ATTR),
+         ('=',                                            SYN_PUNCT),
+         ('"ALGO,VOI,HBAR,XLM,BASE,SOL,TEMPO"',           SYN_VAL)],
+        [("  ",                                           SYN_PUNCT),
+         ("tenant-id",                                    SYN_ATTR),
+         ('=',                                            SYN_PUNCT),
+         ('"',                                            SYN_PUNCT),
+         ('YOUR_TENANT_ID',                               SYN_VAL),
+         ('"',                                            SYN_PUNCT)],
+        [("  ",                                           SYN_PUNCT),
+         ("api-key",                                      SYN_ATTR),
+         ('=',                                            SYN_PUNCT),
+         ('"',                                            SYN_PUNCT),
+         ('algvw_YOUR_WIDGET_KEY',                        SYN_VAL),
+         ('"',                                            SYN_PUNCT),
+         (">",                                            SYN_PUNCT)],
+        [("</",                                           SYN_PUNCT),
+         ("algovoi-x402",                                 SYN_TAG),
+         (">",                                            SYN_PUNCT)],
+    ]
+
+    for i, line in enumerate(lines):
+        x = pad_x
+        y = pad_y + i * line_h
+        for text, color in line:
+            # Bold tags + attrs for legibility
+            font = f_mono_bold if color in (SYN_TAG, SYN_ATTR) else f_mono
+            draw.text((x, y), text, font=font, fill=color)
+            x += text_w(draw, text, font)
+
+    # Hint at bottom: domain-locked widget keys are safe to publish
+    f_hint = load_font(20)
+    draw.text((code_x + 48, code_y + code_h - 56),
+              "algvw_ keys are origin-locked — safe to publish in HTML.",
+              font=f_hint, fill=TEXT_MUTED)
+    return img
+
+
 def scene_widget() -> Image.Image:
     img = make_canvas()
     draw = ImageDraw.Draw(img)
@@ -234,6 +378,7 @@ def main():
     s5 = scene_panel("panel_solana.png",  "Pick. Pay. Done.",
                      "Live colour indicator, native form submission, no JS gymnastics.")
     s6 = scene_widget()
+    s6c = scene_code()
     s7 = scene_end()
 
     print("Building frames...")
@@ -250,8 +395,10 @@ def main():
     frames += crossfade(s4, s5, XF)
     frames += hold(s5, F(1.4))
     frames += crossfade(s5, s6, XF)
-    frames += hold(s6, F(2.2))
-    frames += crossfade(s6, s7, XF)
+    frames += hold(s6, F(2.0))
+    frames += crossfade(s6, s6c, XF)
+    frames += hold(s6c, F(3.5))                 # extra dwell — viewers read code
+    frames += crossfade(s6c, s7, XF)
     frames += hold(s7, F(3.0))
 
     print(f"  total frames: {len(frames)}  (~{len(frames) / FPS:.1f}s @ {FPS}fps)")
