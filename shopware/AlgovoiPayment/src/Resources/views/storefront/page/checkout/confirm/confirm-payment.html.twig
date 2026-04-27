@@ -3,6 +3,16 @@
 {% block page_checkout_change_payment_form %}
     {{ parent() }}
 
+    {# ── Resolve real payment method UUIDs from handlerIdentifier ─────────── #}
+    {% set _hostedHandler = 'AlgovoiPayment\\\\PaymentHandler\\\\AlgovoiHostedPaymentHandler' %}
+    {% set _walletHandler = 'AlgovoiPayment\\\\PaymentHandler\\\\AlgovoiWalletPaymentHandler' %}
+    {% set _hostedId = '' %}
+    {% set _walletId = '' %}
+    {% for pm in page.paymentMethods %}
+        {% if pm.handlerIdentifier == _hostedHandler %}{% set _hostedId = pm.id %}{% endif %}
+        {% if pm.handlerIdentifier == _walletHandler %}{% set _walletId = pm.id %}{% endif %}
+    {% endfor %}
+
     {# ── Build enabled-networks list from system config ─────────────────────── #}
     {% set _allNetworks = {
         'algorand_mainnet': 'Algorand — USDC',
@@ -36,8 +46,8 @@
 
     <script>
     (function() {
-        var HOSTED_ID = 'YOUR_HOSTED_PAYMENT_METHOD_ID';
-        var WALLET_ID = 'YOUR_WALLET_PAYMENT_METHOD_ID';
+        var HOSTED_ID = '{{ _hostedId|e('js') }}';
+        var WALLET_ID = '{{ _walletId|e('js') }}';
 
         var hostedChains = {{ _hostedJson|json_encode|raw }};
         var walletChains = {{ _walletJson|json_encode|raw }};
@@ -132,7 +142,6 @@
             var dot = document.getElementById('av-sw-dot');
             var inp = getHiddenInput();
             if (!sel) {
-                // Single chain — dot already rendered
                 if (inp && chains.length === 1) inp.value = chains[0].value;
                 return;
             }
@@ -152,8 +161,8 @@
             var val = checked.value;
 
             var chains = null, isWallet = false;
-            if (val === HOSTED_ID) { chains = hostedChains; }
-            else if (val === WALLET_ID) { chains = walletChains; isWallet = true; }
+            if (HOSTED_ID && val === HOSTED_ID) { chains = hostedChains; }
+            else if (WALLET_ID && val === WALLET_ID) { chains = walletChains; isWallet = true; }
             if (!chains || chains.length === 0) return;
 
             var wrapper = document.createElement('div');
