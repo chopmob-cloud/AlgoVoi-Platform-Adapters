@@ -5,7 +5,7 @@ Single-file drop-in for any Python application. No framework required.
 Works with Flask, Django, FastAPI, or plain WSGI/ASGI.
 
 Supports:
-  - Hosted checkout (Algorand, VOI, Hedera) — redirect to AlgoVoi payment page
+  - Hosted checkout (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) — redirect to AlgoVoi payment page
   - Extension payment (Algorand, VOI) — in-page wallet flow via algosdk
   - Webhook verification with HMAC
   - SSRF protection on checkout URL fetches
@@ -24,7 +24,7 @@ Usage:
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
 
-Version: 1.1.0
+Version: 1.2.0
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 # Default Algorand-family node endpoints used by the extension flow.
 # Override at runtime by passing `algod_overrides=` to AlgoVoi() — useful
@@ -56,7 +56,8 @@ ALGOD = DEFAULT_ALGOD
 
 HOSTED_NETWORKS = {
     "algorand_mainnet", "voi_mainnet", "hedera_mainnet",
-    "stellar_mainnet",
+    "stellar_mainnet", "base_mainnet", "solana_mainnet",
+    "tempo_mainnet",
 }
 EXT_NETWORKS = {"algorand_mainnet", "voi_mainnet"}
 
@@ -109,7 +110,8 @@ class AlgoVoi:
             amount:       Order total
             currency:     ISO currency code (e.g. USD, GBP)
             label:        Order label (e.g. "Order #123")
-            network:      Preferred network (algorand_mainnet, voi_mainnet, hedera_mainnet, stellar_mainnet)
+            network:      Preferred network (algorand_mainnet, voi_mainnet, hedera_mainnet, stellar_mainnet,
+                          base_mainnet, solana_mainnet, tempo_mainnet)
             redirect_url: Return URL after hosted checkout (optional)
 
         Returns:
@@ -357,6 +359,9 @@ class AlgoVoi:
         if mode == "hosted":
             chains.append(("hedera_mainnet", "Hedera", "USDC", "#00a9a5"))
             chains.append(("stellar_mainnet", "Stellar", "USDC", "#7C63D0"))
+            chains.append(("base_mainnet", "Base", "USDC", "#0052ff"))
+            chains.append(("solana_mainnet", "Solana", "USDC", "#9945ff"))
+            chains.append(("tempo_mainnet", "Tempo", "USDCe", "#f59e0b"))
 
         name = escape(field_name)
         html = (

@@ -4,7 +4,7 @@
 //! Uses only the standard library — no crates required.
 //!
 //! ## Supports
-//! - Hosted checkout (Algorand, VOI, Hedera) — redirect to AlgoVoi payment page
+//! - Hosted checkout (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) — redirect to AlgoVoi payment page
 //! - Extension payment (Algorand, VOI) — in-page wallet flow via algosdk
 //! - Webhook verification with HMAC-SHA256
 //! - SSRF protection on checkout URL fetches
@@ -38,7 +38,7 @@ use std::fmt;
 // ── Constants ───────────────────────────────────────────────────────────
 
 /// Adapter version.
-pub const VERSION: &str = "1.1.0";
+pub const VERSION: &str = "1.2.0";
 
 /// Hard cap on inbound webhook bodies (64 KB — AlgoVoi webhooks are <2 KB).
 pub const MAX_WEBHOOK_BODY_BYTES: usize = 64 * 1024;
@@ -104,6 +104,9 @@ pub const HOSTED_NETWORKS: &[&str] = &[
     "voi_mainnet",
     "hedera_mainnet",
     "stellar_mainnet",
+    "base_mainnet",
+    "solana_mainnet",
+    "tempo_mainnet",
 ];
 
 /// Valid networks for extension payment.
@@ -487,10 +490,9 @@ impl Client {
 
 /// Render chain selector radio buttons as HTML.
 ///
-/// `mode` should be `"hosted"` (4 chains: Algorand, VOI, Hedera, Stellar) or
+/// `mode` should be `"hosted"` (7 chains: Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) or
 /// `"extension"` (2 chains: Algorand, VOI — the AlgoVoi browser extension signs
-/// those two, while Hedera/Stellar buyers use hosted checkout with their own
-/// wallet such as HashPack, Freighter, or LOBSTR).
+/// those two, while other chain buyers use hosted checkout with their own wallet).
 pub fn render_chain_selector(field_name: &str, mode: &str) -> String {
     let mut chains = vec![
         ("algorand_mainnet", "Algorand", "USDC", "#3b82f6"),
@@ -499,6 +501,9 @@ pub fn render_chain_selector(field_name: &str, mode: &str) -> String {
     if mode == "hosted" {
         chains.push(("hedera_mainnet", "Hedera", "USDC", "#00a9a5"));
         chains.push(("stellar_mainnet", "Stellar", "USDC", "#7C63D0"));
+        chains.push(("base_mainnet", "Base", "USDC", "#0052ff"));
+        chains.push(("solana_mainnet", "Solana", "USDC", "#9945ff"));
+        chains.push(("tempo_mainnet", "Tempo", "USDCe", "#f59e0b"));
     }
 
     let mut html = String::from(

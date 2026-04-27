@@ -5,7 +5,7 @@
  * Single-file drop-in for any PHP application. No framework, no composer, no dependencies.
  *
  * Supports:
- *   - Hosted checkout (Algorand, VOI, Hedera) — redirect to AlgoVoi payment page
+ *   - Hosted checkout (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) — redirect to AlgoVoi payment page
  *   - Extension payment (Algorand, VOI) — in-page wallet flow via algosdk
  *   - Webhook verification with HMAC
  *   - SSRF protection on checkout URL fetches
@@ -23,12 +23,12 @@
  * AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  * Licensed under the Business Source License 1.1 — see LICENSE for details.
  *
- * Version: 1.1.0
+ * Version: 1.2.0
  */
 
 class AlgoVoi
 {
-    public const VERSION                  = '1.1.0';
+    public const VERSION                  = '1.2.0';
     public const MAX_WEBHOOK_BODY_BYTES   = 65536;   // 64 KB
     public const MAX_TOKEN_LEN            = 200;
     public const MAX_TX_ID_LEN            = 200;
@@ -49,7 +49,7 @@ class AlgoVoi
         'voi-mainnet'      => ['url' => 'https://mainnet-api.voi.nodely.io',  'asset_id' => 302190,   'ticker' => 'aUSDC', 'dec' => 6],
     ];
 
-    private const HOSTED_NETWORKS = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet'];
+    private const HOSTED_NETWORKS = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'];
     private const EXT_NETWORKS    = ['algorand_mainnet', 'voi_mainnet'];
 
     public function __construct(array $config)
@@ -76,7 +76,8 @@ class AlgoVoi
      * @param float  $amount      Order total
      * @param string $currency    ISO currency code (e.g. USD, GBP)
      * @param string $label       Order label (e.g. "Order #123")
-     * @param string $network     Preferred network (algorand_mainnet, voi_mainnet, hedera_mainnet, stellar_mainnet)
+     * @param string $network     Preferred network (algorand_mainnet, voi_mainnet, hedera_mainnet, stellar_mainnet,
+     *                            base_mainnet, solana_mainnet, tempo_mainnet)
      * @param string $redirectUrl Return URL after hosted checkout (optional)
      * @return array|null         API response or null on failure
      */
@@ -336,8 +337,11 @@ class AlgoVoi
             ['value' => 'voi_mainnet',      'label' => 'VOI',      'ticker' => 'aUSDC', 'colour' => '#8b5cf6'],
         ];
         if ($type === 'hosted') {
-            $chains[] = ['value' => 'hedera_mainnet',  'label' => 'Hedera',  'ticker' => 'USDC', 'colour' => '#00a9a5'];
-            $chains[] = ['value' => 'stellar_mainnet', 'label' => 'Stellar', 'ticker' => 'USDC', 'colour' => '#7C63D0'];
+            $chains[] = ['value' => 'hedera_mainnet',  'label' => 'Hedera',  'ticker' => 'USDC',  'colour' => '#00a9a5'];
+            $chains[] = ['value' => 'stellar_mainnet', 'label' => 'Stellar', 'ticker' => 'USDC',  'colour' => '#7C63D0'];
+            $chains[] = ['value' => 'base_mainnet',    'label' => 'Base',    'ticker' => 'USDC',  'colour' => '#0052ff'];
+            $chains[] = ['value' => 'solana_mainnet',  'label' => 'Solana',  'ticker' => 'USDC',  'colour' => '#9945ff'];
+            $chains[] = ['value' => 'tempo_mainnet',   'label' => 'Tempo',   'ticker' => 'USDCe', 'colour' => '#f59e0b'];
         }
 
         $html = '<div style="margin:.5rem 0;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Select network</div>';

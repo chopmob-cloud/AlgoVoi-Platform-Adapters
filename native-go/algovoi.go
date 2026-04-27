@@ -1,7 +1,7 @@
 // Package algovoi provides a zero-dependency Go client for the AlgoVoi payment platform.
 //
 // Supports:
-//   - Hosted checkout (Algorand, VOI, Hedera) — redirect to AlgoVoi payment page
+//   - Hosted checkout (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) — redirect to AlgoVoi payment page
 //   - Extension payment (Algorand, VOI) — in-page wallet flow via algosdk
 //   - Webhook verification with HMAC
 //   - SSRF protection on checkout URL fetches
@@ -12,7 +12,7 @@
 // AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 // Licensed under the Business Source License 1.1 — see LICENSE for details.
 //
-// Version: 1.1.0
+// Version: 1.2.0
 package algovoi
 
 import (
@@ -33,7 +33,7 @@ import (
 )
 
 // Version is the adapter version.
-const Version = "1.1.0"
+const Version = "1.2.0"
 
 // Hard caps and validation patterns.
 const (
@@ -68,6 +68,9 @@ var hostedNetworks = map[string]bool{
 	"voi_mainnet":      true,
 	"hedera_mainnet":   true,
 	"stellar_mainnet":  true,
+	"base_mainnet":     true,
+	"solana_mainnet":   true,
+	"tempo_mainnet":    true,
 }
 var extNetworks = map[string]bool{"algorand_mainnet": true, "voi_mainnet": true}
 
@@ -439,9 +442,9 @@ type ChainInfo struct {
 }
 
 // RenderChainSelector renders chain selector radio buttons as HTML.
-// mode should be "hosted" (4 chains: Algorand, VOI, Hedera, Stellar) or
+// mode should be "hosted" (7 chains: Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) or
 // "extension" (2 chains: Algorand, VOI — the AlgoVoi browser extension signs
-// those two; Hedera/Stellar buyers use hosted checkout with their own wallet).
+// those two; other chains use hosted checkout with their own wallet).
 func RenderChainSelector(fieldName, mode string) string {
 	chains := []ChainInfo{
 		{Value: "algorand_mainnet", Label: "Algorand", Ticker: "USDC", Colour: "#3b82f6"},
@@ -450,6 +453,9 @@ func RenderChainSelector(fieldName, mode string) string {
 	if mode == "hosted" {
 		chains = append(chains, ChainInfo{Value: "hedera_mainnet", Label: "Hedera", Ticker: "USDC", Colour: "#00a9a5"})
 		chains = append(chains, ChainInfo{Value: "stellar_mainnet", Label: "Stellar", Ticker: "USDC", Colour: "#7C63D0"})
+		chains = append(chains, ChainInfo{Value: "base_mainnet", Label: "Base", Ticker: "USDC", Colour: "#0052ff"})
+		chains = append(chains, ChainInfo{Value: "solana_mainnet", Label: "Solana", Ticker: "USDC", Colour: "#9945ff"})
+		chains = append(chains, ChainInfo{Value: "tempo_mainnet", Label: "Tempo", Ticker: "USDCe", Colour: "#f59e0b"})
 	}
 
 	var sb strings.Builder
