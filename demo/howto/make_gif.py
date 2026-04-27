@@ -20,7 +20,9 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CAPTURES = os.path.join(ROOT, "captures")
-OUTPUT = os.path.join(ROOT, "algovoi_howto.gif")
+ASSETS   = os.path.join(ROOT, "assets")
+LOGO     = os.path.join(ASSETS, "algovoi_logo.png")   # canonical AV+wordmark
+OUTPUT   = os.path.join(ROOT, "algovoi_howto.gif")
 
 # ── Theme (matches canonical AlgoVoi panel palette) ──────────────────────────
 W, H = 900, 600
@@ -63,34 +65,31 @@ def text_w(draw, text, font):
     return bbox[2] - bbox[0]
 
 
-def gradient_icon(size: int = 48) -> Image.Image:
-    """Render the AlgoVoi gradient diamond icon (matches the e-commerce panel)."""
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    # Rounded square with gradient fill
-    radius = max(8, size // 4)
-    # Approximate the linear gradient with horizontal stripes
-    for y in range(size):
-        t = y / max(1, size - 1)
-        r = int(ACCENT[0] * (1 - t) + ACCENT_2[0] * t)
-        g = int(ACCENT[1] * (1 - t) + ACCENT_2[1] * t)
-        b = int(ACCENT[2] * (1 - t) + ACCENT_2[2] * t)
-        draw.line([(0, y), (size, y)], fill=(r, g, b, 255))
-    # Round-clip the corners
-    mask = Image.new("L", (size, size), 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, size, size), radius=radius, fill=255)
-    img.putalpha(mask)
-    # Diamond glyph
-    glyph = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glyph)
-    cx, cy = size // 2, size // 2
-    arm = max(8, size // 3)
-    gd.polygon(
-        [(cx, cy - arm), (cx + arm, cy), (cx, cy + arm), (cx - arm, cy)],
-        fill=(255, 255, 255, 230),
-    )
-    img = Image.alpha_composite(img, glyph)
-    return img
+def load_logo(target_height: int) -> Image.Image:
+    """Load the canonical AV-mark + wordmark logo, scaled to target height.
+
+    The asset is the same logo used in the existing x402-widget and
+    ai-adapters demo GIFs (1080x360 RGB, gradient AV mark on dark).
+    Falls back to a tiny synthesized rounded-square if the file is missing.
+    """
+    if os.path.exists(LOGO):
+        im = Image.open(LOGO).convert("RGBA")
+        ratio = target_height / im.height
+        return im.resize((int(im.width * ratio), target_height), Image.LANCZOS)
+    # Fallback (should never trigger if assets/ is present)
+    fallback = Image.new("RGBA", (target_height * 3, target_height), BG + (255,))
+    return fallback
+
+
+def load_mark_only(target_height: int) -> Image.Image:
+    """Crop just the AV-mark (left ~28%) from the wordmark logo, square."""
+    if not os.path.exists(LOGO):
+        return load_logo(target_height)
+    im = Image.open(LOGO).convert("RGBA")
+    # The mark is the leftmost ~28% of the logo width on a square area
+    side = im.height
+    mark = im.crop((0, 0, side, side))
+    return mark.resize((target_height, target_height), Image.LANCZOS)
 
 
 def make_canvas() -> Image.Image:
@@ -99,12 +98,10 @@ def make_canvas() -> Image.Image:
 
 
 def draw_brand_header(draw: ImageDraw.ImageDraw, img: Image.Image, y_offset: int = 28) -> int:
-    """Place icon + 'AlgoVoi' wordmark top-left.  Returns the y after the header."""
-    icon = gradient_icon(40)
-    img.paste(icon, (32, y_offset), icon)
-    f = load_font(20, bold=True)
-    draw.text((84, y_offset + 8), "AlgoVoi", font=f, fill=TEXT_BRIGHT)
-    return y_offset + 40 + 16
+    """Place the canonical AlgoVoi wordmark logo top-left.  Returns y_after."""
+    logo = load_logo(target_height=44)
+    img.paste(logo, (28, y_offset), logo)
+    return y_offset + logo.height + 16
 
 
 def paste_centered(canvas: Image.Image, image: Image.Image, *, top: int) -> tuple[int, int]:
@@ -124,24 +121,19 @@ def paste_centered(canvas: Image.Image, image: Image.Image, *, top: int) -> tupl
 
 # ── Scenes ────────────────────────────────────────────────────────────────────
 def scene_title() -> Image.Image:
-    """Scene 1 — AlgoVoi title card."""
+    """Scene 1 — AlgoVoi title card.  Uses the canonical AV+wordmark logo."""
     img = make_canvas()
     draw = ImageDraw.Draw(img)
-    # Centred icon
-    icon = gradient_icon(96)
-    img.paste(icon, ((W - 96) // 2, 130), icon)
-    # Title
-    f_title = load_font(54, bold=True)
-    f_sub   = load_font(22)
+    # Centred wordmark logo
+    logo = load_logo(target_height=140)
+    img.paste(logo, ((W - logo.width) // 2, 110), logo)
+    # Tagline
+    f_title = load_font(48, bold=True)
+    f_sub   = load_font(20)
     title = "Pay with Crypto"
-    draw.text(((W - text_w(draw, title, f_title)) // 2, 250), title, font=f_title, fill=TEXT_BRIGHT)
+    draw.text(((W - text_w(draw, title, f_title)) // 2, 290), title, font=f_title, fill=TEXT_BRIGHT)
     sub = "USDC / aUSDC / USDCe  -  7 chains  -  one design"
-    draw.text(((W - text_w(draw, sub, f_sub)) // 2, 322), sub, font=f_sub, fill=TEXT_DIM)
-    # Wordmark above
-    f_brand = load_font(18, bold=True)
-    brand_text = "AlgoVoi"
-    bx = (W - text_w(draw, brand_text, f_brand)) // 2
-    draw.text((bx, 100), brand_text, font=f_brand, fill=BRAND)
+    draw.text(((W - text_w(draw, sub, f_sub)) // 2, 358), sub, font=f_sub, fill=TEXT_DIM)
     # Footer URL
     f_foot = load_font(14)
     foot = "github.com/chopmob-cloud/AlgoVoi-Platform-Adapters"
@@ -195,16 +187,16 @@ def scene_widget() -> Image.Image:
 def scene_end() -> Image.Image:
     img = make_canvas()
     draw = ImageDraw.Draw(img)
-    icon = gradient_icon(72)
-    img.paste(icon, ((W - 72) // 2, 110), icon)
-    f_brand = load_font(16, bold=True)
-    draw.text(((W - text_w(draw, "AlgoVoi", f_brand)) // 2, 200), "AlgoVoi", font=f_brand, fill=BRAND)
-    f_h = load_font(40, bold=True)
+    # Canonical wordmark logo, centred
+    logo = load_logo(target_height=110)
+    img.paste(logo, ((W - logo.width) // 2, 90), logo)
+    # Tagline
+    f_h = load_font(38, bold=True)
     line1 = "Same panel."
     line2 = "Every platform."
     draw.text(((W - text_w(draw, line1, f_h)) // 2, 240), line1, font=f_h, fill=TEXT_BRIGHT)
     draw.text(((W - text_w(draw, line2, f_h)) // 2, 290), line2, font=f_h, fill=TEXT_BRIGHT)
-    # Platform badges
+    # Platform list
     f_p = load_font(14)
     plats = ["Shopify", "WooCommerce", "PrestaShop", "OpenCart", "Shopware", "Magento 2", "x402 widget"]
     line = "  |  ".join(plats)
