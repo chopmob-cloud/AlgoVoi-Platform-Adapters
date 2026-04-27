@@ -87,18 +87,33 @@ Public summary in this repository; full BWRA available under NDA.
 
 ## 8. Sanctions and PEP screening
 
-- **Sanctions**: every merchant and every payout wallet is screened against
-  the consolidated UK (OFSI), EU, US (OFAC), and UN sanctions lists at
-  onboarding and on each material update. A positive hit blocks onboarding
-  and is escalated to the MLRO.
-- **Politically Exposed Persons (PEPs)**: PEP screening is integrated into
-  the onboarding workflow. Domestic PEP relationships and high-risk
-  jurisdiction PEPs trigger EDD.
-- Screening output is logged with tenant ID, list version, hit summary, and
-  reviewer outcome.
+- **Wallet-level sanctions screening (live)**: every payment is screened
+  in real time against the consolidated UK (OFSI), EU, US (OFAC), and UN
+  sanctions lists. The lists are ingested directly from the public XML
+  feeds and refreshed daily. A positive match blocks settlement and is
+  escalated to the MLRO; SAR consideration follows.
+- **Name-level sanctions screening of merchants and beneficial owners
+  (in preparation)**: the policy framework is defined; the commercial
+  data-feed integration (e.g. ComplyAdvantage / Acuris) is being
+  evaluated. For UK Limited Company onboarding today, the MLRO
+  performs this check manually against public sources at the KYB
+  review step. Auto-approved individual / sole-trader accounts do not
+  yet receive automated name-level screening — recorded as a residual
+  risk in the BWRA, with feed go-live as the trigger to revisit.
+- **Politically Exposed Persons (PEPs) (framework live, automated
+  feed in preparation)**: PEP definition per UK MLR 2017 reg 35 and
+  FCA FG17/6 risk-based handling are operational at the policy level;
+  the automated commercial data feed lands together with name-level
+  sanctions screening above. See
+  [PEP_SCREENING_PROCEDURE.md](PEP_SCREENING_PROCEDURE.md) for the
+  current state.
+- Screening output is logged with tenant ID, list version, hit summary,
+  and reviewer outcome.
 
-The screening provider's identity and full match-handling logic are held
-under NDA.
+The wallet-level screening pipeline is open in this repository
+(`shared/models/compliance.py`, `control_plane/app/services/sanctions_*`).
+The commercial provider's identity (once selected) and full
+match-handling logic will be held under NDA.
 
 ## 9. Transaction monitoring
 

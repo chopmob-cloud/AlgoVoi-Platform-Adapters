@@ -4,7 +4,27 @@
 **Approved by**: MLRO
 **Effective**: 2026-04-26
 **Next review**: 2027-04-26
-**Disclosure tier**: Public summary; full procedure (with vendor identity and EDD detail) available under NDA on request
+**Disclosure tier**: Public summary; full procedure (with vendor identity and EDD detail) available under NDA on completion of the data-feed integration.
+
+## Operational status (added 2026-04-27)
+
+This document defines AlgoVoi's **policy framework** for PEP screening.
+The framework is in force for any UK Limited Company onboarding via
+manual MLRO review against public sources at this stage.
+
+The **automated commercial data-feed integration** (e.g.
+ComplyAdvantage / Acuris / Dow Jones / World-Check) is **in
+preparation** — vendor evaluation under way, target integration in the
+next quarter. Until that integration lands, name-based PEP screening
+runs as a manual MLRO check at onboarding for company KYB; for
+auto-approved individual / sole-trader accounts it does not run, which
+is documented as a residual risk in the BWRA and is one of the
+triggers for a fresh BWRA review when the feed goes live.
+
+Wallet-level sanctions screening (UK OFSI / EU / US OFAC / UN
+consolidated lists) is operational and runs in real time on every
+payment — see [SANCTIONS_PROCEDURE.md](SANCTIONS_PROCEDURE.md) for
+that path.
 
 ## 1. Purpose
 
@@ -14,8 +34,8 @@ merchant is a Politically Exposed Person (PEP), a family member, or a
 known close associate, in line with the FCA's PEP guidance (FG17/6) and
 the UK Money Laundering Regulations 2017.
 
-This is the **public summary**. Provider identity, scoring thresholds,
-and the EDD checklist are NDA.
+This is the **public summary**. Provider identity (once selected),
+scoring thresholds, and the EDD checklist are NDA.
 
 ## 2. Definitions
 

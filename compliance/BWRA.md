@@ -69,9 +69,14 @@ and are therefore held under NDA.
    jurisdictions are weighted up; comprehensive-sanctions jurisdictions
    are declined. Higher-risk merchant onboardings escalate to EDD with
    senior-management approval before any mainnet activity is allowed.
-5. **Sanctions and PEP screening run at onboarding and on every material
-   update.** The pipeline integrates the consolidated UK, EU, US, and UN
-   sanctions lists.
+5. **Sanctions screening: wallet-level live, name-level in preparation.**
+   Wallet-address screening against the consolidated UK OFSI, EU, US
+   OFAC, and UN sanctions lists runs in real time on every payment
+   (lists ingested from public XML feeds, refreshed daily). Name-based
+   sanctions and PEP screening framework is defined (FCA FG17/6) and
+   handled manually by the MLRO at UK Limited Company KYB review;
+   the commercial data-feed integration is in preparation. Recorded
+   here as a residual risk under continuing review.
 6. **Transaction monitoring runs continuously.** Rule families cover
    structuring, velocity anomalies, counterparty exposure, round-tripping,
    and geographic concentration. Specific rule values are NDA.
