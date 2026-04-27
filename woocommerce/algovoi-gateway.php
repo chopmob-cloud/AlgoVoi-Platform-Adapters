@@ -3,7 +3,7 @@
  * Plugin Name:          AlgoVoi Payment Gateway
  * Plugin URI:           https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  * Description:          Accept USDC / aUSDC / USDCe stablecoin payments on Algorand, VOI, Hedera, Stellar, Base, Solana and Tempo via hosted checkout or browser extension. No crypto knowledge required — works alongside any existing payment method.
- * Version:              2.4.6
+ * Version:              2.4.7
  * Requires at least:    6.4
  * Requires PHP:         8.0
  * Tested up to:         6.9
@@ -155,7 +155,7 @@ function algovoi_chain_colours() {
  */
 function algovoi_footer_html() {
     ?>
-    <div style="margin-top:.6rem;padding-top:.5rem;border-top:1px solid #1f2235;
+    <div style="padding-top:.5rem;border-top:1px solid #1f2235;
                 display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;">
         <span style="font-size:.68rem;color:#4b5563;">
             Secured by
@@ -363,7 +363,7 @@ add_action('plugins_loaded', function () {
                 $enabled = array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet');
             }
             echo '<div style="background:#141622;border:1px solid #1f2235;border-radius:8px;padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;max-width:100%;box-sizing:border-box;">';
-            echo '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">'
+            echo '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;">'
                 . '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">'
                 . '<span style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">&#9670;</span>'
                 . '<strong style="color:#fff;font-size:14px;font-weight:700;">AlgoVoi</strong>'
@@ -450,7 +450,7 @@ add_action('plugins_loaded', function () {
 
         public function payment_fields() {
             echo '<div style="background:#141622;border:1px solid #1f2235;border-radius:8px;padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;max-width:100%;box-sizing:border-box;">';
-            echo '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">'
+            echo '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;">'
                 . '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">'
                 . '<span style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">&#9670;</span>'
                 . '<strong style="color:#fff;font-size:14px;font-weight:700;">AlgoVoi</strong>'
