@@ -40,7 +40,7 @@
                 <option><id>stellar_mainnet</id><name>Stellar Mainnet (USDC)</name></option>
                 <option><id>base_mainnet</id><name>Base Mainnet (USDC)</name></option>
                 <option><id>solana_mainnet</id><name>Solana Mainnet (USDC)</name></option>
-                <option><id>tempo_mainnet</id><name>Tempo Mainnet (USDC)</name></option>
+                <option><id>tempo_mainnet</id><name>Tempo Mainnet (USDCe)</name></option>
             </options>
         </input-field>
 
@@ -56,7 +56,7 @@
                 <option><id>stellar_mainnet</id><name>Stellar — USDC</name></option>
                 <option><id>base_mainnet</id><name>Base — USDC</name></option>
                 <option><id>solana_mainnet</id><name>Solana — USDC</name></option>
-                <option><id>tempo_mainnet</id><name>Tempo — USDC</name></option>
+                <option><id>tempo_mainnet</id><name>Tempo — USDCe</name></option>
             </options>
         </input-field>
     </card>

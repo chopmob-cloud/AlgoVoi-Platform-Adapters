@@ -2,7 +2,7 @@
 /**
  * Plugin Name:          AlgoVoi Payment Gateway
  * Plugin URI:           https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
- * Description:          Accept USDC stablecoin payments on Algorand, VOI, Hedera, and Stellar via hosted checkout or browser extension. No crypto knowledge required — works alongside any existing payment method.
+ * Description:          Accept USDC / aUSDC / USDCe stablecoin payments on Algorand, VOI, Hedera, Stellar, Base, Solana and Tempo via hosted checkout or browser extension. No crypto knowledge required — works alongside any existing payment method.
  * Version:              2.4.4
  * Requires at least:    6.4
  * Requires PHP:         8.0
@@ -150,7 +150,7 @@ function algovoi_network_dropdown($field_name, $enabled_networks) {
         'stellar_mainnet'  => 'Stellar — USDC',
         'base_mainnet'     => 'Base — USDC',
         'solana_mainnet'   => 'Solana — USDC',
-        'tempo_mainnet'    => 'Tempo — USDC',
+        'tempo_mainnet'    => 'Tempo — USDCe',
     );
     if (!is_array($enabled_networks) || empty($enabled_networks)) {
         $enabled_networks = array_keys($labels);
@@ -266,7 +266,7 @@ add_action('plugins_loaded', function () {
             $this->form_fields = array(
                 'enabled'          => array('title' => 'Enable/Disable', 'type' => 'checkbox', 'label' => 'Enable AlgoVoi', 'default' => 'yes'),
                 'title'            => array('title' => 'Title',          'type' => 'text',      'default' => 'AlgoVoi - Pay with Crypto'),
-                'description'      => array('title' => 'Description',    'type' => 'textarea',  'default' => 'Pay with USDC on Algorand, VOI, Hedera, Stellar, Base, Solana or Tempo.'),
+                'description'      => array('title' => 'Description',    'type' => 'textarea',  'default' => 'Pay with USDC (Algorand, Hedera, Stellar, Base, Solana), aUSDC (VOI) or USDCe (Tempo) via hosted checkout.'),
                 'api_base'         => array('title' => 'API Base URL',   'type' => 'text',      'default' => 'https://api1.ilovechicken.co.uk'),
                 'api_key'          => array('title' => 'API Key',        'type' => 'password',  'default' => ''),
                 'tenant_id'        => array('title' => 'Tenant ID',      'type' => 'text',      'default' => ''),
@@ -282,7 +282,7 @@ add_action('plugins_loaded', function () {
                         'stellar_mainnet'  => 'Stellar — USDC',
                         'base_mainnet'     => 'Base — USDC',
                         'solana_mainnet'   => 'Solana — USDC',
-                        'tempo_mainnet'    => 'Tempo — USDC',
+                        'tempo_mainnet'    => 'Tempo — USDCe',
                     ),
                     'default'  => array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'),
                     'desc_tip' => 'Networks shown at checkout. Select one to hide the selector and use it automatically.',

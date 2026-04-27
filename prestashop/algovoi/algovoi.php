@@ -21,7 +21,7 @@ class Algovoi extends PaymentModule
         $this->ps_versions_compliancy = ['min' => '8.0.0', 'max' => _PS_VERSION_];
         parent::__construct();
         $this->displayName = $this->l("AlgoVoi Payment Gateway");
-        $this->description = $this->l("Accept USDC stablecoin payments on Algorand, VOI, Hedera, and Stellar via hosted checkout. Instant settlement, no chargebacks, no FX fees.");
+        $this->description = $this->l("Accept USDC / aUSDC / USDCe stablecoin payments on Algorand, VOI, Hedera, Stellar, Base, Solana and Tempo via hosted checkout. Instant settlement, no chargebacks, no FX fees.");
     }
 
     public function install()
@@ -57,7 +57,7 @@ class Algovoi extends PaymentModule
         "stellar_mainnet"  => "Stellar — USDC",
         "base_mainnet"     => "Base — USDC",
         "solana_mainnet"   => "Solana — USDC",
-        "tempo_mainnet"    => "Tempo — USDC",
+        "tempo_mainnet"    => "Tempo — USDCe",
     ];
 
     protected function getEnabledNetworks(): array

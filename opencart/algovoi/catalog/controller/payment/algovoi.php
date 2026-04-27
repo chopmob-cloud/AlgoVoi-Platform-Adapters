@@ -15,7 +15,7 @@ class Algovoi extends \Opencart\System\Engine\Controller {
         'stellar_mainnet'  => 'Stellar &mdash; USDC',
         'base_mainnet'     => 'Base &mdash; USDC',
         'solana_mainnet'   => 'Solana &mdash; USDC',
-        'tempo_mainnet'    => 'Tempo &mdash; USDC',
+        'tempo_mainnet'    => 'Tempo &mdash; USDCe',
     ];
 
     private const NET_KEYS = [

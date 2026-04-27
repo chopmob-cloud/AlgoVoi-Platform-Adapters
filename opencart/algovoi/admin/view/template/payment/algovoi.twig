@@ -57,7 +57,7 @@
                 <option value="stellar_mainnet"{% if payment_algovoi_preferred_network == 'stellar_mainnet' %} selected{% endif %}>Stellar Mainnet (USDC)</option>
                 <option value="base_mainnet"{% if payment_algovoi_preferred_network == 'base_mainnet' %} selected{% endif %}>Base Mainnet (USDC)</option>
                 <option value="solana_mainnet"{% if payment_algovoi_preferred_network == 'solana_mainnet' %} selected{% endif %}>Solana Mainnet (USDC)</option>
-                <option value="tempo_mainnet"{% if payment_algovoi_preferred_network == 'tempo_mainnet' %} selected{% endif %}>Tempo Mainnet (USDC)</option>
+                <option value="tempo_mainnet"{% if payment_algovoi_preferred_network == 'tempo_mainnet' %} selected{% endif %}>Tempo Mainnet (USDCe)</option>
               </select>
               <div class="form-text">Fallback used if only one network is enabled at checkout.</div>
             </div>
@@ -73,7 +73,7 @@
                 {'key': 'stellar',  'label': 'Stellar — USDC'},
                 {'key': 'base',     'label': 'Base — USDC'},
                 {'key': 'solana',   'label': 'Solana — USDC'},
-                {'key': 'tempo',    'label': 'Tempo — USDC'}
+                {'key': 'tempo',    'label': 'Tempo — USDCe'}
               ] %}
               {% for net in nets %}
                 {% set cfg_key = 'payment_algovoi_net_' ~ net.key %}
