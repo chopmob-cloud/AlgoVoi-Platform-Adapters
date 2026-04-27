@@ -63,9 +63,12 @@ and are therefore held under NDA.
    No mainnet payment activity occurs for any merchant until CDD has been
    completed and signed off. Merchants on testnet during evaluation can
    exercise the platform with no real-value flow.
-4. **Geography is bounded.** UK-only operating perimeter is enforced as
-   a contractual control. Merchant onboarding from out-of-perimeter
-   geographies is declined unless escalated and individually approved.
+4. **Geography is risk-tiered.** Geography is one of the dimensions
+   scored in the customer risk matrix. UK and other low-risk
+   jurisdictions are the baseline; FATF and UK Sch 3ZA high-risk
+   jurisdictions are weighted up; comprehensive-sanctions jurisdictions
+   are declined. Higher-risk merchant onboardings escalate to EDD with
+   senior-management approval before any mainnet activity is allowed.
 5. **Sanctions and PEP screening run at onboarding and on every material
    update.** The pipeline integrates the consolidated UK, EU, US, and UN
    sanctions lists.

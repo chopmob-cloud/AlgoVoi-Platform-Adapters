@@ -25,7 +25,7 @@ Each merchant is scored across the following dimensions:
 | **Entity risk** | Type of legal entity; complexity of ownership; transparency of beneficial ownership; jurisdiction of incorporation |
 | **People risk** | PEP status of beneficial owners or directors; adverse media; sanctions screening outcome |
 | **Sector risk** | Sector flagged as higher-risk in our BWRA (e.g. unregulated remittance-adjacent, high-volume gambling, high-velocity adult content, etc.) |
-| **Geography risk** | UK-only operating perimeter is the baseline; out-of-perimeter relationships are escalated; FATF / UK Sch 3ZA high-risk jurisdictions are weighted up |
+| **Geography risk** | UK and other low-risk jurisdictions form the baseline; FATF and UK Sch 3ZA high-risk jurisdictions are weighted up; comprehensive-sanctions jurisdictions are declined |
 | **Product risk** | Mix of chains and protocols selected; high-velocity stablecoin flows; cross-border end-customer concentration |
 | **Volume risk** | Expected payment volume relative to peer merchants in the same sector |
 
