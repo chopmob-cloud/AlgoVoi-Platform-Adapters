@@ -14,7 +14,7 @@ add_action('wp_enqueue_scripts', function () {
         'algovoi-woo-style',
         get_stylesheet_directory_uri() . '/style.css',
         array('storefront-style'),
-        '1.3'
+        '1.4'
     );
 });
 

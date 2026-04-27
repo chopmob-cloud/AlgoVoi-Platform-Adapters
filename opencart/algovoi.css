@@ -385,3 +385,33 @@ img { max-width: 100% !important; height: auto !important; }
 @media (max-width: 400px) {
   .row .product-layout { width: 100% !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Design parity v4 — same compact rhythm as other 3 platforms
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Cards / panels */
+.card, .panel, .well {
+  padding: .85rem 1rem !important;
+  border-radius: 8px !important;
+}
+.card-header { padding: .55rem 1rem !important; font-size: 1rem !important; font-weight: 600 !important; }
+
+/* Buttons consistent */
+.btn { border-radius: 8px !important; padding: .55rem 1.2rem !important; font-size: .9rem !important; font-weight: 600 !important; }
+.btn-primary { min-height: 44px !important; }
+
+/* Form inputs */
+.form-control, input.form-control, select.form-control, textarea.form-control {
+  background: #1e2130 !important;
+  border: 1px solid #2a2d3a !important;
+  border-radius: 7px !important;
+  padding: .4rem .65rem !important;
+  font-size: .88rem !important;
+  min-height: 38px !important;
+}
+.form-control:focus { border-color: #6366f1 !important; box-shadow: 0 0 0 2px rgba(99,102,241,.2) !important; }
+
+/* Form labels */
+.col-form-label, label { font-size: .78rem !important; color: #9ca3af !important; }
+.form-group { margin-bottom: .65rem !important; }

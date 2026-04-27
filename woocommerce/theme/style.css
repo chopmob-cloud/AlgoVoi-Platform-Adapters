@@ -2,7 +2,7 @@
 Theme Name: AlgoVoi WooCommerce
 Template: storefront
 Description: AlgoVoi dark theme for WooCommerce — matches the AlgoVoi shop-demo palette.
-Version: 1.1
+Version: 1.2
 */
 
 /* ── Design tokens ────────────────────────────────────────────────────────── */
@@ -804,4 +804,106 @@ img { max-width: 100% !important; height: auto !important; }
     grid-template-columns: 1fr !important;
   }
   .woocommerce ul.products li.product { padding: .75rem !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Design parity v4 — match OpenCart compact rhythm (desktop)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Product cards — tighter */
+.woocommerce ul.products li.product {
+  padding: .85rem 1rem !important;
+  border-radius: 8px !important;
+}
+.woocommerce ul.products li.product .woocommerce-loop-product__title,
+.woocommerce ul.products li.product h2 {
+  font-size: .9rem !important;
+  margin-bottom: .25rem !important;
+}
+.woocommerce ul.products li.product .price {
+  font-size: .95rem !important;
+}
+
+/* Buttons — consistent with OC reference */
+.woocommerce a.button,
+.woocommerce button.button,
+.woocommerce input.button,
+.woocommerce ul.products li.product .button {
+  border-radius: 8px !important;
+  padding: .55rem 1.2rem !important;
+  font-size: .9rem !important;
+  font-weight: 600 !important;
+  min-height: 44px !important;
+}
+
+/* Form inputs — match panel select style */
+.woocommerce form .form-row input.input-text,
+.woocommerce form .form-row textarea,
+.woocommerce form .form-row select,
+.woocommerce-checkout input[type='text'],
+.woocommerce-checkout input[type='email'],
+.woocommerce-checkout input[type='tel'],
+.woocommerce-checkout input[type='password'],
+.woocommerce-checkout textarea,
+.woocommerce-checkout select {
+  background: #1e2130 !important;
+  border: 1px solid #2a2d3a !important;
+  border-radius: 7px !important;
+  padding: .4rem .65rem !important;
+  font-size: .88rem !important;
+  min-height: 38px !important;
+}
+
+/* Form labels — muted small */
+.woocommerce form .form-row label,
+.woocommerce-checkout .form-row label {
+  font-size: .78rem !important;
+  margin-bottom: .25rem !important;
+  color: #9ca3af !important;
+}
+
+/* Form spacing */
+.woocommerce form .form-row { margin-bottom: .65rem !important; }
+
+/* Cart panel / order review compact */
+#order_review, .woocommerce-checkout-review-order,
+.cart_totals, .woocommerce-cart .cart_totals {
+  padding: .85rem 1rem !important;
+  border-radius: 8px !important;
+}
+
+/* Cart table rows compact */
+.woocommerce-cart-form table.cart th,
+.woocommerce-cart-form table.cart td {
+  padding: .55rem .65rem !important;
+  font-size: .88rem !important;
+}
+
+/* Place order button */
+#place_order, .woocommerce #place_order,
+.wc-proceed-to-checkout .checkout-button {
+  border-radius: 8px !important;
+  padding: .65rem 1.2rem !important;
+  font-size: .95rem !important;
+  font-weight: 600 !important;
+  min-height: 48px !important;
+}
+
+/* Payment method row */
+#payment ul.payment_methods li {
+  padding: .5rem .75rem !important;
+  border-radius: 7px !important;
+  margin-bottom: .35rem !important;
+  background: #141622 !important;
+  border: 1px solid #2a2d3a !important;
+}
+
+/* Section headings — denser */
+.woocommerce-checkout h3,
+.woocommerce-checkout h2 {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  padding-bottom: .35rem !important;
+  margin-bottom: .65rem !important;
+  border-bottom: 1px solid #2a2d3a !important;
 }
