@@ -7,5 +7,5 @@ dependencies:
   - commerce:commerce_payment
   - commerce:commerce_order
 configure: commerce_payment.payment_gateways
-version: '1.0.0'
+version: '1.1.0'
 project: 'commerce_algovoi'

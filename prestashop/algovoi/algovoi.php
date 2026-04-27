@@ -13,7 +13,7 @@ class Algovoi extends PaymentModule
     {
         $this->name        = "algovoi";
         $this->tab         = "payments_gateways";
-        $this->version     = "1.0.0";
+        $this->version     = "1.1.0";
         $this->author      = "AlgoVoi";
         $this->author_uri  = "https://api1.ilovechicken.co.uk";
         $this->need_instance = 0;
@@ -118,6 +118,18 @@ class Algovoi extends PaymentModule
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
             <input type="radio" name="algovoi_network_radio" value="stellar_mainnet"
                    onchange="document.querySelector(\'input[name=algovoi_network]\').value=this.value;"> Stellar &mdash; USDC
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="radio" name="algovoi_network_radio" value="base_mainnet"
+                   onchange="document.querySelector(\'input[name=algovoi_network]\').value=this.value;"> Base &mdash; USDC
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="radio" name="algovoi_network_radio" value="solana_mainnet"
+                   onchange="document.querySelector(\'input[name=algovoi_network]\').value=this.value;"> Solana &mdash; USDC
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="radio" name="algovoi_network_radio" value="tempo_mainnet"
+                   onchange="document.querySelector(\'input[name=algovoi_network]\').value=this.value;"> Tempo &mdash; USDCe
           </label>
         </div>';
         $option = new PaymentOption();

@@ -18,6 +18,9 @@ class Network implements OptionSourceInterface
             ['value' => 'voi_mainnet',      'label' => __('VOI — aUSDC')],
             ['value' => 'hedera_mainnet',   'label' => __('Hedera — USDC')],
             ['value' => 'stellar_mainnet',  'label' => __('Stellar — USDC')],
+            ['value' => 'base_mainnet',     'label' => __('Base — USDC')],
+            ['value' => 'solana_mainnet',   'label' => __('Solana — USDC')],
+            ['value' => 'tempo_mainnet',    'label' => __('Tempo — USDCe')],
         ];
     }
 }

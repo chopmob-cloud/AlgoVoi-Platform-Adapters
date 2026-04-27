@@ -10,7 +10,7 @@ use Magento\Store\Model\ScopeInterface;
 
 class ApiHelper extends AbstractHelper
 {
-    private const HOSTED_NETWORKS = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet'];
+    private const HOSTED_NETWORKS = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'];
 
     private Curl $curl;
 

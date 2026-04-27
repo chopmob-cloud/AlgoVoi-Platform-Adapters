@@ -27,7 +27,7 @@ use Symfony\Component\HttpFoundation\Request;
  *
  * @CommercePaymentGateway(
  *   id = "algovoi_offsite",
- *   label = "AlgoVoi (USDC on Algorand / VOI / Hedera / Stellar)",
+ *   label = "AlgoVoi (USDC on Algorand / VOI / Hedera / Stellar / Base / Solana / Tempo)",
  *   display_label = "Pay with Crypto (AlgoVoi)",
  *   forms = {
  *     "offsite-payment" = "Drupal\commerce_algovoi\PluginForm\OffsiteRedirect\PaymentOffsiteForm",
@@ -130,6 +130,9 @@ class AlgoVoi extends OffsitePaymentGatewayBase {
         'voi_mainnet'      => $this->t('VOI (aUSDC)'),
         'hedera_mainnet'   => $this->t('Hedera (USDC)'),
         'stellar_mainnet'  => $this->t('Stellar (USDC)'),
+        'base_mainnet'     => $this->t('Base (USDC)'),
+        'solana_mainnet'   => $this->t('Solana (USDC)'),
+        'tempo_mainnet'    => $this->t('Tempo (USDCe)'),
       ],
     ];
 
@@ -180,7 +183,7 @@ class AlgoVoi extends OffsitePaymentGatewayBase {
       'amount'             => round($amount, 2),
       'currency'           => strtoupper($currency),
       'label'              => 'Drupal Order #' . $order->id(),
-      'preferred_network'  => in_array($network, ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet'], TRUE)
+      'preferred_network'  => in_array($network, ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'], TRUE)
                               ? $network
                               : 'algorand_mainnet',
       'redirect_url'       => $return_url,

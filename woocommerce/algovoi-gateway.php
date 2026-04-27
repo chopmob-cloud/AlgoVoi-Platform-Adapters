@@ -3,7 +3,7 @@
  * Plugin Name:          AlgoVoi Payment Gateway
  * Plugin URI:           https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  * Description:          Accept USDC stablecoin payments on Algorand, VOI, Hedera, and Stellar via hosted checkout or browser extension. No crypto knowledge required — works alongside any existing payment method.
- * Version:              2.4.2
+ * Version:              2.4.3
  * Requires at least:    6.4
  * Requires PHP:         8.0
  * Tested up to:         6.9
@@ -146,6 +146,9 @@ function algovoi_chain_selector_html($field_name, $chains = null) {
         $chains = [
             ['algorand_mainnet', 'Algorand', 'USDC',  '#3b82f6', '&#9672;'],
             ['voi_mainnet',      'VOI',      'aUSDC', '#8b5cf6', '&#9670;'],
+            ['base_mainnet',     'Base',     'USDC',  '#0052ff', '&#9671;'],
+            ['solana_mainnet',   'Solana',   'USDC',  '#9945ff', '&#9671;'],
+            ['tempo_mainnet',    'Tempo',    'USDCe', '#f59e0b', '&#9671;'],
         ];
     }
     ?>
@@ -236,14 +239,17 @@ add_action('plugins_loaded', function () {
                 ['voi_mainnet',      'VOI',      'aUSDC', '#8b5cf6', '&#9670;'],
                 ['hedera_mainnet',   'Hedera',   'USDC',  '#00a9a5', '&#9711;'],
                 ['stellar_mainnet',  'Stellar',  'USDC',  '#7C63D0', '&#9733;'],
+                ['base_mainnet',     'Base',     'USDC',  '#0052ff', '&#9671;'],
+                ['solana_mainnet',   'Solana',   'USDC',  '#9945ff', '&#9671;'],
+                ['tempo_mainnet',    'Tempo',    'USDCe', '#f59e0b', '&#9671;'],
             ]);
         }
 
         public function validate_fields() {
             // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce verifies checkout nonce before calling this.
             $net = isset($_POST['algovoi_network']) ? sanitize_text_field(wp_unslash($_POST['algovoi_network'])) : '';
-            if (!in_array($net, array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet'), true)) {
-                wc_add_notice('Please select a network (Algorand, VOI, Hedera or Stellar) to continue.', 'error');
+            if (!in_array($net, array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'), true)) {
+                wc_add_notice('Please select a network (Algorand, VOI, Hedera, Stellar, Base, Solana or Tempo) to continue.', 'error');
                 return false;
             }
             return true;

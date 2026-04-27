@@ -3,7 +3,7 @@
  * Plugin Name:          AlgoVoi for Easy Digital Downloads
  * Plugin URI:           https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  * Description:          Accept USDC stablecoin payments on Algorand, VOI (aUSDC), Hedera, and Stellar in Easy Digital Downloads. Non-custodial — funds settle to the merchant's wallet. Supports digital downloads, license keys, and EDD Software Licensing.
- * Version:              1.0.0
+ * Version:              1.1.0
  * Requires at least:    6.4
  * Requires PHP:         8.0
  * Requires Plugins:     easy-digital-downloads
@@ -85,6 +85,9 @@ add_filter('edd_settings_gateways', function ($settings) {
                 'voi_mainnet'      => __('VOI (aUSDC)', 'algovoi-edd'),
                 'hedera_mainnet'   => __('Hedera (USDC)', 'algovoi-edd'),
                 'stellar_mainnet'  => __('Stellar (USDC)', 'algovoi-edd'),
+                'base_mainnet'     => __('Base (USDC)', 'algovoi-edd'),
+                'solana_mainnet'   => __('Solana (USDC)', 'algovoi-edd'),
+                'tempo_mainnet'    => __('Tempo (USDCe)', 'algovoi-edd'),
             ],
         ],
     ];
@@ -119,7 +122,7 @@ add_action('edd_gateway_algovoi', function ($purchase_data) {
         return;
     }
 
-    $allowed_networks = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet'];
+    $allowed_networks = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'];
     if (!in_array($network, $allowed_networks, true)) {
         $network = 'algorand_mainnet';
     }

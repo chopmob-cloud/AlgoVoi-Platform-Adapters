@@ -30,6 +30,9 @@ class ConfigProvider implements ConfigProviderInterface
                         ['value' => 'voi_mainnet',      'label' => 'VOI — aUSDC',      'colour' => '#8b5cf6'],
                         ['value' => 'hedera_mainnet',   'label' => 'Hedera — USDC',    'colour' => '#00a9a5'],
                         ['value' => 'stellar_mainnet',  'label' => 'Stellar — USDC',   'colour' => '#7C63D0'],
+                        ['value' => 'base_mainnet',     'label' => 'Base — USDC',      'colour' => '#0052ff'],
+                        ['value' => 'solana_mainnet',   'label' => 'Solana — USDC',    'colour' => '#9945ff'],
+                        ['value' => 'tempo_mainnet',    'label' => 'Tempo — USDCe',    'colour' => '#f59e0b'],
                     ],
                     'defaultNetwork' => $this->apiHelper->getDefaultNetwork(),
                     'redirectUrl'    => '', // Set after order placement via JS

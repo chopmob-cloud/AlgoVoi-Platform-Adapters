@@ -57,7 +57,7 @@ class AlgovoiHostedPaymentHandler extends AbstractPaymentHandler
         $label    = 'Order #' . $order->getOrderNumber();
 
         $network = $request->request->get('algovoi_network', '');
-        $allowed = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet'];
+        $allowed = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'];
         if (!in_array($network, $allowed, true)) $network = '';
 
         $link = $this->apiHelper->createPaymentLink($amount, $currency, $label, $returnUrl ?? '', $network);

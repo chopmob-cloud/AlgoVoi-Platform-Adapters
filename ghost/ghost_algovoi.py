@@ -7,6 +7,8 @@ merchant's configured wallet. On verified payment, the adapter calls the
 Ghost Admin API to upgrade the reader's member record (e.g. set a label
 or grant a comped subscription to a named tier).
 
+Supported hosted networks: Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo.
+
 Use cases:
   - "Pay with Crypto" alternative to Ghost's built-in Stripe flow
   - Tip jar for individual posts
@@ -20,7 +22,7 @@ Python dependencies:
                    https://ghost.org/docs/admin-api/#token-authentication)
   - All other HTTP + HMAC work uses the standard library only.
 
-Version: 1.0.0
+Version: 1.1.0
 
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
@@ -42,9 +44,9 @@ from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
-HOSTED_NETWORKS = {"algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet"}
+HOSTED_NETWORKS = {"algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet", "base_mainnet", "solana_mainnet", "tempo_mainnet"}
 
 # Hard caps, mirroring the B2B webhook adapters.
 MAX_WEBHOOK_BODY_BYTES = 64 * 1024

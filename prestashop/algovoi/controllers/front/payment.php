@@ -16,7 +16,7 @@ class AlgovoiPaymentModuleFrontController extends ModuleFrontController
         $api_key  = Configuration::get("ALGOVOI_API_KEY");
         $tenant   = Configuration::get("ALGOVOI_TENANT_ID");
         $network  = Tools::getValue("algovoi_network") ?: Configuration::get("ALGOVOI_NETWORK") ?: "algorand_mainnet";
-        $allowed  = ["algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet"];
+        $allowed  = ["algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet", "base_mainnet", "solana_mainnet", "tempo_mainnet"];
         if (!in_array($network, $allowed, true)) $network = "algorand_mainnet";
         $currency = new Currency($cart->id_currency);
         $total    = (float)$cart->getOrderTotal(true, Cart::BOTH);
