@@ -15,7 +15,7 @@ class Algovoi extends PaymentModule
         $this->tab         = "payments_gateways";
         $this->version     = "1.2.0";
         $this->author      = "AlgoVoi";
-        $this->author_uri  = "https://api1.ilovechicken.co.uk";
+        $this->author_uri  = "https://www.algovoi.co.uk";
         $this->need_instance = 0;
         $this->bootstrap   = true;
         $this->ps_versions_compliancy = ['min' => '8.0.0', 'max' => _PS_VERSION_];

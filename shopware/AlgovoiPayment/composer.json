@@ -19,12 +19,12 @@
             "en-GB": "AlgoVoi Payment Gateway"
         },
         "description": {
-            "de-DE": "Stablecoin-Zahlungen (USDC) auf Algorand, VOI, Hedera und Stellar via AlgoVoi. Sofortige Abrechnung, keine Rückbuchungen.",
-            "en-GB": "Accept USDC stablecoin payments on Algorand, VOI, Hedera, and Stellar via AlgoVoi. Instant settlement, no chargebacks, no FX fees."
+            "de-DE": "Stablecoin-Zahlungen (USDC / aUSDC / USDCe) auf Algorand, VOI, Hedera, Stellar, Base, Solana und Tempo via AlgoVoi. Sofortige Abrechnung, keine Rückbuchungen.",
+            "en-GB": "Accept USDC / aUSDC / USDCe stablecoin payments on Algorand, VOI, Hedera, Stellar, Base, Solana and Tempo via AlgoVoi. Instant settlement, no chargebacks, no FX fees."
         },
         "manufacturerLink": {
-            "de-DE": "https://api1.ilovechicken.co.uk",
-            "en-GB": "https://api1.ilovechicken.co.uk"
+            "de-DE": "https://www.algovoi.co.uk",
+            "en-GB": "https://www.algovoi.co.uk"
         },
         "supportLink": {
             "de-DE": "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/issues",

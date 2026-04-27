@@ -137,81 +137,162 @@ function algovoi_parse_checkout($url, $api_base = '') {
     return array('receiver' => $receiver, 'memo' => $memo);
 }
 
-/**
- * Render network dropdown (A+D pattern) for the hosted gateway.
- * Single network enabled → hidden input, no visible UI.
- * Multiple networks → <select> dropdown showing only enabled ones.
- */
-function algovoi_network_dropdown($field_name, $enabled_networks) {
-    static $labels = array(
-        'algorand_mainnet' => 'Algorand — USDC',
-        'voi_mainnet'      => 'VOI — aUSDC',
-        'hedera_mainnet'   => 'Hedera — USDC',
-        'stellar_mainnet'  => 'Stellar — USDC',
-        'base_mainnet'     => 'Base — USDC',
-        'solana_mainnet'   => 'Solana — USDC',
-        'tempo_mainnet'    => 'Tempo — USDCe',
+/* Chain colour map — used by both dropdown and card selector */
+function algovoi_chain_colours() {
+    return array(
+        'algorand_mainnet' => '#3b82f6',
+        'voi_mainnet'      => '#8b5cf6',
+        'hedera_mainnet'   => '#00a9a5',
+        'stellar_mainnet'  => '#7C63D0',
+        'base_mainnet'     => '#0052ff',
+        'solana_mainnet'   => '#9945ff',
+        'tempo_mainnet'    => '#f59e0b',
     );
-    if (!is_array($enabled_networks) || empty($enabled_networks)) {
-        $enabled_networks = array_keys($labels);
-    }
-    $chains = array_intersect_key($labels, array_flip($enabled_networks));
-    if (empty($chains)) $chains = array('algorand_mainnet' => 'Algorand — USDC');
+}
 
-    if (count($chains) === 1) {
-        echo '<input type="hidden" name="' . esc_attr($field_name) . '" value="' . esc_attr(array_key_first($chains)) . '">';
-        return;
-    }
+/**
+ * Powered-by footer shared across both payment panels.
+ */
+function algovoi_footer_html() {
     ?>
-    <div style="margin-top:.75rem;">
-        <label for="<?php echo esc_attr($field_name); ?>"
-               style="display:block;font-size:.78rem;font-weight:600;letter-spacing:.05em;
-                      text-transform:uppercase;color:#6b7280;margin-bottom:.4rem;">Select network</label>
-        <select id="<?php echo esc_attr($field_name); ?>"
-                name="<?php echo esc_attr($field_name); ?>"
-                style="width:100%;padding:.5rem .75rem;background:#1e2130;border:1px solid #2a2d3a;
-                       border-radius:6px;color:#f1f2f6;font-size:.9rem;">
-            <?php foreach ($chains as $value => $label) : ?>
-            <option value="<?php echo esc_attr($value); ?>"><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
+    <div style="margin-top:.9rem;padding-top:.65rem;border-top:1px solid #1f2235;
+                display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;">
+        <span style="font-size:.72rem;color:#4b5563;">
+            Secured by
+            <a href="https://www.algovoi.co.uk" target="_blank" rel="noopener"
+               style="color:#6366f1;text-decoration:none;font-weight:600;">AlgoVoi</a>
+            &mdash; instant on-chain settlement
+        </span>
+        <span style="font-size:.72rem;color:#374151;">No chargebacks &bull; No FX fees</span>
     </div>
     <?php
 }
 
 /**
- * Render the chain radio selector (used by extension gateway — AVM only).
+ * Render network dropdown (A+D pattern) for the hosted gateway.
+ * Single network → hidden input + chain badge, no selector.
+ * Multiple networks → styled <select> with live colour indicator.
+ */
+function algovoi_network_dropdown($field_name, $enabled_networks) {
+    static $meta = array(
+        'algorand_mainnet' => array('label' => 'Algorand',  'ticker' => 'USDC',  'colour' => '#3b82f6'),
+        'voi_mainnet'      => array('label' => 'VOI',       'ticker' => 'aUSDC', 'colour' => '#8b5cf6'),
+        'hedera_mainnet'   => array('label' => 'Hedera',    'ticker' => 'USDC',  'colour' => '#00a9a5'),
+        'stellar_mainnet'  => array('label' => 'Stellar',   'ticker' => 'USDC',  'colour' => '#7C63D0'),
+        'base_mainnet'     => array('label' => 'Base',      'ticker' => 'USDC',  'colour' => '#0052ff'),
+        'solana_mainnet'   => array('label' => 'Solana',    'ticker' => 'USDC',  'colour' => '#9945ff'),
+        'tempo_mainnet'    => array('label' => 'Tempo',     'ticker' => 'USDCe', 'colour' => '#f59e0b'),
+    );
+    if (!is_array($enabled_networks) || empty($enabled_networks)) {
+        $enabled_networks = array_keys($meta);
+    }
+    $chains = array_intersect_key($meta, array_flip($enabled_networks));
+    if (empty($chains)) $chains = array('algorand_mainnet' => $meta['algorand_mainnet']);
+
+    $first_key    = array_key_first($chains);
+    $first        = $chains[$first_key];
+    $field_id     = esc_attr($field_name);
+    $indicator_id = 'av-dot-' . $field_id;
+
+    if (count($chains) === 1) {
+        ?>
+        <div style="margin-top:.85rem;display:flex;align-items:center;gap:.55rem;">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
+                         background:<?php echo esc_attr($first['colour']); ?>;flex-shrink:0;"></span>
+            <span style="font-size:.88rem;color:#d1d5db;font-weight:600;">
+                <?php echo esc_html($first['label']); ?>
+                <span style="color:<?php echo esc_attr($first['colour']); ?>;margin-left:.25rem;"><?php echo esc_html($first['ticker']); ?></span>
+            </span>
+        </div>
+        <input type="hidden" name="<?php echo $field_id; // phpcs:ignore ?>" value="<?php echo esc_attr($first_key); ?>">
+        <?php
+        algovoi_footer_html();
+        return;
+    }
+
+    // Build colours JSON for JS
+    $colours_json = wp_json_encode(array_map(fn($v) => $v['colour'], $chains));
+    ?>
+    <div style="margin-top:.85rem;">
+        <label for="<?php echo $field_id; // phpcs:ignore ?>"
+               style="display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;
+                      text-transform:uppercase;color:#6b7280;margin-bottom:.45rem;">Select network</label>
+        <div style="position:relative;display:flex;align-items:center;gap:.6rem;">
+            <span id="<?php echo esc_attr($indicator_id); ?>"
+                  style="display:inline-block;width:11px;height:11px;border-radius:50%;
+                         background:<?php echo esc_attr($first['colour']); ?>;flex-shrink:0;
+                         transition:background .2s;"></span>
+            <select id="<?php echo $field_id; // phpcs:ignore ?>"
+                    name="<?php echo $field_id; // phpcs:ignore ?>"
+                    style="flex:1;padding:.55rem .75rem;background:#141622;border:1px solid #2a2d3a;
+                           border-radius:7px;color:#f1f2f6;font-size:.9rem;cursor:pointer;
+                           appearance:none;-webkit-appearance:none;outline:none;
+                           transition:border-color .2s;"
+                    onfocus="this.style.borderColor='#6366f1'"
+                    onblur="this.style.borderColor='#2a2d3a'"
+                    onchange="avDropdownChange(this,'<?php echo esc_attr($indicator_id); ?>',<?php echo $colours_json; // phpcs:ignore ?>)">
+                <?php foreach ($chains as $value => $info) : ?>
+                <option value="<?php echo esc_attr($value); ?>">
+                    <?php echo esc_html($info['label'] . ' — ' . $info['ticker']); ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
+            <span style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);
+                         color:#6b7280;pointer-events:none;font-size:.75rem;">&#9662;</span>
+        </div>
+    </div>
+    <script>
+    if (typeof avDropdownChange === 'undefined') {
+        function avDropdownChange(sel, dotId, colours) {
+            var dot = document.getElementById(dotId);
+            if (dot && colours[sel.value]) dot.style.background = colours[sel.value];
+        }
+    }
+    </script>
+    <?php algovoi_footer_html(); ?>
+    <?php
+}
+
+/**
+ * Render the chain card selector (extension gateway — AVM only: Algorand & VOI).
  * $chains: array of [network_value, label, ticker, colour, icon] rows.
  */
 function algovoi_chain_selector_html($field_name, $chains = null) {
+    // Extension gateway is AVM-only — Algorand and VOI only (browser extension + algosdk).
     if ($chains === null) {
         $chains = [
             ['algorand_mainnet', 'Algorand', 'USDC',  '#3b82f6', '&#9672;'],
             ['voi_mainnet',      'VOI',      'aUSDC', '#8b5cf6', '&#9670;'],
-            ['base_mainnet',     'Base',     'USDC',  '#0052ff', '&#9671;'],
-            ['solana_mainnet',   'Solana',   'USDC',  '#9945ff', '&#9671;'],
-            ['tempo_mainnet',    'Tempo',    'USDCe', '#f59e0b', '&#9671;'],
         ];
     }
+    $uid = 'av-ext-' . esc_attr($field_name);
     ?>
-    <div class="av-chain-selector" style="margin-top:.75rem;">
-        <p style="font-size:.78rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+    <div class="av-chain-selector" id="<?php echo $uid; // phpcs:ignore ?>" style="margin-top:.85rem;">
+        <p style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
                   color:#6b7280;margin:0 0 .6rem;">Select network</p>
-        <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
-            <?php foreach ($chains as [$val, $label, $ticker, $colour, $icon]) : ?>
-            <label class="av-chain-opt" style="flex:1;min-width:130px;cursor:pointer;">
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+            <?php foreach ($chains as $i => [$val, $label, $ticker, $colour, $icon]) : ?>
+            <label class="av-chain-opt" style="flex:1;min-width:120px;max-width:180px;cursor:pointer;">
                 <input type="radio" name="<?php echo esc_attr($field_name); ?>"
                        value="<?php echo esc_attr($val); ?>"
                        style="display:none;"
-                       onchange="avChainSelect(this)">
-                <div class="av-chain-card" data-colour="<?php echo esc_attr($colour); ?>"
-                     style="padding:.85rem 1rem;background:#1e2130;border:2px solid #2a2d3a;
+                       <?php echo $i === 0 ? 'checked' : ''; ?>
+                       onchange="avCardSelect(this,'<?php echo $uid; // phpcs:ignore ?>')">
+                <div class="av-chain-card"
+                     data-colour="<?php echo esc_attr($colour); ?>"
+                     style="padding:.8rem .9rem;
+                            background:<?php echo $i === 0 ? 'rgba(99,102,241,.08)' : '#141622'; ?>;
+                            border:2px solid <?php echo $i === 0 ? esc_attr($colour) : '#1f2235'; ?>;
                             border-radius:10px;transition:border-color .15s,background .15s;text-align:center;">
-                    <span style="font-size:1.1rem;color:<?php echo esc_attr($colour); ?>;"><?php echo wp_kses($icon, array()); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
-                    <span style="font-weight:700;color:#f1f2f6;margin-left:.4rem;"><?php echo esc_html($label); ?></span>
-                    <span style="display:block;font-size:.75rem;color:#6b7280;margin-top:.2rem;">
-                        Pay with <?php echo esc_html($ticker); ?>
-                    </span>
+                    <div style="font-size:1.05rem;color:<?php echo esc_attr($colour); ?>;line-height:1;">
+                        <?php echo wp_kses($icon, array()); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                    </div>
+                    <div style="font-weight:700;font-size:.92rem;color:#f1f2f6;margin-top:.35rem;">
+                        <?php echo esc_html($label); ?>
+                    </div>
+                    <div style="font-size:.72rem;color:<?php echo esc_attr($colour); ?>;margin-top:.15rem;font-weight:600;">
+                        <?php echo esc_html($ticker); ?>
+                    </div>
                 </div>
             </label>
             <?php endforeach; ?>
@@ -221,19 +302,22 @@ function algovoi_chain_selector_html($field_name, $chains = null) {
         </div>
     </div>
     <script>
-    if (typeof avChainSelect === 'undefined') {
-        function avChainSelect(radio) {
-            radio.closest('.av-chain-selector').querySelectorAll('.av-chain-card').forEach(function(c) {
-                c.style.borderColor = '#2a2d3a';
-                c.style.background  = '#1e2130';
+    if (typeof avCardSelect === 'undefined') {
+        function avCardSelect(radio, uid) {
+            var sel = document.getElementById(uid);
+            if (!sel) return;
+            sel.querySelectorAll('.av-chain-card').forEach(function(c) {
+                c.style.borderColor = '#1f2235';
+                c.style.background  = '#141622';
             });
             var card = radio.closest('.av-chain-opt').querySelector('.av-chain-card');
             card.style.borderColor = card.dataset.colour;
-            card.style.background  = 'rgba(59,130,246,.08)';
-            radio.closest('.av-chain-selector').querySelector('.av-chain-error').style.display = 'none';
+            card.style.background  = 'rgba(99,102,241,.08)';
+            sel.querySelector('.av-chain-error').style.display = 'none';
         }
     }
     </script>
+    <?php algovoi_footer_html(); ?>
     <?php
 }
 
