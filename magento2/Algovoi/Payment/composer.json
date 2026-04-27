@@ -1,8 +1,8 @@
 {
     "name": "algovoi/module-payment",
-    "description": "AlgoVoi Payment Gateway — Accept USDC on Algorand, VOI, Hedera, and Stellar",
+    "description": "AlgoVoi Payment Gateway — Accept USDC / aUSDC / USDCe on Algorand, VOI, Hedera, Stellar, Base, Solana and Tempo",
     "type": "magento2-module",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "license": "BSL-1.1",
     "require": {
         "php": ">=8.1",

@@ -16,29 +16,64 @@
             <!-- /ko -->
         </div>
 
-        <!-- Chain selector -->
-        <div class="algovoi-chain-selector" style="margin: 1rem 0;">
-            <p style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #666; margin-bottom: 8px;">
-                Select network
-            </p>
-            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                <!-- ko foreach: getChains() -->
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px;">
-                    <input type="radio"
-                           name="algovoi_network"
-                           data-bind="value: value,
-                                      checked: $parent.selectedNetwork,
-                                      click: $parent.selectNetwork.bind($parent, $data)"
-                           style="accent-color: #3b82f6;" />
-                    <span data-bind="text: label"></span>
-                </label>
-                <!-- /ko -->
+        <!-- AlgoVoi branded panel — matches the OpenCart reference design -->
+        <div style="background:#141622;border:1px solid #1f2235;border-radius:8px;
+                    padding:10px 14px;color:#e0e0e0;
+                    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+                    max-width:100%;box-sizing:border-box;margin:1rem 0;">
+
+            <!-- Single-flow header: icon + brand + type badge + status badges -->
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+                <span style="width:22px;height:22px;border-radius:6px;
+                             background:linear-gradient(135deg,#6366f1,#8b5cf6);
+                             display:flex;align-items:center;justify-content:center;
+                             font-size:12px;flex-shrink:0;">&#9670;</span>
+                <strong style="color:#fff;font-size:14px;font-weight:700;">AlgoVoi</strong>
+                <span style="font-size:11px;color:#6b7280;border:1px solid #1f2235;
+                             border-radius:4px;padding:2px 6px;">Hosted</span>
+                <span style="font-size:11px;background:rgba(99,102,241,.1);color:#818cf8;
+                             border-radius:4px;padding:2px 6px;font-weight:600;">Secure</span>
+                <span style="font-size:11px;background:rgba(245,158,11,.1);color:#fbbf24;
+                             border-radius:4px;padding:2px 6px;font-weight:600;">Redirect</span>
+            </div>
+
+            <!-- Network selector: dot + dropdown -->
+            <div style="margin-bottom:10px;">
+                <label style="display:block;font-size:.68rem;font-weight:700;
+                              text-transform:uppercase;letter-spacing:.06em;
+                              color:#6b7280;margin-bottom:.35rem;">Select network</label>
+                <div style="display:flex;align-items:center;gap:.5rem;">
+                    <span data-bind="style:{background: selectedColour()}"
+                          style="display:inline-block;width:9px;height:9px;border-radius:50%;
+                                 flex-shrink:0;transition:background .2s;"></span>
+                    <div style="position:relative;flex:1;">
+                        <select data-bind="options: getChains(),
+                                           optionsValue: 'value',
+                                           optionsText: 'label',
+                                           value: selectedNetwork"
+                                style="width:100%;padding:.4rem .65rem;background:#0d0e1a;
+                                       border:1px solid #2a2d3a;border-radius:7px;
+                                       color:#f1f2f6;font-size:.85rem;cursor:pointer;
+                                       appearance:none;-webkit-appearance:none;outline:none;
+                                       box-sizing:border-box;transition:border-color .2s;"
+                                onfocus="this.style.borderColor='#6366f1'"
+                                onblur="this.style.borderColor='#2a2d3a'"></select>
+                        <span style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
+                                     color:#6b7280;pointer-events:none;font-size:.75rem;">&#9662;</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="padding-top:.5rem;border-top:1px solid #1f2235;
+                        font-size:.68rem;color:#4b5563;line-height:1.5;">
+                Secured by
+                <a href="https://www.algovoi.co.uk" target="_blank" rel="noopener"
+                   style="color:#6366f1;text-decoration:none;font-weight:600;">AlgoVoi</a>
+                &mdash; instant on-chain settlement
+                <span style="color:#374151;">&middot; No chargebacks &middot; No FX fees</span>
             </div>
         </div>
-
-        <p style="font-size: 13px; color: #637381; margin: 0.5rem 0 1rem;">
-            You will be redirected to a secure payment page to complete your order with USDC.
-        </p>
 
         <div class="checkout-agreements-block">
             <!-- ko foreach: $parent.getRegion('before-place-order') -->

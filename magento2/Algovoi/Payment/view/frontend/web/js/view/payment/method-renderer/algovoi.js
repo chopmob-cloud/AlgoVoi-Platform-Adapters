@@ -14,10 +14,24 @@ define([
 
         initialize: function () {
             this._super();
+            var self   = this;
             var config = window.checkoutConfig.payment.algovoi || {};
+
             if (config.defaultNetwork) {
                 this.selectedNetwork(config.defaultNetwork);
             }
+
+            // Build a value→colour lookup from config.chains for the indicator dot
+            this.colourMap = {};
+            (config.chains || []).forEach(function (c) {
+                self.colourMap[c.value] = c.colour;
+            });
+
+            // Computed: current dot colour driven by selectedNetwork
+            this.selectedColour = ko.computed(function () {
+                return self.colourMap[self.selectedNetwork()] || '#3b82f6';
+            });
+
             return this;
         },
 
@@ -39,6 +53,8 @@ define([
             };
         },
 
+        // Retained for backwards compat; the <select>'s `value: selectedNetwork`
+        // binding now drives the choice directly.
         selectNetwork: function (chain) {
             this.selectedNetwork(chain.value);
             return true;
