@@ -89,9 +89,9 @@ a clear message. The commit history is the audit trail.
 
 AlgoVoi is actively working toward SOC 2 Type II certification. Current status:
 
-- **Type I audit**: target Q3 2026
-- **Type II observation window**: Q4 2026
-- **Type II report**: target Q1–Q2 2027
+- **Type I audit**: target Q2 2027
+- **Type II observation window**: Q2–Q3 2027
+- **Type II report**: target Q4 2027
 
 These policies exist now so merchants and partners can rely on them during
 procurement, without waiting for the full certification timeline.
