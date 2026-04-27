@@ -2,8 +2,8 @@
 /**
  * Plugin Name:     AlgoVoi for Gravity Forms
  * Plugin URI:      https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
- * Description:     Accept crypto payments (USDC on Algorand, VOI, Hedera & Stellar) in Gravity Forms.
- * Version:         1.0.0
+ * Description:     Accept crypto payments (USDC on Algorand, VOI, Hedera, Stellar, Base, Solana & Tempo) in Gravity Forms.
+ * Version:         1.1.0
  * Author:          AlgoVoi
  * Author URI:      https://algovoi.co.uk
  * License:         GPL-2.0-or-later
@@ -21,7 +21,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ALGOVOI_GF_VERSION', '1.0.0' );
+define( 'ALGOVOI_GF_VERSION', '1.1.0' );
 define( 'ALGOVOI_GF_FILE',    __FILE__ );
 define( 'ALGOVOI_GF_DIR',     plugin_dir_path( __FILE__ ) );
 

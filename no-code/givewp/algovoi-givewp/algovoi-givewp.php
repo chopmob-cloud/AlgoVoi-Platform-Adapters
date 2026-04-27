@@ -2,8 +2,8 @@
 /**
  * Plugin Name:     AlgoVoi for GiveWP
  * Plugin URI:      https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
- * Description:     Accept crypto donation payments (USDC on Algorand, VOI, Hedera & Stellar) via GiveWP.
- * Version:         1.0.0
+ * Description:     Accept crypto donation payments (USDC on Algorand, VOI, Hedera, Stellar, Base, Solana & Tempo) via GiveWP.
+ * Version:         1.1.0
  * Author:          AlgoVoi
  * Author URI:      https://algovoi.co.uk
  * License:         GPL-2.0-or-later
@@ -21,7 +21,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ALGOVOI_GIVEWP_VERSION', '1.0.0' );
+define( 'ALGOVOI_GIVEWP_VERSION', '1.1.0' );
 define( 'ALGOVOI_GIVEWP_FILE',    __FILE__ );
 define( 'ALGOVOI_GIVEWP_DIR',     plugin_dir_path( __FILE__ ) );
 

@@ -38,7 +38,7 @@ class Algovoi extends \Opencart\System\Engine\Controller {
         $api_key   = $this->config->get('payment_algovoi_admin_api_key');
         // FIX: use trim() not db->escape() — this is API data, not SQL; whitelist is the real guard
         $network   = isset($_POST['algovoi_network']) ? trim($_POST['algovoi_network']) : ($this->config->get('payment_algovoi_preferred_network') ?: 'algorand_mainnet');
-        $allowed   = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet'];
+        $allowed   = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'];
         if (!in_array($network, $allowed, true)) $network = 'algorand_mainnet';
 
         $api_base = rtrim($this->config->get('payment_algovoi_api_base_url') ?: 'https://cloud.algovoi.co.uk', '/');
