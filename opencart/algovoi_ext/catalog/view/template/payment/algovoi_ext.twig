@@ -1,42 +1,70 @@
 <div class="algovoi-payment-panel" style="
-  background:#0d0d0d;
-  border:1px solid #2a2d3a;
-  border-radius:8px;
-  padding:20px 24px;
+  background:#141622;
+  border:1px solid #1f2235;
+  border-radius:10px;
+  padding:20px 22px;
   color:#e0e0e0;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   margin-bottom:16px;
 ">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-    <strong style="color:#fff;font-size:16px;">AlgoVoi</strong>
-    <span style="color:#666;font-size:13px;">Pay via Browser Extension</span>
-  </div>
-  <p style="margin:0 0 14px;font-size:13px;color:#aaa;line-height:1.5;">
-    Pay instantly with <strong style="color:#fff;">USDC</strong> or <strong style="color:#fff;">aUSDC</strong>
-    directly from your AlgoVoi browser extension. No redirect required.
-  </p>
-
-  <div style="margin-bottom:16px;">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:8px;">Select network</div>
-    <div style="display:flex;flex-direction:column;gap:6px;">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="radio" name="algovoi_ext_network" value="algorand_mainnet" checked style="accent-color:#3b82f6;">
-        <span style="font-size:13px;color:#e0e0e0;">Algorand &mdash; <span style="color:#3b82f6;">USDC</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="radio" name="algovoi_ext_network" value="voi_mainnet" style="accent-color:#8b5cf6;">
-        <span style="font-size:13px;color:#e0e0e0;">VOI &mdash; <span style="color:#8b5cf6;">aUSDC</span></span>
-      </label>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+                   display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">&#9670;</span>
+      <strong style="color:#fff;font-size:15px;font-weight:700;">AlgoVoi</strong>
+      <span style="font-size:11px;color:#6b7280;border:1px solid #1f2235;border-radius:4px;padding:2px 7px;">Extension</span>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <span style="font-size:10px;background:rgba(59,130,246,.1);color:#60a5fa;border-radius:4px;padding:2px 7px;font-weight:600;">In-page</span>
+      <span style="font-size:10px;background:rgba(16,185,129,.1);color:#34d399;border-radius:4px;padding:2px 7px;font-weight:600;">No redirect</span>
     </div>
   </div>
 
-  <div style="display:flex;gap:8px;font-size:12px;margin-bottom:20px;">
-    <span style="background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:3px 8px;color:#3b82f6;">In-page payment</span>
-    <span style="background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:3px 8px;color:#3b82f6;">No redirect</span>
-    <span style="background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:3px 8px;color:#666;">On-chain verified</span>
+  <p style="margin:0 0 14px;font-size:12.5px;color:#9ca3af;line-height:1.6;">
+    Pay instantly with USDC (Algorand) or aUSDC (VOI) directly from your AlgoVoi browser extension.
+  </p>
+
+  <div style="margin-bottom:16px;">
+    <label for="algovoi-ext-net-select"
+           style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;
+                  letter-spacing:.06em;color:#6b7280;margin-bottom:6px;">Select network</label>
+    <div style="display:flex;align-items:center;gap:.6rem;">
+      <span id="av-ext-dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;
+                                    background:#3b82f6;flex-shrink:0;transition:background .2s;"></span>
+      <div style="position:relative;flex:1;">
+        <select id="algovoi-ext-net-select"
+                name="algovoi_ext_network"
+                style="width:100%;padding:.5rem .75rem;background:#0d0e1a;border:1px solid #2a2d3a;
+                       border-radius:7px;color:#f1f2f6;font-size:.88rem;cursor:pointer;
+                       appearance:none;-webkit-appearance:none;outline:none;transition:border-color .2s;"
+                onfocus="this.style.borderColor='#6366f1'"
+                onblur="this.style.borderColor='#2a2d3a'"
+                onchange="document.getElementById('av-ext-dot').style.background=this.value==='voi_mainnet'?'#8b5cf6':'#3b82f6'">
+          <option value="algorand_mainnet">Algorand — USDC</option>
+          <option value="voi_mainnet">VOI — aUSDC</option>
+        </select>
+        <span style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
+                     color:#6b7280;pointer-events:none;font-size:.75rem;">&#9662;</span>
+      </div>
+    </div>
   </div>
-  <div class="text-end">
-    <button type="button" id="button-algovoi-ext-confirm" class="btn btn-primary">Confirm Order</button>
+
+  <div class="text-end" style="margin-bottom:12px;">
+    <button type="button" id="button-algovoi-ext-confirm" class="btn btn-primary"
+            style="padding:.55rem 1.4rem;font-size:.9rem;">
+      Confirm Order
+    </button>
+  </div>
+
+  <div style="padding-top:.65rem;border-top:1px solid #1f2235;
+              display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;">
+    <span style="font-size:.72rem;color:#4b5563;">
+      Secured by
+      <a href="https://www.algovoi.co.uk" target="_blank" rel="noopener"
+         style="color:#6366f1;text-decoration:none;font-weight:600;">AlgoVoi</a>
+      &mdash; instant on-chain settlement
+    </span>
+    <span style="font-size:.72rem;color:#374151;">No chargebacks &bull; No FX fees</span>
   </div>
 </div>
 
@@ -45,7 +73,7 @@ $('#button-algovoi-ext-confirm').on('click', function() {
     var element = this;
     $(element).prop('disabled', true).text('Processing...');
 
-    var network = $('input[name="algovoi_ext_network"]:checked').val() || 'algorand_mainnet';
+    var network = $('#algovoi-ext-net-select').val() || 'algorand_mainnet';
 
     $.ajax({
         url: 'index.php?route=extension/algovoi_ext/payment/algovoi_ext.confirm&language={{ language }}',
