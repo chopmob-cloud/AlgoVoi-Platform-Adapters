@@ -29,10 +29,8 @@
     {% else %}
         {% set _enabledKeys = _allNetworks|keys %}
     {% endif %}
-    {# wallet (extension) stays AVM-only regardless of config #}
     {% set _walletKeys = ['algorand_mainnet', 'voi_mainnet'] %}
 
-    {# Serialise to JSON for the inline script #}
     {% set _hostedJson = [] %}
     {% for k in _enabledKeys %}
         {% if _allNetworks[k] is defined %}
@@ -62,8 +60,9 @@
             tempo_mainnet:    '#f59e0b'
         };
 
-        // Track last rendered payment method to skip redundant re-renders that wipe user selection.
-        var lastRenderedPmId = null;
+        // Persist user's chain pick across AJAX re-renders of the payment method list
+        // (Shopware's data-form-auto-submit on changePaymentForm wipes the .payment-method divs)
+        var userChain = null;
         var rendering = false;
 
         function escAttr(s) {
@@ -77,27 +76,35 @@
                 : '<span style="font-size:11px;background:rgba(99,102,241,.1);color:#818cf8;border-radius:4px;padding:2px 6px;font-weight:600;">Secure checkout</span>'
                 + '<span style="font-size:11px;background:rgba(245,158,11,.1);color:#fbbf24;border-radius:4px;padding:2px 6px;font-weight:600;">Redirect</span>';
             var badgeType = isWallet ? 'Extension' : 'Hosted';
-            var firstColour = NET_COLOURS[chains[0].value] || '#3b82f6';
+
+            // Default selected chain: previous user pick if still valid, else chains[0]
+            var defaultChain = chains[0].value;
+            if (userChain && chains.some(function(c) { return c.value === userChain; })) {
+                defaultChain = userChain;
+            }
+            var firstColour = NET_COLOURS[defaultChain] || '#3b82f6';
 
             var selectorHtml = '';
             if (chains.length === 1) {
-                // Single chain: hidden input carries the value, dot+label show the chain
+                // Single chain — hidden input tied to confirmOrderForm via form="..."
                 selectorHtml = '<div style="margin-bottom:8px;display:flex;align-items:center;gap:.5rem;">'
                     + '<span id="av-sw-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;background:' + firstColour + ';"></span>'
                     + '<span style="font-size:.85rem;color:#e0e0e0;">' + escAttr(chains[0].label) + '</span>'
-                    + '<input type="hidden" name="algovoi_network" value="' + escAttr(chains[0].value) + '">'
+                    + '<input type="hidden" name="algovoi_network" form="confirmOrderForm" value="' + escAttr(chains[0].value) + '">'
                     + '</div>';
             } else {
-                // Multiple chains: <select> carries name="algovoi_network" — submitted natively by the form
+                // Multi-chain: <select> attached to confirmOrderForm via form="confirmOrderForm"
+                // (browser will include this select in the order submission regardless of DOM nesting)
                 var opts = chains.map(function(c) {
-                    return '<option value="' + escAttr(c.value) + '">' + escAttr(c.label) + '</option>';
+                    var sel = c.value === defaultChain ? ' selected' : '';
+                    return '<option value="' + escAttr(c.value) + '"' + sel + '>' + escAttr(c.label) + '</option>';
                 }).join('');
                 selectorHtml = '<div style="margin-bottom:10px;">'
                     + '<label for="av-sw-sel" style="display:block;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Select network</label>'
                     + '<div style="display:flex;align-items:center;gap:.5rem;">'
                     + '<span id="av-sw-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;background:' + firstColour + ';transition:background .2s;"></span>'
                     + '<div style="position:relative;flex:1;">'
-                    + '<select id="av-sw-sel" name="algovoi_network" style="width:100%;padding:.4rem .65rem;background:#0d0e1a;border:1px solid #2a2d3a;'
+                    + '<select id="av-sw-sel" name="algovoi_network" form="confirmOrderForm" style="width:100%;padding:.4rem .65rem;background:#0d0e1a;border:1px solid #2a2d3a;'
                     +   'border-radius:7px;color:#f1f2f6;font-size:.85rem;cursor:pointer;'
                     +   'appearance:none;-webkit-appearance:none;outline:none;box-sizing:border-box;transition:border-color .2s;">'
                     + opts
@@ -108,7 +115,7 @@
 
             return '<div style="background:#141622;border:1px solid #1f2235;border-radius:8px;'
                 + 'padding:10px 14px;color:#e0e0e0;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;'
-                + 'max-width:100%;box-sizing:border-box;">'
+                + 'max-width:100%;box-sizing:border-box;margin-top:.5rem;">'
                 + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;">'
                 + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">'
                 + '<span style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#6366f1,#8b5cf6);'
@@ -134,6 +141,7 @@
             var dot = document.getElementById('av-sw-dot');
             if (!sel) return;
             sel.addEventListener('change', function() {
+                userChain = this.value;  // remember pick across re-renders
                 if (dot) dot.style.background = NET_COLOURS[this.value] || '#3b82f6';
             });
         }
@@ -144,16 +152,11 @@
             var checked = document.querySelector('input[name="paymentMethodId"]:checked');
             var pmId    = checked ? checked.value : null;
 
-            // No payment method selected → remove panel if present
-            if (!pmId) {
-                var oldNoSel = document.getElementById('av-chain-selector');
-                if (oldNoSel) oldNoSel.remove();
-                lastRenderedPmId = null;
-                return;
-            }
+            // Always remove existing panel before deciding
+            var oldPanel = document.getElementById('av-chain-selector');
 
-            // Already rendered for this exact payment method → don't tear down (preserves user's chain pick)
-            if (pmId === lastRenderedPmId && document.getElementById('av-chain-selector')) {
+            if (!pmId) {
+                if (oldPanel) oldPanel.remove();
                 return;
             }
 
@@ -161,18 +164,15 @@
             if (HOSTED_ID && pmId === HOSTED_ID) { chains = hostedChains; }
             else if (WALLET_ID && pmId === WALLET_ID) { chains = walletChains; isWallet = true; }
 
-            // Different payment method (non-AlgoVoi) selected → just remove the panel
             if (!chains || chains.length === 0) {
-                var oldOther = document.getElementById('av-chain-selector');
-                if (oldOther) oldOther.remove();
-                lastRenderedPmId = pmId;
+                // Non-AlgoVoi method selected — hide the panel
+                if (oldPanel) oldPanel.remove();
                 return;
             }
 
-            // Render fresh panel for newly-selected AlgoVoi method
+            // Render fresh panel for AlgoVoi method (preserves userChain via buildPanel)
             rendering = true;
             try {
-                var oldPanel = document.getElementById('av-chain-selector');
                 if (oldPanel) oldPanel.remove();
 
                 var wrapper = document.createElement('div');
@@ -184,27 +184,30 @@
                     methodDiv.appendChild(wrapper);
                     wireSelect();
                 }
-                lastRenderedPmId = pmId;
             } finally {
-                // Allow MutationObserver fallout from our own DOM writes to settle
                 setTimeout(function() { rendering = false; }, 50);
             }
         }
 
         function init() {
             update();
-            var target = document.querySelector('.payment-methods') || document.body;
-            new MutationObserver(function() {
-                if (rendering) return;
-                setTimeout(update, 100);
-            }).observe(target, { childList: true, subtree: true });
 
-            // Also trigger on payment-method radio change directly (more reliable than mutations)
+            // Direct change-event listener on payment radios — fires reliably even when
+            // changePaymentForm AJAX-resubmits and replaces .payment-method content.
             document.addEventListener('change', function(e) {
                 if (e.target && e.target.name === 'paymentMethodId') {
-                    setTimeout(update, 50);
+                    setTimeout(update, 80);
                 }
             });
+
+            // MutationObserver as a safety net for AJAX response replacing payment-method DOM.
+            var target = document.querySelector('.payment-methods') || document.body;
+            var debounce;
+            new MutationObserver(function() {
+                if (rendering) return;
+                clearTimeout(debounce);
+                debounce = setTimeout(update, 200);
+            }).observe(target, { childList: true, subtree: true });
         }
 
         if (document.readyState === 'loading') {
