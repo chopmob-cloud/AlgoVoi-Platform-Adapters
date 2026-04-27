@@ -659,3 +659,224 @@ img { max-width: 100% !important; height: auto !important; }
     flex: 0 0 100% !important; max-width: 100% !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Compact layout v3 — tighten Shopware blocks, less wasted space
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Cards: reduce padding from 1.5rem default to a tighter rhythm */
+.card,
+.checkout-card,
+.checkout-card .card-body,
+.checkout-confirm .card,
+.checkout-confirm .card-body,
+.checkout-finish .card,
+.checkout-finish .card-body {
+  padding: .85rem 1rem !important;
+  margin-bottom: .75rem !important;
+}
+
+/* Card title — smaller and tighter */
+.card-title,
+.checkout-card .card-title,
+.checkout-card h2,
+.checkout-card h3 {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  margin-bottom: .65rem !important;
+  padding-bottom: .35rem !important;
+  border-bottom: 1px solid #2d3748 !important;
+}
+
+/* Payment method rows — much more compact */
+.payment-methods,
+.shipping-methods {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: .35rem !important;
+}
+.payment-method,
+.shipping-method {
+  padding: .55rem .75rem !important;
+  margin: 0 !important;
+  border: 1px solid #2d3748 !important;
+  border-radius: 7px !important;
+  background: #141622 !important;
+  transition: border-color .15s, background .15s !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: .5rem !important;
+}
+.payment-method:hover,
+.shipping-method:hover {
+  border-color: #3b4460 !important;
+}
+.payment-method label,
+.shipping-method label {
+  margin: 0 !important;
+  font-size: .9rem !important;
+  font-weight: 500 !important;
+  flex: 1 !important;
+  cursor: pointer !important;
+}
+
+/* Selected payment/shipping method — blue accent */
+.payment-method input[type=radio]:checked ~ *,
+.payment-method input[type=radio]:checked + label,
+.shipping-method input[type=radio]:checked + label {
+  color: #fff !important;
+}
+.payment-method:has(input[type="radio"]:checked),
+.shipping-method:has(input[type="radio"]:checked) {
+  border-color: #3b82f6 !important;
+  background: rgba(59,130,246,.08) !important;
+}
+
+/* Payment method icons — small */
+.payment-method img,
+.payment-method svg,
+.shipping-method img {
+  max-height: 24px !important;
+  width: auto !important;
+}
+
+/* Confirm-order side panel — tighter */
+.checkout-aside .card,
+.checkout-aside .checkout-aside-action,
+.offcanvas-summary {
+  padding: .85rem !important;
+  margin-bottom: .5rem !important;
+}
+
+/* Summary list — denser rows */
+.checkout-aside .summary-list,
+.offcanvas-summary-list {
+  margin: 0 !important;
+}
+.checkout-aside .summary-list dt,
+.checkout-aside .summary-list dd,
+.offcanvas-summary-list dt,
+.offcanvas-summary-list dd {
+  padding: .25rem 0 !important;
+  margin: 0 !important;
+  font-size: .88rem !important;
+}
+.summary-total {
+  font-size: 1.05rem !important;
+  padding-top: .4rem !important;
+  margin-top: .35rem !important;
+  border-top: 1px solid #2d3748 !important;
+}
+
+/* Order product table — denser */
+.checkout-product-table,
+.checkout-product-table table {
+  font-size: .85rem !important;
+}
+.checkout-product-table tr,
+.checkout-product-table td,
+.checkout-product-table th {
+  padding: .45rem .55rem !important;
+}
+.checkout-product-table .line-item-img,
+.checkout-product-table img {
+  max-width: 48px !important;
+  max-height: 48px !important;
+}
+
+/* Confirm-order button — solid call-to-action */
+#confirmFormSubmit,
+.confirm-order-button,
+.btn-buy {
+  padding: .65rem 1rem !important;
+  font-size: .95rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  width: 100% !important;
+  min-height: 44px !important;
+  margin-top: .5rem !important;
+}
+
+/* Tighter address blocks */
+.address-block,
+.confirm-address {
+  padding: .65rem .85rem !important;
+  border: 1px solid #2d3748 !important;
+  border-radius: 7px !important;
+  margin-bottom: .5rem !important;
+  font-size: .88rem !important;
+}
+.address-block-title,
+.confirm-address-title {
+  font-size: .8rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .04em !important;
+  color: #6b7280 !important;
+  margin-bottom: .35rem !important;
+}
+
+/* Form rows — compact */
+.checkout-card .form-group,
+.confirm-address .form-group,
+.register-form .form-group {
+  margin-bottom: .65rem !important;
+}
+.checkout-card .form-control,
+.checkout-card .form-select {
+  padding: .4rem .65rem !important;
+  font-size: .88rem !important;
+  height: auto !important;
+  min-height: 38px !important;
+}
+.checkout-card label,
+.checkout-card .form-label {
+  font-size: .78rem !important;
+  margin-bottom: .25rem !important;
+  color: #9ca3af !important;
+}
+
+/* Reduce spacing between rows in cart */
+.cart-item,
+.line-item,
+.line-item-row {
+  padding: .55rem 0 !important;
+  margin: 0 !important;
+}
+
+/* Step navigation (1.Cart 2.Address 3.Confirm) — pill style, less bulky */
+.checkout-step-nav,
+.checkout-progress {
+  padding: .4rem 0 !important;
+  margin-bottom: 1rem !important;
+  font-size: .82rem !important;
+}
+.checkout-step-nav .step,
+.checkout-progress .step {
+  padding: .35rem .65rem !important;
+}
+
+/* Site main padding — reduce vertical chunkiness */
+.content-main,
+.checkout-main,
+main.content-main {
+  padding-top: 1rem !important;
+  padding-bottom: 1.5rem !important;
+}
+
+/* Mobile (≤ 600px) — even tighter */
+@media (max-width: 600px) {
+  .card,
+  .checkout-card,
+  .checkout-card .card-body { padding: .65rem .75rem !important; margin-bottom: .5rem !important; }
+  .payment-method,
+  .shipping-method { padding: .5rem .65rem !important; font-size: .85rem !important; }
+  .checkout-aside .card { padding: .65rem .75rem !important; }
+  .card-title { font-size: .92rem !important; }
+  .summary-total { font-size: .95rem !important; }
+  /* Stack confirm-page main + aside */
+  .checkout-main .col-lg-8,
+  .checkout-main .col-lg-4 { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
+  .checkout-aside { margin-top: .75rem !important; }
+}
