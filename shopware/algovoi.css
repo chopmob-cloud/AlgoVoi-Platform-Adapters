@@ -515,3 +515,147 @@ table, .table { color: #e2e8f0 !important; border-color: #2d3748 !important; }
 ::-webkit-scrollbar-track { background: #0f1117; }
 ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Mobile & Responsive — v2 (compact, touch-friendly)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Fluid images */
+img { max-width: 100% !important; height: auto !important; }
+
+/* Touch-friendly buttons */
+.btn { min-height: 44px !important; }
+.btn-buy { min-height: 44px !important; border-radius: 8px !important; }
+
+/* Product cards — consistent radius, softer hover */
+.product-box, .card.product-box {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  transition: box-shadow .15s, border-color .15s !important;
+  border: 1px solid #2d3748 !important;
+}
+.product-box:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,.35) !important;
+  border-color: #3b4460 !important;
+}
+.product-box .product-info { padding: .75rem .85rem !important; }
+.product-box .product-name-heading { font-size: .9rem !important; font-weight: 600 !important; }
+
+/* Off-canvas nav dark */
+.offcanvas { background: #0f1117 !important; }
+.offcanvas .navigation-offcanvas-header {
+  background: #1e2130 !important;
+  border-bottom: 1px solid #2d3748 !important;
+}
+.offcanvas .navigation-offcanvas-item > a { color: #e2e8f0 !important; }
+
+/* ── Tablet (≤ 900px) ─────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .container, .container-fluid {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Checkout — stack columns */
+  .checkout-main .col-md-7,
+  .checkout-main .col-md-5,
+  .checkout-aside .col-md-4,
+  .checkout-aside .col-md-8 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  .checkout-aside { margin-top: 1rem !important; }
+}
+
+/* ── Mobile (≤ 600px) ─────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Tighter containers */
+  .container, .container-fluid {
+    padding-left: .75rem !important;
+    padding-right: .75rem !important;
+  }
+
+  /* Scale headings */
+  h1, .h1 { font-size: 1.3rem !important; }
+  h2, .h2 { font-size: 1.1rem !important; }
+  h3, .h3 { font-size: .95rem !important; }
+
+  /* Header compact */
+  .header-main { padding: .4rem 0 !important; }
+  .header-main .logo-main { max-height: 36px !important; }
+
+  /* Hero/banner — reduce height */
+  .cms-element-image-slider { max-height: 200px !important; overflow: hidden !important; }
+
+  /* Product listing — 2 cols */
+  .product-slider-row .col-6 { flex: 0 0 50% !important; max-width: 50% !important; }
+  .cms-element-product-listing .row .col-sm-6 { flex: 0 0 50% !important; max-width: 50% !important; }
+
+  /* Product box compact */
+  .product-box { margin-bottom: .75rem !important; border-radius: 8px !important; }
+  .product-box .product-info { padding: .6rem .7rem !important; }
+  .product-box .product-name-heading { font-size: .82rem !important; }
+  .product-box .product-price-wrapper { font-size: .88rem !important; }
+
+  /* Cart — compact table */
+  .cart-item-table { font-size: .85rem !important; }
+  .line-item-img { width: 48px !important; height: 48px !important; }
+
+  /* Order summary panel */
+  .order-summary, .checkout-aside-summary {
+    padding: .75rem !important;
+    border-radius: 8px !important;
+  }
+
+  /* Checkout form full-width columns */
+  .checkout-main .col-md-6,
+  .checkout-form .col-md-6 {
+    flex: 0 0 100% !important; max-width: 100% !important;
+  }
+
+  /* Inputs */
+  .form-control, .custom-select {
+    font-size: .9rem !important;
+    padding: .45rem .65rem !important;
+    border-radius: 6px !important;
+  }
+
+  /* Submit button full-width */
+  .confirm-order-button,
+  .begin-checkout-btn,
+  .btn-lg.btn-primary {
+    width: 100% !important;
+    padding: .75rem 1rem !important;
+    font-size: .95rem !important;
+    border-radius: 8px !important;
+    min-height: 48px !important;
+  }
+
+  /* Account / order pages */
+  .account-content, .order-table {
+    font-size: .85rem !important;
+  }
+  .order-table table { overflow-x: auto !important; display: block !important; }
+
+  /* Footer compact */
+  .footer-columns-container .col-md-4,
+  .footer-columns-container .col-md-3 {
+    flex: 0 0 100% !important; max-width: 100% !important;
+    margin-bottom: .75rem !important;
+  }
+
+  /* Breadcrumb */
+  .breadcrumb-container { font-size: .72rem !important; }
+  .breadcrumb-item { max-width: 120px !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+
+  /* Payment method cards */
+  .payment-method { padding: .5rem .75rem !important; border-radius: 8px !important; margin-bottom: .4rem !important; }
+}
+
+/* ── Very small phones (≤ 400px) ─────────────────────────────────────────── */
+@media (max-width: 400px) {
+  .product-slider-row .col-6,
+  .cms-element-product-listing .row .col-sm-6 {
+    flex: 0 0 100% !important; max-width: 100% !important;
+  }
+}
