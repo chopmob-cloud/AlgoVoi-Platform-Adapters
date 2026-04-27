@@ -13,7 +13,7 @@ class Algovoi extends PaymentModule
     {
         $this->name        = "algovoi";
         $this->tab         = "payments_gateways";
-        $this->version     = "1.4.0";
+        $this->version     = "1.5.0";
         $this->author      = "AlgoVoi";
         $this->author_uri  = "https://www.algovoi.co.uk";
         $this->need_instance = 0;
@@ -161,21 +161,24 @@ class Algovoi extends PaymentModule
 
         $firstNet    = array_key_first($chains);
         $firstColour = self::NET_COLOURS[$firstNet] ?? '#3b82f6';
-        $coloursJson = json_encode(self::NET_COLOURS);
+        // Escape JSON for safe use inside an HTML attribute (prevents " from closing the attribute)
+        $coloursAttr = htmlspecialchars(json_encode(self::NET_COLOURS), ENT_QUOTES);
 
         if (count($chains) === 1) {
             $selectorHtml = '
       <div style="margin-bottom:8px;display:flex;align-items:center;gap:.5rem;">
         <span style="display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;background:' . $firstColour . ';"></span>
         <span style="font-size:.85rem;color:#e0e0e0;">' . htmlspecialchars(reset($chains), ENT_QUOTES) . '</span>
-      </div>';
-            $inputs = [['type' => 'hidden', 'name' => 'algovoi_network', 'value' => $firstNet]];
+      </div>
+      <input type="hidden" name="algovoi_network" value="' . htmlspecialchars($firstNet, ENT_QUOTES) . '">';
         } else {
             $options_html = '';
             foreach ($chains as $value => $label) {
                 $options_html .= '<option value="' . htmlspecialchars($value, ENT_QUOTES) . '">'
                     . htmlspecialchars($label, ENT_QUOTES) . '</option>';
             }
+            // The <select> carries name="algovoi_network" directly so the form submits its value natively.
+            // No hidden input, no onchange-mirroring needed for submission. The onchange only updates the visual dot.
             $selectorHtml = '
       <div style="margin-bottom:10px;">
         <label for="algovoi_ps_sel"
@@ -185,14 +188,15 @@ class Algovoi extends PaymentModule
           <span id="av-ps-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;
                                        flex-shrink:0;background:' . $firstColour . ';transition:background .2s;"></span>
           <div style="position:relative;flex:1;">
-            <select id="algovoi_ps_sel"
+            <select id="algovoi_ps_sel" name="algovoi_network"
                     style="width:100%;padding:.4rem .65rem;background:#0d0e1a;border:1px solid #2a2d3a;
                            border-radius:7px;color:#f1f2f6;font-size:.85rem;cursor:pointer;
                            appearance:none;-webkit-appearance:none;outline:none;
                            box-sizing:border-box;transition:border-color .2s;"
                     onfocus="this.style.borderColor=\'#6366f1\'"
                     onblur="this.style.borderColor=\'#2a2d3a\'"
-                    onchange="(function(v){var m=' . $coloursJson . ';document.querySelector(\'input[name=algovoi_network]\').value=v;var d=document.getElementById(\'av-ps-dot\');if(d)d.style.background=m[v]||\'#3b82f6\';})(this.value)">'
+                    data-colours="' . $coloursAttr . '"
+                    onchange="var m=JSON.parse(this.dataset.colours);var d=document.getElementById(\'av-ps-dot\');if(d)d.style.background=m[this.value]||\'#3b82f6\';">'
                 . $options_html . '
             </select>
             <span style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
@@ -200,7 +204,6 @@ class Algovoi extends PaymentModule
           </div>
         </div>
       </div>';
-            $inputs = [['type' => 'hidden', 'name' => 'algovoi_network', 'value' => $firstNet]];
         }
 
         $panel = '
@@ -232,11 +235,18 @@ class Algovoi extends PaymentModule
   </div>
 </div>';
 
+        // Render the entire panel (including the <select name="algovoi_network">) inside the
+        // payment form via setForm() — guarantees the select's value is submitted, regardless
+        // of any inline-attribute JS quirks. The form submits to the AlgoVoi payment controller.
+        $formHtml = '
+<form id="algovoi-payment-form" method="POST" action="' . htmlspecialchars($actionUrl, ENT_QUOTES) . '" style="margin:0;">'
+          . $panel
+          . '<button style="display:none" type="submit"></button>
+</form>';
+
         $option = new PaymentOption();
         $option->setCallToActionText($this->l("Pay with AlgoVoi"))
-               ->setAction($actionUrl)
-               ->setAdditionalInformation($panel)
-               ->setInputs($inputs);
+               ->setForm($formHtml);
         return [$option];
     }
 

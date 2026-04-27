@@ -62,18 +62,12 @@
             tempo_mainnet:    '#f59e0b'
         };
 
-        function getHiddenInput() {
-            var form = document.getElementById('confirmOrderForm');
-            if (!form) return null;
-            var inp = form.querySelector('input[name="algovoi_network"]');
-            if (!inp) {
-                inp = document.createElement('input');
-                inp.type  = 'hidden';
-                inp.name  = 'algovoi_network';
-                inp.value = 'algorand_mainnet';
-                form.appendChild(inp);
-            }
-            return inp;
+        // Track last rendered payment method to skip redundant re-renders that wipe user selection.
+        var lastRenderedPmId = null;
+        var rendering = false;
+
+        function escAttr(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         }
 
         function buildPanel(chains, isWallet) {
@@ -83,28 +77,29 @@
                 : '<span style="font-size:11px;background:rgba(99,102,241,.1);color:#818cf8;border-radius:4px;padding:2px 6px;font-weight:600;">Secure checkout</span>'
                 + '<span style="font-size:11px;background:rgba(245,158,11,.1);color:#fbbf24;border-radius:4px;padding:2px 6px;font-weight:600;">Redirect</span>';
             var badgeType = isWallet ? 'Extension' : 'Hosted';
-
             var firstColour = NET_COLOURS[chains[0].value] || '#3b82f6';
 
             var selectorHtml = '';
             if (chains.length === 1) {
+                // Single chain: hidden input carries the value, dot+label show the chain
                 selectorHtml = '<div style="margin-bottom:8px;display:flex;align-items:center;gap:.5rem;">'
                     + '<span id="av-sw-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;background:' + firstColour + ';"></span>'
-                    + '<span style="font-size:.85rem;color:#e0e0e0;">' + chains[0].label + '</span>'
+                    + '<span style="font-size:.85rem;color:#e0e0e0;">' + escAttr(chains[0].label) + '</span>'
+                    + '<input type="hidden" name="algovoi_network" value="' + escAttr(chains[0].value) + '">'
                     + '</div>';
             } else {
+                // Multiple chains: <select> carries name="algovoi_network" — submitted natively by the form
                 var opts = chains.map(function(c) {
-                    return '<option value="' + c.value + '">' + c.label + '</option>';
+                    return '<option value="' + escAttr(c.value) + '">' + escAttr(c.label) + '</option>';
                 }).join('');
                 selectorHtml = '<div style="margin-bottom:10px;">'
-                    + '<label style="display:block;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Select network</label>'
+                    + '<label for="av-sw-sel" style="display:block;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Select network</label>'
                     + '<div style="display:flex;align-items:center;gap:.5rem;">'
                     + '<span id="av-sw-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;background:' + firstColour + ';transition:background .2s;"></span>'
                     + '<div style="position:relative;flex:1;">'
-                    + '<select id="av-sw-sel" style="width:100%;padding:.4rem .65rem;background:#0d0e1a;border:1px solid #2a2d3a;'
+                    + '<select id="av-sw-sel" name="algovoi_network" style="width:100%;padding:.4rem .65rem;background:#0d0e1a;border:1px solid #2a2d3a;'
                     +   'border-radius:7px;color:#f1f2f6;font-size:.85rem;cursor:pointer;'
-                    +   'appearance:none;-webkit-appearance:none;outline:none;box-sizing:border-box;transition:border-color .2s;"'
-                    +   ' onfocus="this.style.borderColor=\'#6366f1\'" onblur="this.style.borderColor=\'#2a2d3a\'">'
+                    +   'appearance:none;-webkit-appearance:none;outline:none;box-sizing:border-box;transition:border-color .2s;">'
                     + opts
                     + '</select>'
                     + '<span style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);color:#6b7280;pointer-events:none;font-size:.75rem;">&#9662;</span>'
@@ -134,50 +129,82 @@
                 + '</div></div>';
         }
 
-        function wireSelect(chains) {
+        function wireSelect() {
             var sel = document.getElementById('av-sw-sel');
             var dot = document.getElementById('av-sw-dot');
-            var inp = getHiddenInput();
-            if (!sel) {
-                if (inp && chains.length === 1) inp.value = chains[0].value;
-                return;
-            }
+            if (!sel) return;
             sel.addEventListener('change', function() {
-                if (inp) inp.value = this.value;
                 if (dot) dot.style.background = NET_COLOURS[this.value] || '#3b82f6';
             });
-            if (inp) inp.value = chains[0].value;
         }
 
         function update() {
-            var old = document.getElementById('av-chain-selector');
-            if (old) old.remove();
+            if (rendering) return;
 
             var checked = document.querySelector('input[name="paymentMethodId"]:checked');
-            if (!checked) return;
-            var val = checked.value;
+            var pmId    = checked ? checked.value : null;
+
+            // No payment method selected → remove panel if present
+            if (!pmId) {
+                var oldNoSel = document.getElementById('av-chain-selector');
+                if (oldNoSel) oldNoSel.remove();
+                lastRenderedPmId = null;
+                return;
+            }
+
+            // Already rendered for this exact payment method → don't tear down (preserves user's chain pick)
+            if (pmId === lastRenderedPmId && document.getElementById('av-chain-selector')) {
+                return;
+            }
 
             var chains = null, isWallet = false;
-            if (HOSTED_ID && val === HOSTED_ID) { chains = hostedChains; }
-            else if (WALLET_ID && val === WALLET_ID) { chains = walletChains; isWallet = true; }
-            if (!chains || chains.length === 0) return;
+            if (HOSTED_ID && pmId === HOSTED_ID) { chains = hostedChains; }
+            else if (WALLET_ID && pmId === WALLET_ID) { chains = walletChains; isWallet = true; }
 
-            var wrapper = document.createElement('div');
-            wrapper.id = 'av-chain-selector';
-            wrapper.innerHTML = buildPanel(chains, isWallet);
+            // Different payment method (non-AlgoVoi) selected → just remove the panel
+            if (!chains || chains.length === 0) {
+                var oldOther = document.getElementById('av-chain-selector');
+                if (oldOther) oldOther.remove();
+                lastRenderedPmId = pmId;
+                return;
+            }
 
-            var methodDiv = checked.closest('.payment-method');
-            if (methodDiv) {
-                methodDiv.appendChild(wrapper);
-                wireSelect(chains);
+            // Render fresh panel for newly-selected AlgoVoi method
+            rendering = true;
+            try {
+                var oldPanel = document.getElementById('av-chain-selector');
+                if (oldPanel) oldPanel.remove();
+
+                var wrapper = document.createElement('div');
+                wrapper.id = 'av-chain-selector';
+                wrapper.innerHTML = buildPanel(chains, isWallet);
+
+                var methodDiv = checked.closest('.payment-method');
+                if (methodDiv) {
+                    methodDiv.appendChild(wrapper);
+                    wireSelect();
+                }
+                lastRenderedPmId = pmId;
+            } finally {
+                // Allow MutationObserver fallout from our own DOM writes to settle
+                setTimeout(function() { rendering = false; }, 50);
             }
         }
 
         function init() {
             update();
             var target = document.querySelector('.payment-methods') || document.body;
-            new MutationObserver(function() { setTimeout(update, 300); })
-                .observe(target, { childList: true, subtree: true });
+            new MutationObserver(function() {
+                if (rendering) return;
+                setTimeout(update, 100);
+            }).observe(target, { childList: true, subtree: true });
+
+            // Also trigger on payment-method radio change directly (more reliable than mutations)
+            document.addEventListener('change', function(e) {
+                if (e.target && e.target.name === 'paymentMethodId') {
+                    setTimeout(update, 50);
+                }
+            });
         }
 
         if (document.readyState === 'loading') {
