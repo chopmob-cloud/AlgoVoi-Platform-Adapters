@@ -771,13 +771,10 @@ def _parse_enabled_tools(raw: Optional[str]) -> Optional[set[str]]:
     return names & known
 
 
-_BRIDGE_TOOLS = {"bridge_send", "bridge_read", "bridge_wait"}
-
-
 # ── Dispatch (validate → run → redact → audit) ────────────────────────────────
 
 def _dispatch(
-    client: Optional[AlgoVoiClient],
+    client: AlgoVoiClient,
     webhook_secret_env: Optional[str],
     name: str,
     raw_args: dict,
@@ -786,21 +783,6 @@ def _dispatch(
     schema_cls = SCHEMAS_BY_TOOL.get(name)
     if schema_cls is None:
         raise ValueError(f"unknown tool: {name}")
-
-    # Bridge tools are pure filesystem ops — no AlgoVoi client needed.
-    if name in _BRIDGE_TOOLS:
-        args: BaseModel = schema_cls.model_validate(raw_args)
-        if name == "bridge_send":
-            return scrub(tool_bridge_send(args))   # type: ignore[arg-type]
-        if name == "bridge_read":
-            return scrub(tool_bridge_read(args))   # type: ignore[arg-type]
-        if name == "bridge_wait":
-            return scrub(tool_bridge_wait(args))   # type: ignore[arg-type]
-
-    if client is None:
-        raise ValueError(
-            f"tool '{name}' requires AlgoVoi credentials (running in bridge-only mode)"
-        )
 
     args: BaseModel = schema_cls.model_validate(raw_args)
 
@@ -846,7 +828,7 @@ def _dispatch(
 # ── Server factory ────────────────────────────────────────────────────────────
 
 def build_server(
-    client: Optional[AlgoVoiClient],
+    client: AlgoVoiClient,
     webhook_secret_env: Optional[str],
     enabled_tools: Optional[set[str]] = None,
 ) -> Server:
@@ -924,64 +906,41 @@ def build_server(
 # ── Stdio entry ───────────────────────────────────────────────────────────────
 
 async def run_stdio() -> None:
-    """Read env vars, build server, and run stdio transport.
-
-    Bridge-only mode: if MCP_ENABLED_TOOLS restricts to bridge_* tools (or
-    ALGOVOI_API_KEY is unset), the AlgoVoi client is not constructed and
-    no payout addresses are required — the bridge tools are pure file I/O.
-    """
-    enabled_tools  = _parse_enabled_tools(os.environ.get("MCP_ENABLED_TOOLS"))
+    """Read env vars, build server, and run stdio transport."""
+    api_key        = _require_env("ALGOVOI_API_KEY")
+    tenant_id      = _require_env("ALGOVOI_TENANT_ID")
     api_base       = os.environ.get("ALGOVOI_API_BASE", "https://api1.ilovechicken.co.uk")
     webhook_secret = os.environ.get("ALGOVOI_WEBHOOK_SECRET")
+    enabled_tools  = _parse_enabled_tools(os.environ.get("MCP_ENABLED_TOOLS"))
 
-    # Bridge-only if the user explicitly limited to bridge tools, OR if no
-    # AlgoVoi API key is configured at all.
-    bridge_only = (
-        (enabled_tools is not None and enabled_tools.issubset(_BRIDGE_TOOLS))
-        or not os.environ.get("ALGOVOI_API_KEY", "").strip()
-    )
-
-    client: Optional[AlgoVoiClient] = None
-
-    if bridge_only:
-        # Default to bridge-only tool set if the user didn't explicitly pick one
-        if enabled_tools is None:
-            enabled_tools = set(_BRIDGE_TOOLS)
-    else:
-        api_key   = _require_env("ALGOVOI_API_KEY")
-        tenant_id = _require_env("ALGOVOI_TENANT_ID")
-
-        # Per-chain payout addresses. Per-chain vars take priority;
-        # ALGOVOI_PAYOUT_ADDRESS acts as a universal fallback.
-        payout_fallback = os.environ.get("ALGOVOI_PAYOUT_ADDRESS", "").strip() or None
-        chain_env = [
-            ("algorand_mainnet", "ALGOVOI_PAYOUT_ALGORAND"),
-            ("voi_mainnet",      "ALGOVOI_PAYOUT_VOI"),
-            ("hedera_mainnet",   "ALGOVOI_PAYOUT_HEDERA"),
-            ("stellar_mainnet",  "ALGOVOI_PAYOUT_STELLAR"),
-        ]
-        payout_addresses: dict[str, str] = {}
-        for key, env_var in chain_env:
-            v = (os.environ.get(env_var, "").strip() or None) or payout_fallback
-            if v:
-                payout_addresses[key] = v
-        if not payout_addresses:
-            sys.stderr.write(
-                "\n[algovoi-mcp] no payout address configured.\n"
-                "Set ALGOVOI_PAYOUT_ALGORAND, ALGOVOI_PAYOUT_VOI, ALGOVOI_PAYOUT_HEDERA,\n"
-                "ALGOVOI_PAYOUT_STELLAR (or ALGOVOI_PAYOUT_ADDRESS as a universal fallback).\n"
-                "(Or run in bridge-only mode by unsetting ALGOVOI_API_KEY or setting\n"
-                " MCP_ENABLED_TOOLS=bridge_send,bridge_read,bridge_wait.)\n\n"
-            )
-            raise SystemExit(2)
-
-        client = AlgoVoiClient(
-            api_base         = api_base,
-            api_key          = api_key,
-            tenant_id        = tenant_id,
-            payout_addresses = payout_addresses,
+    # Per-chain payout addresses. Per-chain vars take priority;
+    # ALGOVOI_PAYOUT_ADDRESS acts as a universal fallback.
+    payout_fallback = os.environ.get("ALGOVOI_PAYOUT_ADDRESS", "").strip() or None
+    chain_env = [
+        ("algorand_mainnet", "ALGOVOI_PAYOUT_ALGORAND"),
+        ("voi_mainnet",      "ALGOVOI_PAYOUT_VOI"),
+        ("hedera_mainnet",   "ALGOVOI_PAYOUT_HEDERA"),
+        ("stellar_mainnet",  "ALGOVOI_PAYOUT_STELLAR"),
+    ]
+    payout_addresses: dict[str, str] = {}
+    for key, env_var in chain_env:
+        v = (os.environ.get(env_var, "").strip() or None) or payout_fallback
+        if v:
+            payout_addresses[key] = v
+    if not payout_addresses:
+        sys.stderr.write(
+            "\n[algovoi-mcp] no payout address configured.\n"
+            "Set ALGOVOI_PAYOUT_ALGORAND, ALGOVOI_PAYOUT_VOI, ALGOVOI_PAYOUT_HEDERA,\n"
+            "ALGOVOI_PAYOUT_STELLAR (or ALGOVOI_PAYOUT_ADDRESS as a universal fallback).\n\n"
         )
+        raise SystemExit(2)
 
+    client = AlgoVoiClient(
+        api_base         = api_base,
+        api_key          = api_key,
+        tenant_id        = tenant_id,
+        payout_addresses = payout_addresses,
+    )
     server = build_server(client, webhook_secret, enabled_tools)
 
     count = len(enabled_tools) if enabled_tools is not None else len(TOOL_SCHEMAS)
