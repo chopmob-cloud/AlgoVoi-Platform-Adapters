@@ -2,7 +2,7 @@
 
 A drop-in Web Component for accepting crypto payments on any website. One `<script>` tag, one HTML element — no framework, no npm, no backend code required.
 
-Supports **Algorand (USDC)**, **VOI (aUSDC)**, **Hedera (USDC)**, and **Stellar (USDC)**.
+Supports **all 7 AlgoVoi chains**: USDC on **Algorand**, **Hedera**, **Stellar**, **Base**, **Solana**; **aUSDC** on **VOI**; **USDCe** on **Tempo**.
 
 Live demo: [worker.ilovechicken.co.uk](https://worker.ilovechicken.co.uk)
 
@@ -15,7 +15,7 @@ Live demo: [worker.ilovechicken.co.uk](https://worker.ilovechicken.co.uk)
 <algovoi-x402
   amount="29.99"
   currency="USD"
-  chains="ALGO,VOI,XLM,HBAR"
+  chains="ALGO,VOI,HBAR,XLM,BASE,SOL,TEMPO"
   tenant-id="YOUR_TENANT_ID"
   api-key="algv_YOUR_API_KEY">
 </algovoi-x402>
@@ -31,7 +31,7 @@ That's it. The widget renders chain buttons, creates a payment link via the Algo
 |-------------|----------|-----------------------------------------------------------|-----------------------------------------------------------|
 | `amount`    | Yes      | —                                                         | Payment amount (e.g. `"29.99"`)                           |
 | `currency`  | No       | `USD`                                                     | ISO 4217 currency code                                    |
-| `chains`    | Yes      | —                                                         | Comma-separated chain codes: `ALGO`, `VOI`, `XLM`, `HBAR` |
+| `chains`    | Yes      | —                                                         | Comma-separated chain codes: `ALGO`, `VOI`, `HBAR`, `XLM`, `BASE`, `SOL`, `TEMPO` |
 | `tenant-id` | *        | —                                                         | Your AlgoVoi tenant UUID                                  |
 | `api-key`   | *        | —                                                         | Your AlgoVoi API key (`algv_` or `algvw_`)                |
 | `api-url`   | No       | `https://worker.ilovechicken.co.uk/api/x402/pay`         | Override to point at your own backend proxy               |
@@ -86,7 +86,7 @@ Use an `algvw_` prefixed key from the AlgoVoi dashboard. These keys are **domain
 <algovoi-x402
   amount="29.99"
   currency="USD"
-  chains="ALGO,VOI,XLM,HBAR"
+  chains="ALGO,VOI,HBAR,XLM,BASE,SOL,TEMPO"
   tenant-id="YOUR_TENANT_ID"
   api-key="algvw_YOUR_WIDGET_KEY">
 </algovoi-x402>
@@ -106,7 +106,7 @@ Point `api-url` at your own backend endpoint. Your backend holds the credentials
 <algovoi-x402
   amount="29.99"
   currency="USD"
-  chains="ALGO,VOI,XLM,HBAR"
+  chains="ALGO,VOI,HBAR,XLM,BASE,SOL,TEMPO"
   api-url="/api/create-payment">
 </algovoi-x402>
 ```

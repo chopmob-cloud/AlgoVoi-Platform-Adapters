@@ -6,15 +6,35 @@
  *   <algovoi-x402
  *     amount="29.99"
  *     currency="USD"
- *     chains="ALGO,VOI,XLM,HBAR"
+ *     chains="ALGO,VOI,HBAR,XLM,BASE,SOL,TEMPO"
  *     tenant-id="YOUR_TENANT_ID"
  *     api-key="algv_YOUR_API_KEY">
  *   </algovoi-x402>
+ *
+ * Supports all 7 AlgoVoi chains:
+ *   ALGO  → USDC on Algorand
+ *   VOI   → aUSDC on VOI
+ *   HBAR  → USDC on Hedera
+ *   XLM   → USDC on Stellar
+ *   BASE  → USDC on Base (EVM)
+ *   SOL   → USDC on Solana
+ *   TEMPO → USDCe on Tempo
  */
 
 const DEFAULT_API_URL = 'https://worker.ilovechicken.co.uk/api/x402/pay';
 
-const CHAIN_LABELS = { ALGO: 'Algorand', VOI: 'VOI', XLM: 'Stellar', HBAR: 'Hedera' };
+// Canonical chain palette — matches the AlgoVoi panel design used by all
+// e-commerce adapter checkouts (WooCommerce / PrestaShop / OpenCart /
+// Shopware / Magento 2 / Shopify).
+const CHAIN_META = {
+  ALGO:  { label: 'Algorand', ticker: 'USDC',  colour: '#3b82f6' },
+  VOI:   { label: 'VOI',      ticker: 'aUSDC', colour: '#8b5cf6' },
+  HBAR:  { label: 'Hedera',   ticker: 'USDC',  colour: '#10b981' },
+  XLM:   { label: 'Stellar',  ticker: 'USDC',  colour: '#06b6d4' },
+  BASE:  { label: 'Base',     ticker: 'USDC',  colour: '#2563eb' },
+  SOL:   { label: 'Solana',   ticker: 'USDC',  colour: '#9333ea' },
+  TEMPO: { label: 'Tempo',    ticker: 'USDCe', colour: '#f59e0b' },
+};
 
 class AlgoVoiX402 extends HTMLElement {
   connectedCallback() {
@@ -64,12 +84,15 @@ class AlgoVoiX402 extends HTMLElement {
   .av-amount-sub{font-size:.72rem;color:#6b7280;margin-top:.1rem;}
   .av-chains{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.1rem;}
   .av-btn{
-    flex:1;min-width:80px;padding:.7rem .5rem;
+    flex:1;min-width:88px;padding:.65rem .55rem;
     background:linear-gradient(135deg,#3b82f6,#6366f1);
     color:#fff;border:none;border-radius:10px;
     font-size:.82rem;font-weight:700;cursor:pointer;
     transition:opacity .15s,transform .1s;
+    display:flex;flex-direction:column;align-items:center;gap:.15rem;
   }
+  .av-btn-label{font-size:.85rem;font-weight:700;line-height:1;}
+  .av-btn-ticker{font-size:.65rem;font-weight:600;opacity:.85;line-height:1;letter-spacing:.02em;}
   .av-btn:hover:not(:disabled){opacity:.9;transform:translateY(-1px);}
   .av-btn:disabled{opacity:.55;cursor:not-allowed;transform:none;}
   .av-checkout-box{
@@ -123,10 +146,14 @@ class AlgoVoiX402 extends HTMLElement {
 
   ${s === 'idle' ? `
   <div class="av-chains">
-    ${this._chains.map(c => `
-    <button class="av-btn" data-chain="${c}">
-      ${CHAIN_LABELS[c] || c}
-    </button>`).join('')}
+    ${this._chains.map(c => {
+      const m = CHAIN_META[c] || { label: c, ticker: '', colour: '#3b82f6' };
+      return `
+    <button class="av-btn" data-chain="${c}" style="background:linear-gradient(135deg,${m.colour},${m.colour}cc);">
+      <span class="av-btn-label">${m.label}</span>
+      ${m.ticker ? `<span class="av-btn-ticker">${m.ticker}</span>` : ''}
+    </button>`;
+    }).join('')}
   </div>` : ''}
 
   ${s === 'loading' ? `
@@ -136,10 +163,14 @@ class AlgoVoiX402 extends HTMLElement {
 
   ${s === 'ready' ? `
   <div class="av-chains">
-    ${this._chains.map(c => `
-    <button class="av-btn" data-chain="${c}">
-      ${CHAIN_LABELS[c] || c}
-    </button>`).join('')}
+    ${this._chains.map(c => {
+      const m = CHAIN_META[c] || { label: c, ticker: '', colour: '#3b82f6' };
+      return `
+    <button class="av-btn" data-chain="${c}" style="background:linear-gradient(135deg,${m.colour},${m.colour}cc);">
+      <span class="av-btn-label">${m.label}</span>
+      ${m.ticker ? `<span class="av-btn-ticker">${m.ticker}</span>` : ''}
+    </button>`;
+    }).join('')}
   </div>
   <div class="av-checkout-box">
     <p>Your secure checkout is ready.</p>
@@ -152,24 +183,32 @@ class AlgoVoiX402 extends HTMLElement {
     <p>Payment confirmed on-chain. Thank you!</p>
   </div>
   <div class="av-chains" style="margin-top:.85rem;">
-    ${this._chains.map(c => `
-    <button class="av-btn" data-chain="${c}">
-      ${CHAIN_LABELS[c] || c}
-    </button>`).join('')}
+    ${this._chains.map(c => {
+      const m = CHAIN_META[c] || { label: c, ticker: '', colour: '#3b82f6' };
+      return `
+    <button class="av-btn" data-chain="${c}" style="background:linear-gradient(135deg,${m.colour},${m.colour}cc);">
+      <span class="av-btn-label">${m.label}</span>
+      ${m.ticker ? `<span class="av-btn-ticker">${m.ticker}</span>` : ''}
+    </button>`;
+    }).join('')}
   </div>` : ''}
 
   ${s === 'error' ? `
   <div class="av-chains">
-    ${this._chains.map(c => `
-    <button class="av-btn" data-chain="${c}">
-      ${CHAIN_LABELS[c] || c}
-    </button>`).join('')}
+    ${this._chains.map(c => {
+      const m = CHAIN_META[c] || { label: c, ticker: '', colour: '#3b82f6' };
+      return `
+    <button class="av-btn" data-chain="${c}" style="background:linear-gradient(135deg,${m.colour},${m.colour}cc);">
+      <span class="av-btn-label">${m.label}</span>
+      ${m.ticker ? `<span class="av-btn-ticker">${m.ticker}</span>` : ''}
+    </button>`;
+    }).join('')}
   </div>
   <div class="av-err">${this._errMsg || 'Something went wrong. Please try again.'}</div>` : ''}
 
   <div class="av-footer">
     <span class="av-footer-left">Instant &middot; On-chain &middot; No chargebacks</span>
-    <span class="av-footer-right"><a href="https://api1.ilovechicken.co.uk/dashboard/" target="_blank" rel="noopener">AlgoVoi</a></span>
+    <span class="av-footer-right"><a href="https://www.algovoi.co.uk" target="_blank" rel="noopener">AlgoVoi</a></span>
   </div>
 </div>`;
   }

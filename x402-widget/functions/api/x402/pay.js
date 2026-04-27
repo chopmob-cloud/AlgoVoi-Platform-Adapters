@@ -13,10 +13,13 @@
  */
 
 const CHAIN_TO_NETWORK = {
-  ALGO: 'algorand_mainnet',
-  VOI:  'voi_mainnet',
-  XLM:  'stellar_mainnet',
-  HBAR: 'hedera_mainnet',
+  ALGO:  'algorand_mainnet',
+  VOI:   'voi_mainnet',
+  HBAR:  'hedera_mainnet',
+  XLM:   'stellar_mainnet',
+  BASE:  'base_mainnet',
+  SOL:   'solana_mainnet',
+  TEMPO: 'tempo_mainnet',
 };
 
 const GATEWAY_URL        = 'https://api1.ilovechicken.co.uk';
