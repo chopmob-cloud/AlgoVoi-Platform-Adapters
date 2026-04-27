@@ -138,6 +138,56 @@ class SendA2aMessageInput(BaseModel):
         return v
 
 
+# ── Bridge tools — cross-Claude-session messaging via shared filesystem ─────
+# Two collaborating Claude sessions append/read messages on a named channel.
+# Storage: a JSONL file per channel under ~/.algovoi-bridge/<channel>.jsonl.
+# Channel names are restricted to [a-z0-9_-] to keep paths safe.
+
+class BridgeSendInput(BaseModel):
+    model_config = _STRICT
+    channel: str = Field(min_length=1, max_length=64)
+    body:    str = Field(min_length=1, max_length=64 * 1024)
+    from_:   Optional[str] = Field(default=None, alias="from", min_length=1, max_length=64)
+
+    @field_validator("channel")
+    @classmethod
+    def _safe_channel(cls, v: str) -> str:
+        import re
+        if not re.fullmatch(r"[a-z0-9_-]+", v):
+            raise ValueError("channel must match [a-z0-9_-]+")
+        return v
+
+
+class BridgeReadInput(BaseModel):
+    model_config = _STRICT
+    channel: str           = Field(min_length=1, max_length=64)
+    since:   Optional[str] = Field(default=None, max_length=64)  # message id; "" / None = recent
+    limit:   int           = Field(default=50, ge=1, le=500)
+
+    @field_validator("channel")
+    @classmethod
+    def _safe_channel(cls, v: str) -> str:
+        import re
+        if not re.fullmatch(r"[a-z0-9_-]+", v):
+            raise ValueError("channel must match [a-z0-9_-]+")
+        return v
+
+
+class BridgeWaitInput(BaseModel):
+    model_config = _STRICT
+    channel:         str           = Field(min_length=1, max_length=64)
+    since:           Optional[str] = Field(default=None, max_length=64)
+    timeout_seconds: int           = Field(default=30, ge=1, le=120)
+
+    @field_validator("channel")
+    @classmethod
+    def _safe_channel(cls, v: str) -> str:
+        import re
+        if not re.fullmatch(r"[a-z0-9_-]+", v):
+            raise ValueError("channel must match [a-z0-9_-]+")
+        return v
+
+
 # Mapping from tool name → schema class — used by the dispatcher to pick
 # the right model at runtime.  Keep in sync with TOOL_SCHEMAS in server.py.
 SCHEMAS_BY_TOOL: dict[str, type[BaseModel]] = {
@@ -154,12 +204,16 @@ SCHEMAS_BY_TOOL: dict[str, type[BaseModel]] = {
     "verify_ap2_payment":        VerifyAp2PaymentInput,
     "fetch_agent_card":          FetchAgentCardInput,
     "send_a2a_message":          SendA2aMessageInput,
+    "bridge_send":               BridgeSendInput,
+    "bridge_read":                BridgeReadInput,
+    "bridge_wait":                BridgeWaitInput,
 }
 
 # Sanity check at import time — if anyone adds a new tool without the matching
 # schema, this surfaces immediately rather than at tool-call time.
 _EXPECTED = set(SCHEMAS_BY_TOOL.keys())
-assert len(_EXPECTED) == 13, f"expected 13 tool schemas, got {len(_EXPECTED)}"
+# 13 algovoi tools + 3 bridge tools (bridge_send/read/wait) = 16
+assert len(_EXPECTED) == 16, f"expected 16 tool schemas, got {len(_EXPECTED)}"
 # Cross-check each schema's network fields against the canonical NETWORKS tuple.
 for _n in (
     "algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet",

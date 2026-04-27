@@ -1,6 +1,12 @@
 """
-AlgoVoi MCP server — exposes 8 tools via stdio transport to any MCP client
+AlgoVoi MCP server — exposes 16 tools via stdio transport to any MCP client
 (Claude Desktop, Claude Code, Cursor, Windsurf).
+
+Tool families:
+- 1-13: AlgoVoi platform ops (payment links, MPP/x402/AP2, A2A discovery)
+- 14-16: bridge_send / bridge_read / bridge_wait — file-based message channel
+         for two collaborating Claude sessions on the same machine to relay
+         requests/replies (see bridge.py).
 
 Runtime pipeline (per tool call)::
 
@@ -34,12 +40,16 @@ from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 from pydantic import BaseModel, ValidationError
 
+from . import bridge as _bridge
 from .audit import log_call
 from .client import AlgoVoiClient
 from .idempotency import IdempotencyCache
 from .networks import CAIP2, NETWORK_INFO, NETWORKS, PROTOCOLS
 from .redact import scrub
 from .schemas import (
+    BridgeReadInput,
+    BridgeSendInput,
+    BridgeWaitInput,
     CreatePaymentLinkInput,
     FetchAgentCardInput,
     GenerateAp2MandateInput,
@@ -343,7 +353,7 @@ def tool_fetch_agent_card(args: FetchAgentCardInput) -> dict:
     try:
         req = Request(
             url,
-            headers={"Accept": "application/json", "User-Agent": "algovoi-mcp/1.2.0"},
+            headers={"Accept": "application/json", "User-Agent": "algovoi-mcp/1.3.0"},
         )
         with urlopen(req, timeout=5) as resp:
             body = resp.read(64 * 1024)
@@ -368,7 +378,7 @@ def tool_send_a2a_message(args: SendA2aMessageInput) -> dict:
     headers = {
         "Content-Type": "application/json",
         "Accept":       "application/json",
-        "User-Agent":   "algovoi-mcp/1.2.0",
+        "User-Agent":   "algovoi-mcp/1.3.0",
     }
     if args.payment_proof:
         headers["Authorization"] = f"Payment {args.payment_proof}"
@@ -411,6 +421,20 @@ def tool_send_a2a_message(args: SendA2aMessageInput) -> dict:
             "task":             None,
             "error":            str(exc),
         }
+
+
+# ── 14-16. Bridge tools (cross-Claude-session messaging) ──────────────────────
+
+def tool_bridge_send(args: BridgeSendInput) -> dict:
+    return _bridge.send(args.channel, args.body, getattr(args, "from_", None))
+
+
+def tool_bridge_read(args: BridgeReadInput) -> dict:
+    return _bridge.read(args.channel, args.since or None, args.limit)
+
+
+def tool_bridge_wait(args: BridgeWaitInput) -> dict:
+    return _bridge.wait(args.channel, args.since or None, args.timeout_seconds)
 
 
 # ── Tool schemas (MCP wire format — JSON Schema) ──────────────────────────────
@@ -667,6 +691,66 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    # ── 14. bridge_send ───────────────────────────────────────────────────────
+    {
+        "name":        "bridge_send",
+        "description": (
+            "Append a message to a shared channel readable by another collaborating "
+            "Claude session on the same machine. Storage is a JSONL file per channel "
+            "under ~/.algovoi-bridge/. Channel names use [a-z0-9_-]. Returns the "
+            "stored record id, timestamp, channel and storage path."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel": {"type": "string", "description": "Channel name — [a-z0-9_-]+, max 64 chars."},
+                "body":    {"type": "string", "description": "Message body (max 64KB)."},
+                "from":    {"type": "string", "description": "Optional sender label, e.g. 'shopify-worker'."},
+            },
+            "required":             ["channel", "body"],
+            "additionalProperties": False,
+        },
+    },
+    # ── 15. bridge_read ───────────────────────────────────────────────────────
+    {
+        "name":        "bridge_read",
+        "description": (
+            "Read messages from a shared channel. If 'since' is omitted, returns "
+            "the most recent batch (up to 'limit'). If 'since' is a message id, "
+            "returns only newer messages (sortable lexicographically by id). "
+            "Use the returned 'next_since' to poll incrementally."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel": {"type": "string", "description": "Channel name (same as bridge_send)."},
+                "since":   {"type": "string", "description": "Message id from a previous read, or empty for recent batch."},
+                "limit":   {"type": "integer", "description": "Max messages to return (1–500). Default 50."},
+            },
+            "required":             ["channel"],
+            "additionalProperties": False,
+        },
+    },
+    # ── 16. bridge_wait ───────────────────────────────────────────────────────
+    {
+        "name":        "bridge_wait",
+        "description": (
+            "Long-poll: block until a new message appears on the channel after "
+            "'since' (or any new message if 'since' is empty), or the timeout "
+            "expires. Returns the same shape as bridge_read; 'messages' is empty "
+            "iff the timeout was hit."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel":         {"type": "string",  "description": "Channel name."},
+                "since":           {"type": "string",  "description": "Watermark id; only return messages strictly after this."},
+                "timeout_seconds": {"type": "integer", "description": "Max seconds to wait (1–120). Default 30."},
+            },
+            "required":             ["channel"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -728,6 +812,12 @@ def _dispatch(
         result = tool_fetch_agent_card(args)                       # type: ignore[arg-type]
     elif name == "send_a2a_message":
         result = tool_send_a2a_message(args)                       # type: ignore[arg-type]
+    elif name == "bridge_send":
+        result = tool_bridge_send(args)                            # type: ignore[arg-type]
+    elif name == "bridge_read":
+        result = tool_bridge_read(args)                            # type: ignore[arg-type]
+    elif name == "bridge_wait":
+        result = tool_bridge_wait(args)                            # type: ignore[arg-type]
     else:
         raise ValueError(f"unknown tool: {name}")
 
