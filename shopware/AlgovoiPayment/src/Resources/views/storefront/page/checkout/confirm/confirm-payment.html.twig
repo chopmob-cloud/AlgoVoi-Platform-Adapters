@@ -3,14 +3,15 @@
 {% block page_checkout_change_payment_form %}
     {{ parent() }}
 
-    {# ── Resolve real payment method UUIDs from handlerIdentifier ─────────── #}
-    {% set _hostedHandler = 'AlgovoiPayment\\\\PaymentHandler\\\\AlgovoiHostedPaymentHandler' %}
-    {% set _walletHandler = 'AlgovoiPayment\\\\PaymentHandler\\\\AlgovoiWalletPaymentHandler' %}
+    {# ── Resolve real payment method UUIDs from handlerIdentifier ──────────
+       Use substring match (Twig 'in' operator) — sidesteps all the
+       backslash-escaping pitfalls between Twig single-quoted strings,
+       PHP namespace separators and the value stored in the DB. #}
     {% set _hostedId = '' %}
     {% set _walletId = '' %}
     {% for pm in page.paymentMethods %}
-        {% if pm.handlerIdentifier == _hostedHandler %}{% set _hostedId = pm.id %}{% endif %}
-        {% if pm.handlerIdentifier == _walletHandler %}{% set _walletId = pm.id %}{% endif %}
+        {% if 'AlgovoiHostedPaymentHandler' in pm.handlerIdentifier %}{% set _hostedId = pm.id %}{% endif %}
+        {% if 'AlgovoiWalletPaymentHandler' in pm.handlerIdentifier %}{% set _walletId = pm.id %}{% endif %}
     {% endfor %}
 
     {# ── Build enabled-networks list from system config ─────────────────────── #}
