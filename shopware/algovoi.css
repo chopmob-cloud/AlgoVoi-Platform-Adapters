@@ -880,3 +880,33 @@ main.content-main {
   .checkout-main .col-lg-4 { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
   .checkout-aside { margin-top: .75rem !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   compact-v3 corrections — fix payment/shipping flex breakage
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Undo the flex-container rule from compact-v3 — it breaks Shopware's native
+   inline layout for payment/shipping methods (causes Stand|ard wrap and
+   makes the chain-selector panel render inline next to the radio) */
+.payment-method,
+.shipping-method {
+  display: block !important;
+  align-items: initial !important;
+  flex-wrap: initial !important;
+  gap: 0 !important;
+}
+
+/* The label inside should stay as Shopware renders it — no flex:1 forcing */
+.payment-method label,
+.shipping-method label {
+  flex: initial !important;
+  display: inline-block !important;
+}
+
+/* Chain selector panel injected inside .payment-method must always be its own block */
+#av-chain-selector {
+  display: block !important;
+  width: 100% !important;
+  margin-top: .65rem !important;
+  clear: both !important;
+}

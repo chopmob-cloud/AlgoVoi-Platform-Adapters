@@ -3,7 +3,7 @@
  * Plugin Name:          AlgoVoi Payment Gateway
  * Plugin URI:           https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  * Description:          Accept USDC / aUSDC / USDCe stablecoin payments on Algorand, VOI, Hedera, Stellar, Base, Solana and Tempo via hosted checkout or browser extension. No crypto knowledge required — works alongside any existing payment method.
- * Version:              2.4.7
+ * Version:              2.4.8
  * Requires at least:    6.4
  * Requires PHP:         8.0
  * Tested up to:         6.9
@@ -155,15 +155,12 @@ function algovoi_chain_colours() {
  */
 function algovoi_footer_html() {
     ?>
-    <div style="padding-top:.5rem;border-top:1px solid #1f2235;
-                display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;">
-        <span style="font-size:.68rem;color:#4b5563;">
-            Secured by
-            <a href="https://www.algovoi.co.uk" target="_blank" rel="noopener"
-               style="color:#6366f1;text-decoration:none;font-weight:600;">AlgoVoi</a>
-            &mdash; instant on-chain settlement
-        </span>
-        <span style="font-size:.68rem;color:#374151;">No chargebacks &bull; No FX fees</span>
+    <div style="padding-top:.5rem;border-top:1px solid #1f2235;font-size:.68rem;color:#4b5563;line-height:1.5;">
+        Secured by
+        <a href="https://www.algovoi.co.uk" target="_blank" rel="noopener"
+           style="color:#6366f1;text-decoration:none;font-weight:600;">AlgoVoi</a>
+        &mdash; instant on-chain settlement
+        <span style="color:#374151;">&middot; No chargebacks &middot; No FX fees</span>
     </div>
     <?php
 }
@@ -363,16 +360,13 @@ add_action('plugins_loaded', function () {
                 $enabled = array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet');
             }
             echo '<div style="background:#141622;border:1px solid #1f2235;border-radius:8px;padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;max-width:100%;box-sizing:border-box;">';
-            echo '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;">'
-                . '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">'
+            // Single inline flow — wraps gracefully in narrow checkout columns
+            echo '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">'
                 . '<span style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">&#9670;</span>'
                 . '<strong style="color:#fff;font-size:14px;font-weight:700;">AlgoVoi</strong>'
                 . '<span style="font-size:11px;color:#6b7280;border:1px solid #1f2235;border-radius:4px;padding:2px 6px;">Hosted</span>'
-                . '</div>'
-                . '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
-                . '<span style="font-size:11px;background:rgba(99,102,241,.1);color:#818cf8;border-radius:4px;padding:2px 6px;font-weight:600;">Secure checkout</span>'
+                . '<span style="font-size:11px;background:rgba(99,102,241,.1);color:#818cf8;border-radius:4px;padding:2px 6px;font-weight:600;">Secure</span>'
                 . '<span style="font-size:11px;background:rgba(245,158,11,.1);color:#fbbf24;border-radius:4px;padding:2px 6px;font-weight:600;">Redirect</span>'
-                . '</div>'
                 . '</div>';
             algovoi_network_dropdown('algovoi_network', $enabled);
             echo '</div>';
@@ -450,16 +444,13 @@ add_action('plugins_loaded', function () {
 
         public function payment_fields() {
             echo '<div style="background:#141622;border:1px solid #1f2235;border-radius:8px;padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;max-width:100%;box-sizing:border-box;">';
-            echo '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;">'
-                . '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">'
+            // Single inline flow — wraps gracefully in narrow checkout columns
+            echo '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;">'
                 . '<span style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">&#9670;</span>'
                 . '<strong style="color:#fff;font-size:14px;font-weight:700;">AlgoVoi</strong>'
                 . '<span style="font-size:11px;color:#6b7280;border:1px solid #1f2235;border-radius:4px;padding:2px 6px;">Extension</span>'
-                . '</div>'
-                . '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
                 . '<span style="font-size:11px;background:rgba(59,130,246,.1);color:#60a5fa;border-radius:4px;padding:2px 6px;font-weight:600;">In-page</span>'
                 . '<span style="font-size:11px;background:rgba(16,185,129,.1);color:#34d399;border-radius:4px;padding:2px 6px;font-weight:600;">No redirect</span>'
-                . '</div>'
                 . '</div>';
             algovoi_chain_selector_html('algovoi_ext_network');
             echo '</div>';
