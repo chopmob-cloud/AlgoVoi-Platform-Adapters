@@ -7,9 +7,42 @@ namespace Opencart\Catalog\Controller\Extension\Algovoi\Payment;
 
 class Algovoi extends \Opencart\System\Engine\Controller {
 
+    // All hosted networks with display labels
+    private const ALL_NETWORKS = [
+        'algorand_mainnet' => 'Algorand &mdash; USDC',
+        'voi_mainnet'      => 'VOI &mdash; aUSDC',
+        'hedera_mainnet'   => 'Hedera &mdash; USDC',
+        'stellar_mainnet'  => 'Stellar &mdash; USDC',
+        'base_mainnet'     => 'Base &mdash; USDC',
+        'solana_mainnet'   => 'Solana &mdash; USDC',
+        'tempo_mainnet'    => 'Tempo &mdash; USDC',
+    ];
+
+    private const NET_KEYS = [
+        'algorand_mainnet' => 'algorand',
+        'voi_mainnet'      => 'voi',
+        'hedera_mainnet'   => 'hedera',
+        'stellar_mainnet'  => 'stellar',
+        'base_mainnet'     => 'base',
+        'solana_mainnet'   => 'solana',
+        'tempo_mainnet'    => 'tempo',
+    ];
+
     public function index(): string {
         $this->load->language('extension/algovoi/payment/algovoi');
         $data['language'] = $this->config->get('config_language');
+
+        // Build enabled_networks: default all enabled if config never saved
+        $enabled = [];
+        foreach (self::NET_KEYS as $net => $short) {
+            $val = $this->config->get('payment_algovoi_net_' . $short);
+            if ($val === null || $val === '' || $val === '1' || $val === 1) {
+                $enabled[$net] = self::ALL_NETWORKS[$net];
+            }
+        }
+        if (empty($enabled)) $enabled = self::ALL_NETWORKS;
+        $data['enabled_networks'] = $enabled;
+
         return $this->load->view('extension/algovoi/payment/algovoi', $data);
     }
 
@@ -38,8 +71,13 @@ class Algovoi extends \Opencart\System\Engine\Controller {
         $api_key   = $this->config->get('payment_algovoi_admin_api_key');
         // FIX: use trim() not db->escape() — this is API data, not SQL; whitelist is the real guard
         $network   = isset($_POST['algovoi_network']) ? trim($_POST['algovoi_network']) : ($this->config->get('payment_algovoi_preferred_network') ?: 'algorand_mainnet');
-        $allowed   = ['algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'];
-        if (!in_array($network, $allowed, true)) $network = 'algorand_mainnet';
+        $enabled_confirm = [];
+        foreach (self::NET_KEYS as $net => $short) {
+            $val = $this->config->get('payment_algovoi_net_' . $short);
+            if ($val === null || $val === '' || $val === '1' || $val === 1) $enabled_confirm[] = $net;
+        }
+        if (empty($enabled_confirm)) $enabled_confirm = array_keys(self::ALL_NETWORKS);
+        if (!in_array($network, $enabled_confirm, true)) $network = $enabled_confirm[0];
 
         $api_base = rtrim($this->config->get('payment_algovoi_api_base_url') ?: 'https://cloud.algovoi.co.uk', '/');
 

@@ -3,28 +3,44 @@
 {% block page_checkout_change_payment_form %}
     {{ parent() }}
 
-    <template id="av-chain-tpl">
-        <div id="av-chain-selector" style="margin-top:.5rem;padding:.75rem 1rem;background:#1e2130;border:1px solid #2d3252;border-radius:8px;">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:8px;">Select network</div>
-            <div id="av-chain-options" style="display:flex;gap:16px;flex-wrap:wrap;"></div>
-        </div>
-    </template>
+    {# ── Build enabled-networks list from system config ─────────────────────── #}
+    {% set _allNetworks = {
+        'algorand_mainnet': 'Algorand — USDC',
+        'voi_mainnet':      'VOI — aUSDC',
+        'hedera_mainnet':   'Hedera — USDC',
+        'stellar_mainnet':  'Stellar — USDC',
+        'base_mainnet':     'Base — USDC',
+        'solana_mainnet':   'Solana — USDC',
+        'tempo_mainnet':    'Tempo — USDC'
+    } %}
+    {% set _cfgEnabled = config('AlgovoiPayment.config.enabledNetworks') %}
+    {% if _cfgEnabled is iterable and _cfgEnabled is not empty %}
+        {% set _enabledKeys = _cfgEnabled %}
+    {% else %}
+        {% set _enabledKeys = _allNetworks|keys %}
+    {% endif %}
+    {# wallet (extension) stays AVM-only regardless of config #}
+    {% set _walletKeys = ['algorand_mainnet', 'voi_mainnet'] %}
+
+    {# Serialise to JSON for the inline script #}
+    {% set _hostedJson = [] %}
+    {% for k in _enabledKeys %}
+        {% if _allNetworks[k] is defined %}
+            {% set _hostedJson = _hostedJson|merge([{'value': k, 'label': _allNetworks[k]}]) %}
+        {% endif %}
+    {% endfor %}
+    {% set _walletJson = [] %}
+    {% for k in _walletKeys %}
+        {% set _walletJson = _walletJson|merge([{'value': k, 'label': _allNetworks[k]}]) %}
+    {% endfor %}
 
     <script>
     (function() {
         var HOSTED_ID = 'YOUR_HOSTED_PAYMENT_METHOD_ID';
         var WALLET_ID = 'YOUR_WALLET_PAYMENT_METHOD_ID';
 
-        var hostedChains = [
-            { value: 'algorand_mainnet', label: 'Algorand — USDC' },
-            { value: 'voi_mainnet',      label: 'VOI — aUSDC' },
-            { value: 'hedera_mainnet',   label: 'Hedera — USDC' },
-            { value: 'stellar_mainnet', label: 'Stellar — USDC' },
-        ];
-        var walletChains = [
-            { value: 'algorand_mainnet', label: 'Algorand — USDC' },
-            { value: 'voi_mainnet',      label: 'VOI — aUSDC' },
-        ];
+        var hostedChains = {{ _hostedJson|json_encode|raw }};
+        var walletChains = {{ _walletJson|json_encode|raw }};
 
         function getHiddenInput() {
             var form = document.getElementById('confirmOrderForm');
@@ -32,39 +48,46 @@
             var inp = form.querySelector('input[name="algovoi_network"]');
             if (!inp) {
                 inp = document.createElement('input');
-                inp.type = 'hidden';
-                inp.name = 'algovoi_network';
+                inp.type  = 'hidden';
+                inp.name  = 'algovoi_network';
                 inp.value = 'algorand_mainnet';
                 form.appendChild(inp);
             }
             return inp;
         }
 
-        function renderChains(chains, container) {
+        function renderSelector(chains, container) {
             container.innerHTML = '';
-            chains.forEach(function(c, i) {
-                var lbl = document.createElement('label');
-                lbl.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#e2e8f0;';
-                var radio = document.createElement('input');
-                radio.type = 'radio';
-                radio.name = 'av_chain_radio';
-                radio.value = c.value;
-                radio.style.accentColor = '#3b82f6';
-                if (i === 0) radio.checked = true;
-                radio.addEventListener('change', function() {
-                    var inp = getHiddenInput();
-                    if (inp) inp.value = this.value;
-                });
-                lbl.appendChild(radio);
-                lbl.appendChild(document.createTextNode(' ' + c.label));
-                container.appendChild(lbl);
-            });
             var inp = getHiddenInput();
+
+            if (chains.length === 1) {
+                // Single network — no visible UI, just set the hidden value
+                if (inp) inp.value = chains[0].value;
+                return;
+            }
+
+            // Multiple networks — render <select>
+            var label = document.createElement('label');
+            label.style.cssText = 'display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:6px;';
+            label.textContent = 'Select network';
+            container.appendChild(label);
+
+            var sel = document.createElement('select');
+            sel.style.cssText = 'padding:.4rem .6rem;border:1px solid #2a2d3a;border-radius:6px;background:#1e2130;color:#f1f2f6;font-size:13px;min-width:220px;';
+            chains.forEach(function(c) {
+                var opt = document.createElement('option');
+                opt.value       = c.value;
+                opt.textContent = c.label;
+                sel.appendChild(opt);
+            });
+            sel.addEventListener('change', function() {
+                if (inp) inp.value = this.value;
+            });
             if (inp) inp.value = chains[0].value;
+            container.appendChild(sel);
         }
 
         function update() {
-            // Remove any existing selector
             var old = document.getElementById('av-chain-selector');
             if (old) old.remove();
 
@@ -75,27 +98,19 @@
             var chains = null;
             if (val === HOSTED_ID) chains = hostedChains;
             else if (val === WALLET_ID) chains = walletChains;
-            if (!chains) return;
+            if (!chains || chains.length === 0) return;
 
-            // Clone the template and insert it inside the selected payment method
-            var tpl = document.getElementById('av-chain-tpl');
-            if (!tpl) return;
-            var clone = tpl.content.cloneNode(true);
-            var selector = clone.querySelector('#av-chain-selector');
-            var opts = clone.querySelector('#av-chain-options');
-            renderChains(chains, opts);
+            var wrapper = document.createElement('div');
+            wrapper.id = 'av-chain-selector';
+            wrapper.style.cssText = 'margin-top:.5rem;padding:.75rem 1rem;background:#1e2130;border:1px solid #2d3252;border-radius:8px;';
+            renderSelector(chains, wrapper);
 
-            // Insert after the payment method label (inside the .payment-method div)
             var methodDiv = checked.closest('.payment-method');
-            if (methodDiv) {
-                methodDiv.appendChild(selector);
-            }
+            if (methodDiv) methodDiv.appendChild(wrapper);
         }
 
         function init() {
             update();
-            // Shopware auto-submits the form on payment change and replaces DOM,
-            // so we use MutationObserver to re-inject after AJAX reload
             var target = document.querySelector('.payment-methods') || document.body;
             new MutationObserver(function() { setTimeout(update, 300); })
                 .observe(target, { childList: true, subtree: true });

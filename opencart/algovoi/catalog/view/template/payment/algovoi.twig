@@ -12,43 +12,30 @@
     <span style="color:#666;font-size:13px;">On-chain crypto payment</span>
   </div>
   <p style="margin:0 0 14px;font-size:13px;color:#aaa;line-height:1.5;">
-    Pay with stablecoins on Algorand, VOI, Hedera, Stellar, Base, Solana or Tempo.
-    You will be redirected to a hosted checkout page after confirming your order.
+    Pay with USDC stablecoins via hosted checkout. You will be redirected after confirming your order.
   </p>
 
-  <div style="margin-bottom:16px;">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:8px;">Select network</div>
-    <div style="display:flex;flex-direction:column;gap:6px;" id="algovoi-chain-picker">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="radio" name="algovoi_network" value="algorand_mainnet" checked style="accent-color:#3b82f6;">
-        <span style="font-size:13px;color:#e0e0e0;">Algorand &mdash; <span style="color:#3b82f6;">USDC</span></span>
+  {% if enabled_networks|length == 1 %}
+    {# Single network — no visible selector #}
+    {% for value, label in enabled_networks %}
+      <input type="hidden" name="algovoi_network" value="{{ value }}">
+      <p style="margin:0 0 14px;font-size:12px;color:#666;">Network: <span style="color:#e0e0e0;">{{ label|raw }}</span></p>
+    {% endfor %}
+  {% else %}
+    <div style="margin-bottom:16px;">
+      <label for="algovoi_network_select"
+             style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:8px;">
+        Select network
       </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="radio" name="algovoi_network" value="voi_mainnet" style="accent-color:#8b5cf6;">
-        <span style="font-size:13px;color:#e0e0e0;">VOI &mdash; <span style="color:#8b5cf6;">aUSDC</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="radio" name="algovoi_network" value="hedera_mainnet" style="accent-color:#00a9a5;">
-        <span style="font-size:13px;color:#e0e0e0;">Hedera &mdash; <span style="color:#00a9a5;">USDC</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="radio" name="algovoi_network" value="stellar_mainnet" style="accent-color:#7C63D0;">
-        <span style="font-size:13px;color:#e0e0e0;">Stellar &mdash; <span style="color:#7C63D0;">USDC</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="radio" name="algovoi_network" value="base_mainnet" style="accent-color:#0052ff;">
-        <span style="font-size:13px;color:#e0e0e0;">Base &mdash; <span style="color:#0052ff;">USDC</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="radio" name="algovoi_network" value="solana_mainnet" style="accent-color:#9945ff;">
-        <span style="font-size:13px;color:#e0e0e0;">Solana &mdash; <span style="color:#9945ff;">USDC</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-        <input type="radio" name="algovoi_network" value="tempo_mainnet" style="accent-color:#f59e0b;">
-        <span style="font-size:13px;color:#e0e0e0;">Tempo &mdash; <span style="color:#f59e0b;">USDC</span></span>
-      </label>
+      <select id="algovoi_network_select"
+              name="algovoi_network"
+              style="width:100%;padding:.45rem .7rem;background:#1a1a2e;border:1px solid #2a2d3a;border-radius:6px;color:#e0e0e0;font-size:13px;">
+        {% for value, label in enabled_networks %}
+          <option value="{{ value }}">{{ label|raw }}</option>
+        {% endfor %}
+      </select>
     </div>
-  </div>
+  {% endif %}
 
   <div class="text-end">
     <button type="button" id="button-algovoi-confirm" class="btn btn-primary">Confirm Order</button>
@@ -60,7 +47,9 @@ $('#button-algovoi-confirm').on('click', function() {
     var element = this;
     $(element).prop('disabled', true).text('Redirecting...');
 
-    var network = $('input[name="algovoi_network"]:checked').val() || 'algorand_mainnet';
+    var network = $('select[name="algovoi_network"]').val()
+               || $('input[name="algovoi_network"]').val()
+               || 'algorand_mainnet';
 
     $.ajax({
         url: 'index.php?route=extension/algovoi/payment/algovoi.confirm&language={{ language }}',

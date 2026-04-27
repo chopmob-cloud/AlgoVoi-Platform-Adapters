@@ -59,6 +59,31 @@
                 <option value="solana_mainnet"{% if payment_algovoi_preferred_network == 'solana_mainnet' %} selected{% endif %}>Solana Mainnet (USDC)</option>
                 <option value="tempo_mainnet"{% if payment_algovoi_preferred_network == 'tempo_mainnet' %} selected{% endif %}>Tempo Mainnet (USDC)</option>
               </select>
+              <div class="form-text">Fallback used if only one network is enabled at checkout.</div>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">Enabled Networks</label>
+            <div class="col-sm-10">
+              <div class="form-text mb-2">Tick the networks to show at checkout. One ticked = selector hidden, that network used automatically.</div>
+              {% set nets = [
+                {'key': 'algorand', 'label': 'Algorand — USDC'},
+                {'key': 'voi',      'label': 'VOI — aUSDC'},
+                {'key': 'hedera',   'label': 'Hedera — USDC'},
+                {'key': 'stellar',  'label': 'Stellar — USDC'},
+                {'key': 'base',     'label': 'Base — USDC'},
+                {'key': 'solana',   'label': 'Solana — USDC'},
+                {'key': 'tempo',    'label': 'Tempo — USDC'}
+              ] %}
+              {% for net in nets %}
+                {% set cfg_key = 'payment_algovoi_net_' ~ net.key %}
+                <div class="form-check form-check-inline">
+                  <input type="hidden" name="{{ cfg_key }}" value="0">
+                  <input type="checkbox" name="{{ cfg_key }}" value="1" id="chk_{{ net.key }}" class="form-check-input"
+                    {% if attribute(_context, cfg_key) %}checked{% endif %}>
+                  <label class="form-check-label" for="chk_{{ net.key }}">{{ net.label }}</label>
+                </div>
+              {% endfor %}
             </div>
           </div>
           <div class="row mb-3">

@@ -3,7 +3,7 @@
  * Plugin Name:          AlgoVoi Payment Gateway
  * Plugin URI:           https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  * Description:          Accept USDC stablecoin payments on Algorand, VOI, Hedera, and Stellar via hosted checkout or browser extension. No crypto knowledge required — works alongside any existing payment method.
- * Version:              2.4.3
+ * Version:              2.4.4
  * Requires at least:    6.4
  * Requires PHP:         8.0
  * Tested up to:         6.9
@@ -138,7 +138,49 @@ function algovoi_parse_checkout($url, $api_base = '') {
 }
 
 /**
- * Render the chain radio selector.
+ * Render network dropdown (A+D pattern) for the hosted gateway.
+ * Single network enabled → hidden input, no visible UI.
+ * Multiple networks → <select> dropdown showing only enabled ones.
+ */
+function algovoi_network_dropdown($field_name, $enabled_networks) {
+    static $labels = array(
+        'algorand_mainnet' => 'Algorand — USDC',
+        'voi_mainnet'      => 'VOI — aUSDC',
+        'hedera_mainnet'   => 'Hedera — USDC',
+        'stellar_mainnet'  => 'Stellar — USDC',
+        'base_mainnet'     => 'Base — USDC',
+        'solana_mainnet'   => 'Solana — USDC',
+        'tempo_mainnet'    => 'Tempo — USDC',
+    );
+    if (!is_array($enabled_networks) || empty($enabled_networks)) {
+        $enabled_networks = array_keys($labels);
+    }
+    $chains = array_intersect_key($labels, array_flip($enabled_networks));
+    if (empty($chains)) $chains = array('algorand_mainnet' => 'Algorand — USDC');
+
+    if (count($chains) === 1) {
+        echo '<input type="hidden" name="' . esc_attr($field_name) . '" value="' . esc_attr(array_key_first($chains)) . '">';
+        return;
+    }
+    ?>
+    <div style="margin-top:.75rem;">
+        <label for="<?php echo esc_attr($field_name); ?>"
+               style="display:block;font-size:.78rem;font-weight:600;letter-spacing:.05em;
+                      text-transform:uppercase;color:#6b7280;margin-bottom:.4rem;">Select network</label>
+        <select id="<?php echo esc_attr($field_name); ?>"
+                name="<?php echo esc_attr($field_name); ?>"
+                style="width:100%;padding:.5rem .75rem;background:#1e2130;border:1px solid #2a2d3a;
+                       border-radius:6px;color:#f1f2f6;font-size:.9rem;">
+            <?php foreach ($chains as $value => $label) : ?>
+            <option value="<?php echo esc_attr($value); ?>"><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <?php
+}
+
+/**
+ * Render the chain radio selector (used by extension gateway — AVM only).
  * $chains: array of [network_value, label, ticker, colour, icon] rows.
  */
 function algovoi_chain_selector_html($field_name, $chains = null) {
@@ -222,34 +264,50 @@ add_action('plugins_loaded', function () {
 
         public function init_form_fields() {
             $this->form_fields = array(
-                'enabled'     => array('title' => 'Enable/Disable', 'type' => 'checkbox', 'label' => 'Enable AlgoVoi', 'default' => 'yes'),
-                'title'       => array('title' => 'Title',       'type' => 'text',     'default' => 'AlgoVoi - Pay with Crypto'),
-                'description' => array('title' => 'Description', 'type' => 'textarea', 'default' => 'Pay with USDC on Algorand or Hedera, or aUSDC on VOI.'),
-                'api_base'    => array('title' => 'API Base URL', 'type' => 'text',     'default' => 'https://api1.ilovechicken.co.uk'),
-                'api_key'     => array('title' => 'API Key',     'type' => 'password', 'default' => ''),
-                'tenant_id'   => array('title' => 'Tenant ID',   'type' => 'text',     'default' => ''),
+                'enabled'          => array('title' => 'Enable/Disable', 'type' => 'checkbox', 'label' => 'Enable AlgoVoi', 'default' => 'yes'),
+                'title'            => array('title' => 'Title',          'type' => 'text',      'default' => 'AlgoVoi - Pay with Crypto'),
+                'description'      => array('title' => 'Description',    'type' => 'textarea',  'default' => 'Pay with USDC on Algorand, VOI, Hedera, Stellar, Base, Solana or Tempo.'),
+                'api_base'         => array('title' => 'API Base URL',   'type' => 'text',      'default' => 'https://api1.ilovechicken.co.uk'),
+                'api_key'          => array('title' => 'API Key',        'type' => 'password',  'default' => ''),
+                'tenant_id'        => array('title' => 'Tenant ID',      'type' => 'text',      'default' => ''),
+                'enabled_networks' => array(
+                    'title'    => 'Enabled Networks',
+                    'type'     => 'multiselect',
+                    'class'    => 'chosen_select',
+                    'css'      => 'width:100%;',
+                    'options'  => array(
+                        'algorand_mainnet' => 'Algorand — USDC',
+                        'voi_mainnet'      => 'VOI — aUSDC',
+                        'hedera_mainnet'   => 'Hedera — USDC',
+                        'stellar_mainnet'  => 'Stellar — USDC',
+                        'base_mainnet'     => 'Base — USDC',
+                        'solana_mainnet'   => 'Solana — USDC',
+                        'tempo_mainnet'    => 'Tempo — USDC',
+                    ),
+                    'default'  => array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'),
+                    'desc_tip' => 'Networks shown at checkout. Select one to hide the selector and use it automatically.',
+                ),
             );
         }
 
         public function payment_fields() {
             if ($desc = $this->get_description())
                 echo '<p style="margin:0 0 .5rem;color:#9ca3af;font-size:.9rem;">' . wp_kses_post($desc) . '</p>';
-            algovoi_chain_selector_html('algovoi_network', [
-                ['algorand_mainnet', 'Algorand', 'USDC',  '#3b82f6', '&#9672;'],
-                ['voi_mainnet',      'VOI',      'aUSDC', '#8b5cf6', '&#9670;'],
-                ['hedera_mainnet',   'Hedera',   'USDC',  '#00a9a5', '&#9711;'],
-                ['stellar_mainnet',  'Stellar',  'USDC',  '#7C63D0', '&#9733;'],
-                ['base_mainnet',     'Base',     'USDC',  '#0052ff', '&#9671;'],
-                ['solana_mainnet',   'Solana',   'USDC',  '#9945ff', '&#9671;'],
-                ['tempo_mainnet',    'Tempo',    'USDCe', '#f59e0b', '&#9671;'],
-            ]);
+            $enabled = $this->get_option('enabled_networks');
+            if (!is_array($enabled) || empty($enabled)) {
+                $enabled = array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet');
+            }
+            algovoi_network_dropdown('algovoi_network', $enabled);
         }
 
         public function validate_fields() {
             // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce verifies checkout nonce before calling this.
-            $net = isset($_POST['algovoi_network']) ? sanitize_text_field(wp_unslash($_POST['algovoi_network'])) : '';
-            if (!in_array($net, array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet'), true)) {
-                wc_add_notice('Please select a network (Algorand, VOI, Hedera, Stellar, Base, Solana or Tempo) to continue.', 'error');
+            $net      = isset($_POST['algovoi_network']) ? sanitize_text_field(wp_unslash($_POST['algovoi_network'])) : '';
+            $all      = array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet');
+            $enabled  = $this->get_option('enabled_networks');
+            if (!is_array($enabled) || empty($enabled)) $enabled = $all;
+            if (!in_array($net, $all, true) || !in_array($net, $enabled, true)) {
+                wc_add_notice('Please select a valid network to continue.', 'error');
                 return false;
             }
             return true;

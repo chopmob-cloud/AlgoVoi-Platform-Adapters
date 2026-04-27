@@ -25,6 +25,14 @@ class Algovoi extends \Opencart\System\Engine\Controller {
             $data['payment_algovoi_' . $f] = $this->config->get('payment_algovoi_' . $f);
         }
 
+        // Pass per-network enabled flags (default on if never saved)
+        $nets = ['algorand','voi','hedera','stellar','base','solana','tempo'];
+        foreach ($nets as $n) {
+            $key = 'payment_algovoi_net_' . $n;
+            $val = $this->config->get($key);
+            $data[$key] = ($val === null || $val === '' || $val === '1' || $val === 1);
+        }
+
         $this->load->model('localisation/order_status');
         $data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
         $data['payment_algovoi_pending_status_id']   = (int)$this->config->get('payment_algovoi_pending_status_id');

@@ -31,17 +31,32 @@
         <input-field type="single-select">
             <name>network</name>
             <defaultValue>algorand_mainnet</defaultValue>
-            <label>Preferred Network</label>
-            <label lang="de-DE">Bevorzugtes Netzwerk</label>
+            <label>Default / Fallback Network</label>
+            <label lang="de-DE">Standard-Netzwerk</label>
             <options>
-                <option>
-                    <id>algorand_mainnet</id>
-                    <name>Algorand Mainnet (USDC)</name>
-                </option>
-                <option>
-                    <id>voi_mainnet</id>
-                    <name>VOI Mainnet (aUSDC)</name>
-                </option>
+                <option><id>algorand_mainnet</id><name>Algorand Mainnet (USDC)</name></option>
+                <option><id>voi_mainnet</id><name>VOI Mainnet (aUSDC)</name></option>
+                <option><id>hedera_mainnet</id><name>Hedera Mainnet (USDC)</name></option>
+                <option><id>stellar_mainnet</id><name>Stellar Mainnet (USDC)</name></option>
+                <option><id>base_mainnet</id><name>Base Mainnet (USDC)</name></option>
+                <option><id>solana_mainnet</id><name>Solana Mainnet (USDC)</name></option>
+                <option><id>tempo_mainnet</id><name>Tempo Mainnet (USDC)</name></option>
+            </options>
+        </input-field>
+
+        <input-field type="multi-select">
+            <name>enabledNetworks</name>
+            <label>Enabled Networks</label>
+            <label lang="de-DE">Aktivierte Netzwerke</label>
+            <helpText>Networks shown at checkout. Select one to hide the selector and use it automatically.</helpText>
+            <options>
+                <option><id>algorand_mainnet</id><name>Algorand — USDC</name></option>
+                <option><id>voi_mainnet</id><name>VOI — aUSDC</name></option>
+                <option><id>hedera_mainnet</id><name>Hedera — USDC</name></option>
+                <option><id>stellar_mainnet</id><name>Stellar — USDC</name></option>
+                <option><id>base_mainnet</id><name>Base — USDC</name></option>
+                <option><id>solana_mainnet</id><name>Solana — USDC</name></option>
+                <option><id>tempo_mainnet</id><name>Tempo — USDC</name></option>
             </options>
         </input-field>
     </card>
