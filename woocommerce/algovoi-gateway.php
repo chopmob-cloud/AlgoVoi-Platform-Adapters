@@ -3,7 +3,7 @@
  * Plugin Name:          AlgoVoi Payment Gateway
  * Plugin URI:           https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  * Description:          Accept USDC / aUSDC / USDCe stablecoin payments on Algorand, VOI, Hedera, Stellar, Base, Solana and Tempo via hosted checkout or browser extension. No crypto knowledge required — works alongside any existing payment method.
- * Version:              2.4.5
+ * Version:              2.4.6
  * Requires at least:    6.4
  * Requires PHP:         8.0
  * Tested up to:         6.9
@@ -155,15 +155,15 @@ function algovoi_chain_colours() {
  */
 function algovoi_footer_html() {
     ?>
-    <div style="margin-top:.9rem;padding-top:.65rem;border-top:1px solid #1f2235;
+    <div style="margin-top:.6rem;padding-top:.5rem;border-top:1px solid #1f2235;
                 display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;">
-        <span style="font-size:.72rem;color:#4b5563;">
+        <span style="font-size:.68rem;color:#4b5563;">
             Secured by
             <a href="https://www.algovoi.co.uk" target="_blank" rel="noopener"
                style="color:#6366f1;text-decoration:none;font-weight:600;">AlgoVoi</a>
             &mdash; instant on-chain settlement
         </span>
-        <span style="font-size:.72rem;color:#374151;">No chargebacks &bull; No FX fees</span>
+        <span style="font-size:.68rem;color:#374151;">No chargebacks &bull; No FX fees</span>
     </div>
     <?php
 }
@@ -196,10 +196,10 @@ function algovoi_network_dropdown($field_name, $enabled_networks) {
 
     if (count($chains) === 1) {
         ?>
-        <div style="margin-top:.85rem;display:flex;align-items:center;gap:.55rem;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
+        <div style="margin-top:.6rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem;">
+            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;
                          background:<?php echo esc_attr($first['colour']); ?>;flex-shrink:0;"></span>
-            <span style="font-size:.88rem;color:#d1d5db;font-weight:600;">
+            <span style="font-size:.85rem;color:#d1d5db;font-weight:600;">
                 <?php echo esc_html($first['label']); ?>
                 <span style="color:<?php echo esc_attr($first['colour']); ?>;margin-left:.25rem;"><?php echo esc_html($first['ticker']); ?></span>
             </span>
@@ -213,21 +213,21 @@ function algovoi_network_dropdown($field_name, $enabled_networks) {
     // Build colours JSON for JS
     $colours_json = wp_json_encode(array_map(fn($v) => $v['colour'], $chains));
     ?>
-    <div style="margin-top:.85rem;">
+    <div style="margin-top:8px;margin-bottom:8px;">
         <label for="<?php echo $field_id; // phpcs:ignore ?>"
-               style="display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;
-                      text-transform:uppercase;color:#6b7280;margin-bottom:.45rem;">Select network</label>
-        <div style="position:relative;display:flex;align-items:center;gap:.6rem;">
+               style="display:block;font-size:.68rem;font-weight:700;letter-spacing:.06em;
+                      text-transform:uppercase;color:#6b7280;margin-bottom:.35rem;">Select network</label>
+        <div style="position:relative;display:flex;align-items:center;gap:.5rem;">
             <span id="<?php echo esc_attr($indicator_id); ?>"
-                  style="display:inline-block;width:11px;height:11px;border-radius:50%;
+                  style="display:inline-block;width:9px;height:9px;border-radius:50%;
                          background:<?php echo esc_attr($first['colour']); ?>;flex-shrink:0;
                          transition:background .2s;"></span>
             <select id="<?php echo $field_id; // phpcs:ignore ?>"
                     name="<?php echo $field_id; // phpcs:ignore ?>"
-                    style="flex:1;padding:.55rem .75rem;background:#141622;border:1px solid #2a2d3a;
-                           border-radius:7px;color:#f1f2f6;font-size:.9rem;cursor:pointer;
+                    style="flex:1;padding:.4rem .65rem;background:#141622;border:1px solid #2a2d3a;
+                           border-radius:7px;color:#f1f2f6;font-size:.85rem;cursor:pointer;
                            appearance:none;-webkit-appearance:none;outline:none;
-                           transition:border-color .2s;"
+                           box-sizing:border-box;transition:border-color .2s;"
                     onfocus="this.style.borderColor='#6366f1'"
                     onblur="this.style.borderColor='#2a2d3a'"
                     onchange="avDropdownChange(this,'<?php echo esc_attr($indicator_id); ?>',<?php echo $colours_json; // phpcs:ignore ?>)">
@@ -273,20 +273,21 @@ function algovoi_chain_selector_html($field_name, $chains = null) {
         array_column($chains, 2)
     ));
     ?>
-    <div style="margin-bottom:16px;">
+    <div style="margin-bottom:10px;">
         <label for="<?php echo $sel_id; // phpcs:ignore ?>"
-               style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;
-                      letter-spacing:.06em;color:#6b7280;margin-bottom:6px;">Select network</label>
-        <div style="display:flex;align-items:center;gap:.6rem;">
+               style="display:block;font-size:.68rem;font-weight:700;text-transform:uppercase;
+                      letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Select network</label>
+        <div style="display:flex;align-items:center;gap:.5rem;">
             <span id="<?php echo $dot_id; // phpcs:ignore ?>"
-                  style="display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0;
+                  style="display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;
                          background:<?php echo $first_col; ?>;transition:background .2s;"></span>
             <div style="position:relative;flex:1;">
                 <select id="<?php echo $sel_id; // phpcs:ignore ?>"
                         name="<?php echo esc_attr($field_name); ?>"
-                        style="width:100%;padding:.5rem .75rem;background:#0d0e1a;border:1px solid #2a2d3a;
-                               border-radius:7px;color:#f1f2f6;font-size:.88rem;cursor:pointer;
-                               appearance:none;-webkit-appearance:none;outline:none;transition:border-color .2s;"
+                        style="width:100%;padding:.4rem .65rem;background:#0d0e1a;border:1px solid #2a2d3a;
+                               border-radius:7px;color:#f1f2f6;font-size:.85rem;cursor:pointer;
+                               appearance:none;-webkit-appearance:none;outline:none;
+                               box-sizing:border-box;transition:border-color .2s;"
                         onfocus="this.style.borderColor='#6366f1'"
                         onblur="this.style.borderColor='#2a2d3a'"
                         onchange="(function(v,sid,did){var m=<?php echo $colours; // phpcs:ignore ?>;document.getElementById(did).style.background=m[v]||'#3b82f6';})(this.value,'<?php echo $sel_id; // phpcs:ignore ?>','<?php echo $dot_id; // phpcs:ignore ?>')">
@@ -357,13 +358,24 @@ add_action('plugins_loaded', function () {
         }
 
         public function payment_fields() {
-            if ($desc = $this->get_description())
-                echo '<p style="margin:0 0 .5rem;color:#9ca3af;font-size:.9rem;">' . wp_kses_post($desc) . '</p>';
             $enabled = $this->get_option('enabled_networks');
             if (!is_array($enabled) || empty($enabled)) {
                 $enabled = array('algorand_mainnet', 'voi_mainnet', 'hedera_mainnet', 'stellar_mainnet', 'base_mainnet', 'solana_mainnet', 'tempo_mainnet');
             }
+            echo '<div style="background:#141622;border:1px solid #1f2235;border-radius:8px;padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;max-width:100%;box-sizing:border-box;">';
+            echo '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">'
+                . '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">'
+                . '<span style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">&#9670;</span>'
+                . '<strong style="color:#fff;font-size:14px;font-weight:700;">AlgoVoi</strong>'
+                . '<span style="font-size:11px;color:#6b7280;border:1px solid #1f2235;border-radius:4px;padding:2px 6px;">Hosted</span>'
+                . '</div>'
+                . '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
+                . '<span style="font-size:11px;background:rgba(99,102,241,.1);color:#818cf8;border-radius:4px;padding:2px 6px;font-weight:600;">Secure checkout</span>'
+                . '<span style="font-size:11px;background:rgba(245,158,11,.1);color:#fbbf24;border-radius:4px;padding:2px 6px;font-weight:600;">Redirect</span>'
+                . '</div>'
+                . '</div>';
             algovoi_network_dropdown('algovoi_network', $enabled);
+            echo '</div>';
         }
 
         public function validate_fields() {
@@ -437,9 +449,20 @@ add_action('plugins_loaded', function () {
         }
 
         public function payment_fields() {
-            if ($desc = $this->get_description())
-                echo '<p style="margin:0 0 .5rem;color:#9ca3af;font-size:.9rem;">' . wp_kses_post($desc) . '</p>';
+            echo '<div style="background:#141622;border:1px solid #1f2235;border-radius:8px;padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;max-width:100%;box-sizing:border-box;">';
+            echo '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">'
+                . '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">'
+                . '<span style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">&#9670;</span>'
+                . '<strong style="color:#fff;font-size:14px;font-weight:700;">AlgoVoi</strong>'
+                . '<span style="font-size:11px;color:#6b7280;border:1px solid #1f2235;border-radius:4px;padding:2px 6px;">Extension</span>'
+                . '</div>'
+                . '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
+                . '<span style="font-size:11px;background:rgba(59,130,246,.1);color:#60a5fa;border-radius:4px;padding:2px 6px;font-weight:600;">In-page</span>'
+                . '<span style="font-size:11px;background:rgba(16,185,129,.1);color:#34d399;border-radius:4px;padding:2px 6px;font-weight:600;">No redirect</span>'
+                . '</div>'
+                . '</div>';
             algovoi_chain_selector_html('algovoi_ext_network');
+            echo '</div>';
         }
 
         public function validate_fields() {
