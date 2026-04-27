@@ -3,7 +3,7 @@
  * Plugin Name:          AlgoVoi Payment Gateway
  * Plugin URI:           https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  * Description:          Accept USDC / aUSDC / USDCe stablecoin payments on Algorand, VOI, Hedera, Stellar, Base, Solana and Tempo via hosted checkout or browser extension. No crypto knowledge required — works alongside any existing payment method.
- * Version:              2.4.4
+ * Version:              2.4.5
  * Requires at least:    6.4
  * Requires PHP:         8.0
  * Tested up to:         6.9
@@ -254,69 +254,51 @@ function algovoi_network_dropdown($field_name, $enabled_networks) {
 }
 
 /**
- * Render the chain card selector (extension gateway — AVM only: Algorand & VOI).
- * $chains: array of [network_value, label, ticker, colour, icon] rows.
+ * Render the chain dropdown selector (extension gateway — AVM only: Algorand & VOI).
+ * $chains: array of [network_value, display_label, colour] rows.
  */
 function algovoi_chain_selector_html($field_name, $chains = null) {
     // Extension gateway is AVM-only — Algorand and VOI only (browser extension + algosdk).
     if ($chains === null) {
         $chains = [
-            ['algorand_mainnet', 'Algorand', 'USDC',  '#3b82f6', '&#9672;'],
-            ['voi_mainnet',      'VOI',      'aUSDC', '#8b5cf6', '&#9670;'],
+            ['algorand_mainnet', 'Algorand — USDC',  '#3b82f6'],
+            ['voi_mainnet',      'VOI — aUSDC',      '#8b5cf6'],
         ];
     }
-    $uid = 'av-ext-' . esc_attr($field_name);
+    $dot_id    = 'av-ext-dot-' . esc_attr($field_name);
+    $sel_id    = 'av-ext-sel-' . esc_attr($field_name);
+    $first_col = esc_attr($chains[0][2]);
+    $colours   = wp_json_encode(array_combine(
+        array_column($chains, 0),
+        array_column($chains, 2)
+    ));
     ?>
-    <div class="av-chain-selector" id="<?php echo $uid; // phpcs:ignore ?>" style="margin-top:.85rem;">
-        <p style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-                  color:#6b7280;margin:0 0 .6rem;">Select network</p>
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
-            <?php foreach ($chains as $i => [$val, $label, $ticker, $colour, $icon]) : ?>
-            <label class="av-chain-opt" style="flex:1;min-width:120px;max-width:180px;cursor:pointer;">
-                <input type="radio" name="<?php echo esc_attr($field_name); ?>"
-                       value="<?php echo esc_attr($val); ?>"
-                       style="display:none;"
-                       <?php echo $i === 0 ? 'checked' : ''; ?>
-                       onchange="avCardSelect(this,'<?php echo $uid; // phpcs:ignore ?>')">
-                <div class="av-chain-card"
-                     data-colour="<?php echo esc_attr($colour); ?>"
-                     style="padding:.8rem .9rem;
-                            background:<?php echo $i === 0 ? 'rgba(99,102,241,.08)' : '#141622'; ?>;
-                            border:2px solid <?php echo $i === 0 ? esc_attr($colour) : '#1f2235'; ?>;
-                            border-radius:10px;transition:border-color .15s,background .15s;text-align:center;">
-                    <div style="font-size:1.05rem;color:<?php echo esc_attr($colour); ?>;line-height:1;">
-                        <?php echo wp_kses($icon, array()); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                    </div>
-                    <div style="font-weight:700;font-size:.92rem;color:#f1f2f6;margin-top:.35rem;">
-                        <?php echo esc_html($label); ?>
-                    </div>
-                    <div style="font-size:.72rem;color:<?php echo esc_attr($colour); ?>;margin-top:.15rem;font-weight:600;">
-                        <?php echo esc_html($ticker); ?>
-                    </div>
-                </div>
-            </label>
-            <?php endforeach; ?>
-        </div>
-        <div class="av-chain-error" style="display:none;margin-top:.5rem;font-size:.8rem;color:#ef4444;">
-            Please select a network to continue.
+    <div style="margin-bottom:16px;">
+        <label for="<?php echo $sel_id; // phpcs:ignore ?>"
+               style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;
+                      letter-spacing:.06em;color:#6b7280;margin-bottom:6px;">Select network</label>
+        <div style="display:flex;align-items:center;gap:.6rem;">
+            <span id="<?php echo $dot_id; // phpcs:ignore ?>"
+                  style="display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0;
+                         background:<?php echo $first_col; ?>;transition:background .2s;"></span>
+            <div style="position:relative;flex:1;">
+                <select id="<?php echo $sel_id; // phpcs:ignore ?>"
+                        name="<?php echo esc_attr($field_name); ?>"
+                        style="width:100%;padding:.5rem .75rem;background:#0d0e1a;border:1px solid #2a2d3a;
+                               border-radius:7px;color:#f1f2f6;font-size:.88rem;cursor:pointer;
+                               appearance:none;-webkit-appearance:none;outline:none;transition:border-color .2s;"
+                        onfocus="this.style.borderColor='#6366f1'"
+                        onblur="this.style.borderColor='#2a2d3a'"
+                        onchange="(function(v,sid,did){var m=<?php echo $colours; // phpcs:ignore ?>;document.getElementById(did).style.background=m[v]||'#3b82f6';})(this.value,'<?php echo $sel_id; // phpcs:ignore ?>','<?php echo $dot_id; // phpcs:ignore ?>')">
+                    <?php foreach ($chains as [$val, $label, $colour]) : ?>
+                    <option value="<?php echo esc_attr($val); ?>"><?php echo esc_html($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <span style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
+                             color:#6b7280;pointer-events:none;font-size:.75rem;">&#9662;</span>
+            </div>
         </div>
     </div>
-    <script>
-    if (typeof avCardSelect === 'undefined') {
-        function avCardSelect(radio, uid) {
-            var sel = document.getElementById(uid);
-            if (!sel) return;
-            sel.querySelectorAll('.av-chain-card').forEach(function(c) {
-                c.style.borderColor = '#1f2235';
-                c.style.background  = '#141622';
-            });
-            var card = radio.closest('.av-chain-opt').querySelector('.av-chain-card');
-            card.style.borderColor = card.dataset.colour;
-            card.style.background  = 'rgba(99,102,241,.08)';
-            sel.querySelector('.av-chain-error').style.display = 'none';
-        }
-    }
-    </script>
     <?php algovoi_footer_html(); ?>
     <?php
 }
