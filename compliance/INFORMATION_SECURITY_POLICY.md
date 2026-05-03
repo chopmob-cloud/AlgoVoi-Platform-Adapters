@@ -243,20 +243,27 @@ DORA Article 5(1) requirement for annual review is met by the quarterly cadence 
 
 #### 4.6.3 Encryption
 
-- **In transit:** TLS 1.3 enforced at Cloudflare edge for public traffic; TLS-only configuration in nginx; outbound HTTPS only for third-party APIs.
+- **In transit (public):** TLS 1.3 enforced at Cloudflare edge for public traffic; TLS-only configuration in nginx; outbound HTTPS only for third-party APIs.
+- **In transit (database):** Postgres TLS deployed 2026-05-03 on both VM1 (`algovoi-postgres-1`, Postgres 17.9) and VM3 (`cloud-postgres-1`, Postgres 16.13). Configuration:
+  - `ssl = on`, `ssl_min_protocol_version = 'TLSv1.3'`, `ssl_prefer_server_ciphers = on`
+  - Self-signed CA `AlgoVoi Postgres Root CA 2026` (4096-bit RSA, valid until 2036-04-30) issued the per-server certs (2048-bit RSA, valid until 2028-08-05). CA private key kept offline in founder's `~/.secrets/algovoi-pg-ca/`.
+  - `pg_hba.conf` design: same-host Docker bridge (`172.31.0.0/24` on VM1, `172.18.0.0/16` on VM3) keeps optional-TLS via `host all all <bridge> scram-sha-256` (CPU-friendly for loopback-equivalent traffic). Any non-bridge / non-loopback source MUST use TLS via `hostssl all all 0.0.0.0/0 scram-sha-256` followed by belt rule `hostnossl all all 0.0.0.0/0 reject` so any future cross-host non-TLS attempt fails closed.
+  - Verified live: TLS 1.3 + AES-256-GCM-SHA384 + 256-bit on TLS connections; same-host bridge connections continue without TLS as expected; `sslmode=verify-full` validates the cert chain against the deployed CA and matches hostname against the SAN list (Docker bridge IP, VPC IP, container hostname, localhost).
+- **In transit (inter-VM):** all VM1 ↔ VM3 ↔ VM4 control traffic over Vultr private VPC `10.8.96.0/20`. VM1 ↔ VM2 backup channel over SSH; will be re-pointed once VM2 is destroyed (~2026-05-10).
 - **At rest:**
   - Tenant secrets (HMAC, OAuth tokens, MFA TOTP seeds, webhook secrets) encrypted with `HMAC_ENCRYPTION_KEY` (Fernet, MultiFernet rotation).
   - KYB documents and special-category personal data encrypted with `KYB_ENCRYPTION_KEY` (Fernet, AVK1 magic-prefix scheme, see `shared/utils/encryption.py:encrypt_bytes`).
   - **The two keys are deliberately distinct.** Production startup validation refuses to start if `KYB_ENCRYPTION_KEY == HMAC_ENCRYPTION_KEY` or if either is unset.
   - Postgres data-at-rest is currently unencrypted at the disk layer (LUKS deferred per `docs/SECURITY_KYB_AT_REST_2026-04-26.md` — interim policy: file-level encryption-at-rest for special-category data, full-disk encryption when paying-tenant count crosses 25 OR KYB document count crosses 100 OR 90 days elapsed from 2026-04-26).
-  - Key recovery: customer-controlled key copies are operator's responsibility; lost `KYB_ENCRYPTION_KEY` makes encrypted KYB files permanently unrecoverable. The key is stored offline in `C:\Users\<founder>\.secrets\` with a separate physical backup.
+  - Key recovery: customer-controlled key copies are operator's responsibility; lost `KYB_ENCRYPTION_KEY` makes encrypted KYB files permanently unrecoverable. The key is stored offline in `~/.secrets/` with a separate physical backup. Same custody pattern applies to the Postgres CA private key.
 
 #### 4.6.4 Network access
 
 - VM1 public traffic is restricted to Cloudflare IP ranges via the `DOCKER-USER` iptables chain (verified 2026-05-03: 225,000+ direct-IP probes blocked). See `memory/plan_vm1_firewall_fix.md`.
-- VPC-to-VPC traffic between VM1 ↔ VM3 traverses Vultr's private network (`10.8.96.0/20`).
-- VM1 ↔ VM2 backup traffic currently traverses public internet over SSH; WireGuard mesh planned (Risk R-08).
-- SSH access to all VMs requires a key-based login; no password authentication permitted (`PasswordAuthentication no` in `/etc/ssh/sshd_config`). Only the founder's SSH keys are present in production.
+- VM4 public traffic likewise restricted to Cloudflare on `:80`/`:443`; `:8001` (facilitator-2) and `:8022` (kyb-verif) DROP from public on `enp1s0`, ACCEPT only from VPC `10.8.96.0/20` and Docker bridges.
+- VPC-to-VPC traffic between VM1 ↔ VM3 ↔ VM4 traverses Vultr's private network (`10.8.96.0/20`). Sub-1ms RTT verified.
+- VM1 ↔ VM2 backup traffic currently traverses public internet over SSH; will be re-pointed when VM2 is decommissioned (~2026-05-10).
+- SSH access to all VMs requires a key-based login; no password authentication permitted (`PasswordAuthentication no` in `/etc/ssh/sshd_config*`). Only the founder's SSH keys are present in production.
 
 #### 4.6.5 Physical access
 
