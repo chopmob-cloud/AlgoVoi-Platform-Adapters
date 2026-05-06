@@ -1,12 +1,14 @@
 # AlgoVoi Platform Adapters
 
-Integration guides and drop-in payment plugins for connecting e-commerce platforms to **AlgoVoi Tenant Services** — enabling merchants to accept stablecoin payments settled on the Algorand, VOI, Hedera, Stellar, Base, Solana, and Tempo blockchains.
+Drop-in payment adapters for connecting e-commerce platforms, AI agent frameworks, and automation tools to **AlgoVoi** — a compliance-aware crypto payment gateway with native stablecoin support across seven blockchains.
 
 ---
 
 ## What is AlgoVoi?
 
-AlgoVoi is a multi-tenant payment infrastructure layer built on the Algorand Virtual Machine (AVM) with Hedera, Stellar, Base (EVM), Solana, and Tempo support. It allows merchants and developers to accept on-chain stablecoin payments through hosted checkout or browser extension flows, without managing wallets or blockchain integrations directly.
+AlgoVoi is compliance-aware payment infrastructure for stablecoin settlement. The same gateway that handles payment routing across seven chains also runs continuous sanctions screening, KYB gating, and a write-once SHA-256 audit chain on every payment — so merchants and autonomous agents don't quietly carry UK MLRs / OFAC / SAMLA exposure they didn't sign up for. Compliance posture is published live at [`/compliance/attestation`](https://api.algovoi.co.uk/compliance/attestation).
+
+The compliance perimeter is the product. Multi-chain breadth (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) and protocol coverage (x402, MPP, AP2, A2A) are how we deliver it on a single endpoint, without merchants having to manage wallets or blockchain integrations directly.
 
 Supported settlement assets:
 
