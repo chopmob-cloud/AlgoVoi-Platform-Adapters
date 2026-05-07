@@ -5,11 +5,19 @@ Single-file drop-in for any Python application. No framework required.
 Works with Flask, Django, FastAPI, or plain WSGI/ASGI.
 
 Supports:
+
+Tier 1 — one-shot payments
   - Hosted checkout (Algorand, VOI, Hedera) — redirect to AlgoVoi payment page
   - Extension payment (Algorand, VOI) — in-page wallet flow via algosdk
   - Webhook verification with HMAC
   - SSRF protection on checkout URL fetches
   - Cancel-bypass prevention on hosted return
+
+Tier 2 — standing-authority recurring (subscriptions, agent-bound auth)
+  - Create / list / get / revoke / pause / resume / confirm / pull authorities
+  - Seven chains: Algorand, VOI, Base, Tempo, Solana, Hedera, Stellar
+  - Customer signs ONE pre-authorisation; AlgoVoi auto-pulls per cycle
+  - Wallet performs chain-native signing — adapter is stdlib-only HTTP
 
 Usage:
     from algovoi import AlgoVoi
@@ -21,10 +29,29 @@ Usage:
         webhook_secret='your_secret',
     )
 
+    # Tier 1 — one-shot
+    link = av.hosted_checkout(amount=10, currency='USD', label='Order #1',
+                              network='algorand_mainnet',
+                              redirect_url='https://shop.example/return')
+
+    # Tier 2 — recurring (after creating a subscription via the dashboard
+    # or /v1/subscriptions endpoint)
+    auth = av.create_recurring_authority(
+        subscription_id='<sub-uuid>',
+        chain='algorand_mainnet',
+        customer_wallet_address='ABCD...XYZ',
+        cap_amount_minor=120_000_000,         # $120 USDC = 12 × $10
+        cap_period_seconds=365 * 86400,
+        per_cycle_amount_minor=10_000_000,
+    )
+    # auth['customer_signing_payload'] is the chain-specific template
+    # the customer's wallet (Pera / Defly / MetaMask / Phantom / HashPack /
+    # Freighter / etc.) consumes to sign the on-chain authorisation.
+
 AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 Licensed under the Business Source License 1.1 — see LICENSE for details.
 
-Version: 1.1.0
+Version: 1.2.0
 """
 
 from __future__ import annotations
@@ -42,7 +69,7 @@ from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 # Default Algorand-family node endpoints used by the extension flow.
 # Override at runtime by passing `algod_overrides=` to AlgoVoi() — useful
@@ -60,9 +87,44 @@ HOSTED_NETWORKS = {
 }
 EXT_NETWORKS = {"algorand_mainnet", "voi_mainnet"}
 
+# Tier 2 — every v1 chain has a real provider (per
+# content/recurring_payments_tier2_design.md, Sprints 1-5):
+#
+#     Algorand / VOI    — SpendingCapVault contract
+#     Base / Tempo      — ERC-20 approve
+#     Solana            — SPL Token Approve
+#     Hedera            — HTS AccountAllowanceApprove
+#     Stellar           — Soroban auth_entry
+#
+# Testnet variants supported alongside mainnets.
+RECURRING_NETWORKS = {
+    "algorand_mainnet", "algorand_testnet",
+    "voi_mainnet",      "voi_testnet",
+    "base_mainnet",     "base_sepolia",
+    "tempo_mainnet",    "tempo_testnet",
+    "solana_mainnet",   "solana_devnet",
+    "hedera_mainnet",   "hedera_testnet",
+    "stellar_mainnet",  "stellar_testnet",
+}
+
+# Tier 2 webhook event types (in addition to Tier 1's payment.* events).
+# Use these to dispatch in your verify_webhook(...) handler.
+RECURRING_EVENT_TYPES = {
+    "recurring.authority_created",
+    "recurring.authority_activated",
+    "recurring.authority_paused",
+    "recurring.authority_resumed",
+    "recurring.authority_revoked",
+    "recurring.authority_expired",
+    "subscription.charged",          # successful per-cycle pull
+    "subscription.payment_failed",   # failed per-cycle pull
+}
+
 # Hard caps and validation patterns
 MAX_WEBHOOK_BODY_BYTES = 64 * 1024     # AlgoVoi webhooks are <2 KB in practice
 MAX_TOKEN_LEN          = 200            # checkout tokens are short — guard upper bound
+MAX_RECURRING_BODY_BYTES = 16 * 1024    # recurring API responses are typically <4 KB
+MAX_UUID_LEN           = 36             # standard UUID string length
 
 
 class AlgoVoi:
@@ -336,6 +398,27 @@ class AlgoVoi:
         except json.JSONDecodeError:
             return None
 
+    @staticmethod
+    def is_recurring_event(payload: dict) -> bool:
+        """
+        Return True if the parsed webhook payload is a Tier 2 recurring
+        event (subscription.charged, recurring.authority_*, etc.).
+
+        Use this to fork your handler:
+
+            payload = av.verify_webhook(raw_body, signature)
+            if payload is None:
+                abort(400)
+            if av.is_recurring_event(payload):
+                handle_recurring(payload)   # subscription.charged, etc.
+            else:
+                handle_one_shot(payload)    # payment.succeeded, etc.
+        """
+        if not isinstance(payload, dict):
+            return False
+        evt = payload.get("event_type") or payload.get("type")
+        return isinstance(evt, str) and evt in RECURRING_EVENT_TYPES
+
     # ── HTML Rendering Helpers ───────────────────────────────────────────
 
     @staticmethod
@@ -506,7 +589,325 @@ class AlgoVoi:
 }})();
 </script>"""
 
+    # ── Tier 2 — Standing-Authority Recurring Payments ───────────────────
+    #
+    # Tier 2 is "customer signs ONCE, AlgoVoi auto-pulls per cycle".
+    # Tier 1 (above) is "customer clicks pay on every invoice".
+    #
+    # The lifecycle a tenant drives via these methods:
+    #
+    #   1. Tenant creates a Tier 1 subscription (either via the dashboard
+    #      or POST /v1/subscriptions — out of scope of this adapter).
+    #   2. Tenant calls create_recurring_authority(...) — gateway returns
+    #      `customer_signing_payload`, a chain-specific template.
+    #   3. Tenant's frontend hands the template to the customer's wallet
+    #      (Pera / Defly / MetaMask / Phantom / HashPack / Freighter / etc.)
+    #      which constructs + signs the on-chain authorisation.
+    #   4. Once the on-chain transaction lands, tenant calls
+    #      confirm_authority(authority_id, on_chain_address=...) to
+    #      transition the row to status='active' (or AlgoVoi's webhook
+    #      handler does this for tenants using the hosted widget).
+    #   5. AlgoVoi's cycle reaper auto-pulls per cap_period_seconds.
+    #      Each pull emits subscription.charged / subscription.payment_failed
+    #      webhooks the tenant handles via verify_webhook(...).
+    #   6. To stop: revoke_authority(id) — gateway constructs the revocation
+    #      transaction. To pause/resume without on-chain action: pause/resume.
+    #
+    # All methods return the parsed JSON response on success, or None on
+    # failure (mirrors the Tier 1 pattern). For granular error inspection
+    # use _request_with_status(...) which returns (data, http_code).
+
+    def create_recurring_authority(
+        self,
+        subscription_id: str,
+        chain: str,
+        customer_wallet_address: str,
+        cap_amount_minor: int,
+        cap_period_seconds: int,
+        per_cycle_amount_minor: int,
+        asset: str = "USDC",
+        metadata: Optional[dict] = None,
+    ) -> Optional[dict]:
+        """
+        Create a Tier 2 standing authority for an existing subscription.
+
+        Args:
+            subscription_id:        UUID of the Tier 1 subscription this
+                                    authority is bound to.
+            chain:                  One of RECURRING_NETWORKS.
+            customer_wallet_address: The customer's chain-native address
+                                    (Algorand 58-char base32, EVM 0x-prefix
+                                    hex, Solana base58, Hedera 0.0.X,
+                                    Stellar G-address).
+            cap_amount_minor:       Total spend cap over cap_period_seconds,
+                                    in chain-native atomic units (e.g. 6
+                                    decimals for USDC on most chains; 7 on
+                                    Stellar). Cannot be exceeded even with
+                                    multiple pulls.
+            cap_period_seconds:     Cap window length. Must be >= 86400.
+                                    Typical: 365 * 86400 for annual.
+            per_cycle_amount_minor: Per-pull cap. Each cycle pulls at most
+                                    this much.
+            asset:                  Asset symbol — "USDC" by default.
+                                    Native coins (VOI / HBAR / XLM / ETH /
+                                    SOL) supported on a per-chain basis.
+            metadata:               Free-form tenant metadata (forwarded
+                                    on every webhook event).
+
+        Returns:
+            dict with keys:
+                'authority': server-recorded row (id, status='pending', etc.)
+                'customer_signing_payload': chain-specific template the
+                    customer's wallet signs to land the on-chain
+                    authorisation. Hand this to your frontend wallet UI.
+                'authorisation_url': optional hosted-page URL (some chains
+                    use this; others return None and you render the wallet
+                    UI yourself).
+            None on failure.
+        """
+        if chain not in RECURRING_NETWORKS:
+            return None
+        if not isinstance(subscription_id, str) or len(subscription_id) > MAX_UUID_LEN:
+            return None
+        if not isinstance(customer_wallet_address, str) or not customer_wallet_address:
+            return None
+        # Atomic-unit amounts must be positive integers in i64 range
+        for label, value in (
+            ("cap_amount_minor", cap_amount_minor),
+            ("cap_period_seconds", cap_period_seconds),
+            ("per_cycle_amount_minor", per_cycle_amount_minor),
+        ):
+            if not isinstance(value, int) or value <= 0:
+                return None
+        if cap_period_seconds < 86400:
+            return None  # gateway enforces same lower bound
+        if per_cycle_amount_minor > cap_amount_minor:
+            return None  # per-cycle can't exceed total cap
+
+        body: dict[str, Any] = {
+            "subscription_id":        subscription_id,
+            "chain":                  chain,
+            "customer_wallet_address": customer_wallet_address,
+            "cap_amount_minor":       cap_amount_minor,
+            "cap_period_seconds":     cap_period_seconds,
+            "per_cycle_amount_minor": per_cycle_amount_minor,
+            "asset":                  asset.upper(),
+        }
+        if metadata is not None:
+            if not isinstance(metadata, dict):
+                return None
+            body["metadata"] = metadata
+        return self._post("/v1/recurring/authorities", body)
+
+    def get_authority(self, authority_id: str) -> Optional[dict]:
+        """
+        Fetch the current state of a recurring authority by id.
+
+        Returns the authority row with status, on_chain_address (once
+        active), cap_remaining_minor, cycles_pulled, cycles_failed,
+        last_error, etc. None on failure.
+        """
+        if not isinstance(authority_id, str) or len(authority_id) > MAX_UUID_LEN:
+            return None
+        return self._request("GET", f"/v1/recurring/authorities/{quote(authority_id, safe='')}")
+
+    def list_authorities(
+        self,
+        subscription_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Optional[list]:
+        """
+        List recurring authorities for this tenant. Optionally filter by
+        subscription_id or status (one of: pending / active / paused /
+        revoking / revoked / expired).
+
+        Returns a list of authority rows (possibly empty), or None on failure.
+        """
+        if limit < 1 or limit > 200 or offset < 0:
+            return None
+        params = [f"limit={int(limit)}", f"offset={int(offset)}"]
+        if subscription_id:
+            if not isinstance(subscription_id, str) or len(subscription_id) > MAX_UUID_LEN:
+                return None
+            params.append(f"subscription_id={quote(subscription_id, safe='')}")
+        if status:
+            if not isinstance(status, str) or len(status) > 32 or not status.replace("_", "").isalnum():
+                return None
+            params.append(f"status={quote(status, safe='')}")
+        path = "/v1/recurring/authorities?" + "&".join(params)
+        result = self._request("GET", path)
+        if isinstance(result, list):
+            return result
+        return None
+
+    def confirm_authority(
+        self,
+        authority_id: str,
+        on_chain_address: str,
+        first_cycle_due_at: Optional[str] = None,
+    ) -> Optional[dict]:
+        """
+        Mark a pending authority active after on-chain landing.
+
+        Args:
+            authority_id:       UUID returned by create_recurring_authority.
+            on_chain_address:   Chain-native identifier of the landed auth
+                                (e.g. 'app:<application_id>' on Algorand /
+                                VOI, '0x<tx_hash>' on EVM, base58 sig on
+                                Solana, '<tx_id>' on Hedera, 64-char hex
+                                tx hash on Stellar).
+            first_cycle_due_at: ISO8601 timestamp for the first cycle pull.
+                                Defaults to now + cap_period_seconds /
+                                expected-cycles if omitted.
+
+        Most tenants don't need to call this directly — the AlgoVoi widget
+        and webhook flow drives it. Surfaced here for tenants who land
+        signed transactions out-of-band.
+        """
+        if not isinstance(authority_id, str) or len(authority_id) > MAX_UUID_LEN:
+            return None
+        if not isinstance(on_chain_address, str) or not on_chain_address:
+            return None
+        if len(on_chain_address) > 200:
+            return None  # defensive cap on chain-native ids
+        body: dict[str, Any] = {"on_chain_address": on_chain_address}
+        if first_cycle_due_at is not None:
+            if not isinstance(first_cycle_due_at, str) or len(first_cycle_due_at) > 64:
+                return None
+            body["first_cycle_due_at"] = first_cycle_due_at
+        return self._post(
+            f"/v1/recurring/authorities/{quote(authority_id, safe='')}/confirm",
+            body,
+        )
+
+    def revoke_authority(self, authority_id: str) -> Optional[dict]:
+        """
+        Revoke an active authority. Gateway constructs the chain-specific
+        revocation transaction; the customer's wallet signs it.
+
+        Authority transitions to status='revoking' until the on-chain
+        revocation lands, then 'revoked'. Returns the updated authority row.
+        """
+        if not isinstance(authority_id, str) or len(authority_id) > MAX_UUID_LEN:
+            return None
+        return self._post(
+            f"/v1/recurring/authorities/{quote(authority_id, safe='')}/revoke",
+            {},
+        )
+
+    def pause_authority(self, authority_id: str) -> Optional[dict]:
+        """
+        Pause an active authority — no chain action. Stops cycle pulls
+        until resume_authority(...) is called. Useful for billing holds /
+        manual review.
+        """
+        if not isinstance(authority_id, str) or len(authority_id) > MAX_UUID_LEN:
+            return None
+        return self._post(
+            f"/v1/recurring/authorities/{quote(authority_id, safe='')}/pause",
+            {},
+        )
+
+    def resume_authority(
+        self,
+        authority_id: str,
+        next_cycle_due_at: Optional[str] = None,
+    ) -> Optional[dict]:
+        """
+        Resume a paused authority. Optionally specify next_cycle_due_at
+        (ISO8601) to delay the first post-resume pull; otherwise pulls
+        resume immediately on the existing schedule.
+        """
+        if not isinstance(authority_id, str) or len(authority_id) > MAX_UUID_LEN:
+            return None
+        body: dict[str, Any] = {}
+        if next_cycle_due_at is not None:
+            if not isinstance(next_cycle_due_at, str) or len(next_cycle_due_at) > 64:
+                return None
+            body["next_cycle_due_at"] = next_cycle_due_at
+        return self._post(
+            f"/v1/recurring/authorities/{quote(authority_id, safe='')}/resume",
+            body,
+        )
+
+    def manual_pull(
+        self,
+        authority_id: str,
+        amount_minor: int,
+        idempotency_key: Optional[str] = None,
+    ) -> Optional[dict]:
+        """
+        Manually trigger a pull (e.g. catch-up after error escalation,
+        prorated mid-cycle billing). Most pulls fire automatically via
+        the cycle reaper — tenants don't need to call this in normal use.
+
+        Args:
+            authority_id:    UUID of an active authority.
+            amount_minor:    Pull amount in atomic units. Must be
+                             <= per_cycle_amount_minor of the authority.
+            idempotency_key: Optional client-supplied key for retry safety.
+
+        Returns the updated authority row (with cycles_pulled incremented
+        on success). HTTP 202 — the chain submission is async.
+        """
+        if not isinstance(authority_id, str) or len(authority_id) > MAX_UUID_LEN:
+            return None
+        if not isinstance(amount_minor, int) or amount_minor <= 0:
+            return None
+        body: dict[str, Any] = {
+            "authority_id": authority_id,
+            "amount_minor": amount_minor,
+        }
+        if idempotency_key is not None:
+            if not isinstance(idempotency_key, str) or len(idempotency_key) > 128:
+                return None
+            body["idempotency_key"] = idempotency_key
+        return self._post("/v1/recurring/pulls", body)
+
     # ── Internal Helpers ─────────────────────────────────────────────────
+
+    def _request(self, method: str, path: str, data: Optional[dict] = None) -> Any:
+        """
+        Generic JSON HTTPS request to the AlgoVoi API.
+
+        Returns parsed JSON on 2xx. Returns None on any non-2xx, network
+        error, or JSON-decode error — mirrors _post's failure mode so
+        Tier 2 methods compose with the same caller-side null check.
+
+        Used by Tier 2 methods that need GET (list / get) on top of the
+        existing POST helpers.
+        """
+        if method not in ("GET", "POST", "DELETE"):
+            return None
+        if not self.api_base.startswith("https://"):
+            return None
+        body = json.dumps(data).encode() if data is not None else None
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "X-Tenant-Id": self.tenant_id,
+        }
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+        req = Request(
+            f"{self.api_base}{path}",
+            data=body,
+            method=method,
+            headers=headers,
+        )
+        try:
+            with urlopen(req, timeout=self.timeout, context=self._ssl_ctx) as resp:  # nosec B310
+                if resp.status < 200 or resp.status >= 300:
+                    return None
+                # Cap response body — Tier 2 list responses are bounded by
+                # gateway's limit=200, but defence-in-depth.
+                raw = resp.read(MAX_RECURRING_BODY_BYTES + 1)
+                if len(raw) > MAX_RECURRING_BODY_BYTES:
+                    return None
+                return json.loads(raw)
+        except (URLError, json.JSONDecodeError, OSError):
+            return None
 
     def _post(self, path: str, data: dict) -> Optional[dict]:
         """POST JSON to the AlgoVoi API with authentication."""

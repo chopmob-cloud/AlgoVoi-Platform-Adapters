@@ -108,12 +108,85 @@ def flask_example():
         if not payload:
             return "Unauthorized", 401
 
-        # Process webhook — mark order as paid
+        # Tier 1 vs Tier 2 — fork on event type
+        if av.is_recurring_event(payload):
+            # subscription.charged / subscription.payment_failed /
+            # recurring.authority_activated / etc.
+            event_type = payload.get("event_type", "")
+            authority_id = payload.get("authority_id")
+            if event_type == "subscription.charged":
+                # extend the customer's access; record the pull tx_id
+                pass
+            elif event_type == "subscription.payment_failed":
+                # dunning logic — pause access, email customer
+                pass
+            elif event_type == "recurring.authority_revoked":
+                # cancel the subscription
+                pass
+            return jsonify(ok=True)
+
+        # Tier 1 — one-shot payment
         order_id = payload.get("order_id")
         tx_id = payload.get("tx_id")
-        # ... your logic here ...
+        # ... mark order as paid ...
 
         return jsonify(ok=True)
+
+    # ── Tier 2 — Standing-Authority Recurring (Subscriptions) ────────────
+
+    @app.route("/subscribe", methods=["POST"])
+    def subscribe():
+        """
+        Create a Tier 2 standing authority for an existing subscription.
+
+        The customer must already have a Tier 1 subscription (created via
+        the dashboard or POST /v1/subscriptions). This endpoint takes the
+        subscription_id + the customer's wallet address and returns the
+        chain-specific signing payload the customer's wallet will sign.
+
+        Request: { subscription_id, chain, customer_wallet_address }
+        Response: { authority_id, customer_signing_payload }
+        """
+        data = request.get_json(silent=True) or {}
+        subscription_id = data.get("subscription_id", "")
+        chain = data.get("chain", "")
+        customer_wallet = data.get("customer_wallet_address", "")
+
+        # Cap = 12 months of $10/mo subscription = $120 USDC at 6 decimals
+        # (Stellar uses 7 decimals — multiply by 10 if chain.startswith("stellar_"))
+        result = av.create_recurring_authority(
+            subscription_id=subscription_id,
+            chain=chain,
+            customer_wallet_address=customer_wallet,
+            cap_amount_minor=120_000_000,
+            cap_period_seconds=365 * 86400,
+            per_cycle_amount_minor=10_000_000,
+        )
+        if not result:
+            return jsonify(error="Could not create authority"), 400
+
+        return jsonify(
+            authority_id=result["authority"]["id"],
+            # Hand this template to your frontend wallet UI to sign:
+            customer_signing_payload=result["customer_signing_payload"],
+        )
+
+    @app.route("/subscription/<authority_id>", methods=["GET"])
+    def subscription_status(authority_id: str):
+        """View an authority's current state (status, cycles_pulled, cap_remaining)."""
+        auth = av.get_authority(authority_id)
+        if not auth:
+            return jsonify(error="Not found"), 404
+        return jsonify(auth)
+
+    @app.route("/subscription/<authority_id>/cancel", methods=["POST"])
+    def cancel_subscription(authority_id: str):
+        """Revoke an active subscription. Gateway constructs the on-chain
+        revocation transaction; the customer's wallet signs it."""
+        result = av.revoke_authority(authority_id)
+        if not result:
+            return jsonify(error="Could not revoke"), 400
+        return jsonify(status=result["status"])  # 'revoking' or 'revoked'
 
     return app
 
