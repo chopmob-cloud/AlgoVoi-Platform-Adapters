@@ -30,6 +30,7 @@ Supported settlement assets:
 This repository contains **production-ready payment adapters** and **integration documentation** for connecting e-commerce platforms, custom applications, and AI agent services to AlgoVoi Tenant Services.
 
 Included:
+- **Recurring / standing-authority subscriptions ([`Recurr/`](Recurr/))** — Tier 2 lets a customer sign ONCE and AlgoVoi auto-pulls per cycle on all 7 chains (Algorand SpendingCapVault, EVM ERC-20 approve, Solana SPL Approve, Hedera HTS allowance, Stellar Soroban auth_entry, VOI). Per-chain wallet-side reference flows + chain-agnostic merchant-side examples. **`native-python/algovoi.py` v1.2.0+** ships the merchant HTTP wrappers (8 lifecycle methods)
 - **Drop-in plugins** for WooCommerce, OpenCart, PrestaShop, and Shopware (tested and deployed)
 - **CMS payment gateways** for Drupal Commerce, Easy Digital Downloads (WordPress), and Ghost — all Comet-validated 2026-04-15
 - **Native adapters** for PHP, Python, Go, and Rust (zero external dependencies) — all hardened to v1.1.0 on 2026-04-15
@@ -122,6 +123,10 @@ Accepted formats: PDF, JPEG, PNG, WebP — max 50 MB per file. The dashboard aut
 
 ```
 platform-adapters/
+├── Recurr/               # Tier 2 — standing-authority recurring payments (per-chain
+│                         #          wallet-side flows + chain-agnostic merchant examples).
+│                         #          Lives alongside the language adapters which carry
+│                         #          the merchant HTTP wrappers (native-python v1.2.0+).
 ├── woocommerce/          # WooCommerce plugin (single PHP file)
 ├── opencart/             # OpenCart 4 extensions (hosted + wallet)
 ├── prestashop/           # PrestaShop 8 modules (hosted + wallet)
