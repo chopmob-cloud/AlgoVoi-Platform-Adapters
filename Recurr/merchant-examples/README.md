@@ -22,12 +22,11 @@ sibling per-chain folders:
 | Python | [`python.py`](python.py) | `native-python/algovoi.py` v1.2.0+ | Full Tier 2 surface — 8 lifecycle methods + `is_recurring_event` helper. **Shipped.** |
 | Go | [`go.go`](go.go) | `native-go/` v1.2.0+ (`recurring.go`) | Same surface as Python with idiomatic Go — typed structs (`AuthorityCreateRequest`, `Authority`), `error` returns, `IsRecurringNetwork`, `IsRecurringEvent`. **Shipped.** 12 unit + round-trip tests pass with `go test ./...`. |
 | PHP | [`php.php`](php.php) | `native-php/algovoi.php` v1.2.0+ | Same 8-method surface in PHP 8.4-style — typed parameters, `?array` returns, `AlgoVoi::isRecurringNetwork` / `AlgoVoi::isRecurringEvent` static helpers, `RECURRING_NETWORKS` / `RECURRING_EVENT_TYPES` constants. **Shipped.** 18 stdlib-only tests pass with `php recurring_test.php`. |
-| Rust | _coming soon_ | `native-rust/` | Tracked. |
+| Rust | [`rust.rs`](rust.rs) | `native-rust/` v1.2.0+ (`src/recurring.rs`) | Same 8-method surface, `Result<T, Error>` returns, typed structs, `BTreeMap<String, String>` for metadata. Caller-pluggable `HttpClient` trait (use `ureq` / `reqwest` / `hyper` / etc.). Manual JSON encode/decode (no `serde` dep — keeps the `# No [dependencies]` Cargo.toml promise). **Shipped.** 22 new Tier 2 tests + 23 pre-existing Tier 1 = 45/45 pass with `cargo test --lib`. |
 
-The Rust adapter already exists for Tier 1 (one-shot hosted
-checkout). Adding Tier 2 is a mechanical port of the 8 methods
-that exist in Python, Go, and PHP — the HTTP-shape contract is
-identical across languages.
+All four native adapters now ship Tier 2. The MCP server, no-code
+adapters, and platform plugins remain on the roadmap — track those
+in the parent repo's open issues.
 
 ---
 

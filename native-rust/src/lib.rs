@@ -35,10 +35,19 @@
 use std::collections::HashMap;
 use std::fmt;
 
+pub mod recurring;
+pub use recurring::{
+    is_recurring_event, is_recurring_network,
+    Authority, AuthorityCreateRequest, AuthorityCreateResponse,
+    ConfirmAuthorityRequest, ListAuthoritiesOptions, PullRequest,
+    MAX_RECURRING_BODY_BYTES, MAX_UUID_LEN,
+    RECURRING_EVENT_TYPES, RECURRING_NETWORKS,
+};
+
 // ── Constants ───────────────────────────────────────────────────────────
 
 /// Adapter version.
-pub const VERSION: &str = "1.1.0";
+pub const VERSION: &str = "1.2.0";
 
 /// Hard cap on inbound webhook bodies (64 KB — AlgoVoi webhooks are <2 KB).
 pub const MAX_WEBHOOK_BODY_BYTES: usize = 64 * 1024;
@@ -61,7 +70,7 @@ pub struct Config {
 }
 
 /// Refuse to make any outbound call over plaintext HTTP.
-fn is_https(url: &str) -> bool {
+pub(crate) fn is_https(url: &str) -> bool {
     url.starts_with("https://")
 }
 
@@ -219,6 +228,13 @@ impl Client {
     /// Create a new client.
     pub fn new(config: Config) -> Self {
         Self { config }
+    }
+
+    /// Read-only access to the configuration. Used by the `recurring`
+    /// module to read api_base / api_key / tenant_id without exposing
+    /// the field publicly.
+    pub(crate) fn config(&self) -> &Config {
+        &self.config
     }
 
     /// Create a payment link via the AlgoVoi API.
@@ -655,7 +671,7 @@ fn round2(v: f64) -> f64 {
     (v * 100.0).round() / 100.0
 }
 
-fn json_escape(s: &str) -> String {
+pub(crate) fn json_escape(s: &str) -> String {
     // RFC 8259 §7 — escape ALL of U+0000..U+001F, plus '"' and '\'.
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
@@ -695,7 +711,7 @@ fn html_escape(s: &str) -> String {
     out
 }
 
-fn url_encode(s: &str) -> String {
+pub(crate) fn url_encode(s: &str) -> String {
     let mut result = String::new();
     for b in s.bytes() {
         match b {
