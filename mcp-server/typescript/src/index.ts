@@ -41,6 +41,15 @@ import {
   verifyAp2Payment,
   fetchAgentCard,
   sendA2aMessage,
+  // Tier 2 — Standing-Authority Recurring Payments
+  createRecurringAuthority,
+  getAuthority,
+  listAuthorities,
+  confirmAuthority,
+  revokeAuthority,
+  pauseAuthority,
+  resumeAuthority,
+  manualPull,
   TOOL_SCHEMAS,
 } from "./tools.js";
 
@@ -217,6 +226,23 @@ async function dispatch(
       return fetchAgentCard(args as any);
     case "send_a2a_message":
       return sendA2aMessage(args as any);
+    // Tier 2 — Standing-Authority Recurring Payments
+    case "create_recurring_authority":
+      return createRecurringAuthority(client, args as any);
+    case "get_authority":
+      return getAuthority(client, args as any);
+    case "list_authorities":
+      return listAuthorities(client, args as any);
+    case "confirm_authority":
+      return confirmAuthority(client, args as any);
+    case "revoke_authority":
+      return revokeAuthority(client, args as any);
+    case "pause_authority":
+      return pauseAuthority(client, args as any);
+    case "resume_authority":
+      return resumeAuthority(client, args as any);
+    case "manual_pull":
+      return manualPull(client, args as any);
     default:
       throw new Error(`unknown tool: ${name}`);
   }

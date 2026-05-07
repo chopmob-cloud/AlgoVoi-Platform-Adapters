@@ -79,6 +79,37 @@ export interface ExtensionPaymentData {
   checkout_url: string;
 }
 
+// ── Tier 2 — Standing-Authority types ────────────────────────────────────────
+
+export interface RecurringAuthority {
+  id: string;
+  tenant_id: string;
+  subscription_id: string;
+  chain: string;
+  customer_wallet_address: string;
+  cap_amount_minor: number;
+  cap_period_seconds: number;
+  per_cycle_amount_minor: number;
+  asset: string;
+  status: string;
+  on_chain_address?: string | null;
+  cap_remaining_minor: number;
+  cycles_pulled: number;
+  cycles_failed: number;
+  created_at: string;
+  activated_at?: string | null;
+  revoked_at?: string | null;
+  last_error?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RecurringAuthorityCreateResponse {
+  authority: RecurringAuthority;
+  /** Chain-specific signing template — pass through to wallet UI. */
+  customer_signing_payload: Record<string, unknown>;
+  authorisation_url: string | null;
+}
+
 /**
  * Lazily install a process-wide undici dispatcher that enforces TLS 1.3 as
  * the minimum negotiated protocol version (§4.6 of ALGOVOI_MCP.md).
@@ -440,6 +471,116 @@ export class AlgoVoiClient {
       }
     }
     return { verified: false, error: "payment to payout address not found" };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Tier 2 — Standing-Authority Recurring Payments
+  //
+  // Eight HTTP wrappers, one per /v1/recurring/* endpoint. The MCP tools
+  // in tools.ts call these and shape the responses for the agent.
+  // ──────────────────────────────────────────────────────────────────────
+
+  /** Create a Tier 2 standing authority for an existing subscription. */
+  async createRecurringAuthority(args: {
+    subscription_id: string;
+    chain: string;
+    customer_wallet_address: string;
+    cap_amount_minor: number;
+    cap_period_seconds: number;
+    per_cycle_amount_minor: number;
+    asset?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<RecurringAuthorityCreateResponse> {
+    return this.post<RecurringAuthorityCreateResponse>("/v1/recurring/authorities", {
+      subscription_id:         args.subscription_id,
+      chain:                   args.chain,
+      customer_wallet_address: args.customer_wallet_address,
+      cap_amount_minor:        args.cap_amount_minor,
+      cap_period_seconds:      args.cap_period_seconds,
+      per_cycle_amount_minor:  args.per_cycle_amount_minor,
+      asset:                   (args.asset ?? "USDC").toUpperCase(),
+      ...(args.metadata !== undefined ? { metadata: args.metadata } : {}),
+    });
+  }
+
+  /** Fetch the current state of a recurring authority by id. */
+  async getAuthority(authorityId: string): Promise<RecurringAuthority> {
+    return this.get<RecurringAuthority>(
+      `/v1/recurring/authorities/${encodeURIComponent(authorityId)}`,
+    );
+  }
+
+  /** List recurring authorities for this tenant. */
+  async listAuthorities(args: {
+    subscription_id?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<RecurringAuthority[]> {
+    const params = new URLSearchParams({
+      limit:  String(args.limit ?? 50),
+      offset: String(args.offset ?? 0),
+    });
+    if (args.subscription_id) params.set("subscription_id", args.subscription_id);
+    if (args.status) params.set("status", args.status);
+    return this.get<RecurringAuthority[]>(
+      `/v1/recurring/authorities?${params.toString()}`,
+    );
+  }
+
+  /** Mark a pending authority active after on-chain landing. */
+  async confirmAuthority(
+    authorityId: string,
+    onChainAddress: string,
+    firstCycleDueAt?: string,
+  ): Promise<RecurringAuthority> {
+    return this.post<RecurringAuthority>(
+      `/v1/recurring/authorities/${encodeURIComponent(authorityId)}/confirm`,
+      {
+        on_chain_address: onChainAddress,
+        ...(firstCycleDueAt ? { first_cycle_due_at: firstCycleDueAt } : {}),
+      },
+    );
+  }
+
+  /** Revoke an active authority (constructs on-chain revocation tx). */
+  async revokeAuthority(authorityId: string): Promise<RecurringAuthority> {
+    return this.post<RecurringAuthority>(
+      `/v1/recurring/authorities/${encodeURIComponent(authorityId)}/revoke`,
+      {},
+    );
+  }
+
+  /** Pause an active authority (no on-chain action — stops cycle pulls). */
+  async pauseAuthority(authorityId: string): Promise<RecurringAuthority> {
+    return this.post<RecurringAuthority>(
+      `/v1/recurring/authorities/${encodeURIComponent(authorityId)}/pause`,
+      {},
+    );
+  }
+
+  /** Resume a paused authority. */
+  async resumeAuthority(
+    authorityId: string,
+    nextCycleDueAt?: string,
+  ): Promise<RecurringAuthority> {
+    return this.post<RecurringAuthority>(
+      `/v1/recurring/authorities/${encodeURIComponent(authorityId)}/resume`,
+      nextCycleDueAt ? { next_cycle_due_at: nextCycleDueAt } : {},
+    );
+  }
+
+  /** Manually trigger a one-off pull (catch-up / proration). */
+  async manualPull(args: {
+    authority_id: string;
+    amount_minor: number;
+    idempotency_key?: string;
+  }): Promise<RecurringAuthority> {
+    return this.post<RecurringAuthority>("/v1/recurring/pulls", {
+      authority_id: args.authority_id,
+      amount_minor: args.amount_minor,
+      ...(args.idempotency_key ? { idempotency_key: args.idempotency_key } : {}),
+    });
   }
 
   // ── helpers ───────────────────────────────────────────────────────────

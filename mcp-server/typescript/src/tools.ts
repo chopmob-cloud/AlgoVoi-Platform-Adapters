@@ -1,9 +1,17 @@
 /**
- * All 8 MCP tools exposed by the AlgoVoi MCP server.
+ * All 21 MCP tools exposed by the AlgoVoi MCP server.
  *
  * Each tool is a pure async function — the dispatcher in `index.ts` calls
  * the matching parser from `schemas.ts` first, so every function below
  * receives a validated, typed argument object.
+ *
+ * Tools are grouped:
+ *   1-5   one-shot payments + webhooks (Tier 1)
+ *   6-9   MPP / x402 (machine-payable agent flows)
+ *   10-11 AP2 (Google Agent Payments Protocol)
+ *   12-13 A2A (Agent-to-Agent)
+ *   14-21 Tier 2 — Standing-authority recurring payments (subscriptions,
+ *         agent-bound spending authorities) — added in MCP v1.2.0.
  */
 
 import { createHmac, timingSafeEqual, randomBytes, randomUUID } from "node:crypto";
@@ -17,12 +25,20 @@ import {
   type Network,
 } from "./networks.js";
 import type {
+  ConfirmAuthorityInput,
   CreatePaymentLinkInput,
+  CreateRecurringAuthorityInput,
   FetchAgentCardInput,
   GenerateAp2MandateInput,
   GenerateMppChallengeInput,
   GenerateX402ChallengeInput,
+  GetAuthorityInput,
+  ListAuthoritiesInput,
+  ManualPullInput,
+  PauseAuthorityInput,
   PrepareExtensionPaymentInput,
+  ResumeAuthorityInput,
+  RevokeAuthorityInput,
   SendA2aMessageInput,
   VerifyAp2PaymentInput,
   VerifyMppReceiptInput,
@@ -467,6 +483,114 @@ export async function sendA2aMessage(args: SendA2aMessageInput): Promise<unknown
   return { payment_required: false, agent_url: args.agent_url, task };
 }
 
+// ── 14-21. Tier 2 — Standing-Authority Recurring Payments ────────────────────
+//
+// Eight tools the agent calls to manage subscriptions:
+//
+//   create_recurring_authority  — open a new standing authority
+//   get_authority               — read current state
+//   list_authorities            — list this tenant's authorities
+//   confirm_authority           — mark active after on-chain landing
+//   revoke_authority            — chain-side revocation (customer signs)
+//   pause_authority             — off-chain pause
+//   resume_authority            — off-chain resume
+//   manual_pull                 — tenant-initiated catch-up pull
+//
+// All write tools (create / confirm / revoke / pause / resume / pull) hit
+// the AlgoVoi gateway and return shaped responses for the LLM. The
+// `customer_signing_payload` from create_recurring_authority is returned
+// verbatim — the agent hands it to a wallet UI.
+
+export async function createRecurringAuthority(
+  client: AlgoVoiClient,
+  args: CreateRecurringAuthorityInput,
+): Promise<unknown> {
+  const resp = await client.createRecurringAuthority({
+    subscription_id:        args.subscription_id,
+    chain:                  args.chain,
+    customer_wallet_address: args.customer_wallet_address,
+    cap_amount_minor:       args.cap_amount_minor,
+    cap_period_seconds:     args.cap_period_seconds,
+    per_cycle_amount_minor: args.per_cycle_amount_minor,
+    asset:                  args.asset,
+    metadata:               args.metadata,
+  });
+  return {
+    authority_id:    resp.authority.id,
+    status:          resp.authority.status,
+    chain:           resp.authority.chain,
+    cap_amount_minor: resp.authority.cap_amount_minor,
+    /** Hand this to the customer's wallet UI — chain-specific signing template. */
+    customer_signing_payload: resp.customer_signing_payload,
+    authorisation_url: resp.authorisation_url,
+    /** Next step for the agent: route the customer to wallet signing, then call confirm_authority. */
+    next_step: "Pass customer_signing_payload to the customer's wallet (Pera/Defly/MetaMask/Phantom/HashPack/Freighter) for signing. After the on-chain transaction lands, call confirm_authority(authority_id, on_chain_address).",
+  };
+}
+
+export async function getAuthority(
+  client: AlgoVoiClient,
+  args: GetAuthorityInput,
+): Promise<unknown> {
+  return client.getAuthority(args.authority_id);
+}
+
+export async function listAuthorities(
+  client: AlgoVoiClient,
+  args: ListAuthoritiesInput,
+): Promise<unknown> {
+  const list = await client.listAuthorities({
+    subscription_id: args.subscription_id,
+    status:          args.status,
+    limit:           args.limit,
+    offset:          args.offset,
+  });
+  return { authorities: list, count: list.length };
+}
+
+export async function confirmAuthority(
+  client: AlgoVoiClient,
+  args: ConfirmAuthorityInput,
+): Promise<unknown> {
+  return client.confirmAuthority(
+    args.authority_id,
+    args.on_chain_address,
+    args.first_cycle_due_at,
+  );
+}
+
+export async function revokeAuthority(
+  client: AlgoVoiClient,
+  args: RevokeAuthorityInput,
+): Promise<unknown> {
+  return client.revokeAuthority(args.authority_id);
+}
+
+export async function pauseAuthority(
+  client: AlgoVoiClient,
+  args: PauseAuthorityInput,
+): Promise<unknown> {
+  return client.pauseAuthority(args.authority_id);
+}
+
+export async function resumeAuthority(
+  client: AlgoVoiClient,
+  args: ResumeAuthorityInput,
+): Promise<unknown> {
+  return client.resumeAuthority(args.authority_id, args.next_cycle_due_at);
+}
+
+export async function manualPull(
+  client: AlgoVoiClient,
+  args: ManualPullInput,
+): Promise<unknown> {
+  return client.manualPull({
+    authority_id:    args.authority_id,
+    amount_minor:    args.amount_minor,
+    idempotency_key: args.idempotency_key,
+  });
+}
+
 // ── Tool schemas (MCP wire — JSON Schema) ─────────────────────────────────────
 
 export const TOOL_SCHEMAS = [
@@ -726,6 +850,195 @@ export const TOOL_SCHEMAS = [
         },
       },
       required:             ["agent_url", "text"],
+      additionalProperties: false,
+    },
+  },
+  // ── Tier 2 — Standing-Authority Recurring Payments ────────────────────────
+  {
+    name: "create_recurring_authority",
+    description:
+      "Create a Tier 2 standing authority for an existing AlgoVoi subscription. " +
+      "Tier 2 = 'customer signs ONCE, AlgoVoi auto-pulls per cycle' — the subscription / " +
+      "agent-bound spending pattern (vs Tier 1's pay-on-every-invoice). " +
+      "Returns {authority_id, status, customer_signing_payload, next_step}. " +
+      "The customer_signing_payload is a chain-specific template (Algorand " +
+      "SpendingCapVault 6-action group, EVM ERC-20 approve, Solana SPL Approve, " +
+      "Hedera HTS allowance, or Stellar Soroban auth_entry) — hand it to the " +
+      "customer's wallet (Pera/Defly/MetaMask/Phantom/HashPack/Freighter) for signing. " +
+      "After the on-chain transaction lands, call confirm_authority to mark the " +
+      "authority active. AlgoVoi's cycle reaper then auto-pulls per cap_period_seconds. " +
+      "Stellar uses 7-decimal precision for USDC; every other chain uses 6 — pass " +
+      "cap_amount_minor in chain-native atomic units. " +
+      "Authentication: requires ALGOVOI_API_KEY and ALGOVOI_TENANT_ID env vars. " +
+      "Errors: throws if chain is unsupported, period < 86400, or per_cycle_amount_minor > cap_amount_minor.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        subscription_id: {
+          type:        "string",
+          description: "UUID of the Tier 1 subscription this authority is bound to. Create one via the dashboard or POST /v1/subscriptions first.",
+        },
+        chain: {
+          type:        "string",
+          enum: [
+            "algorand_mainnet", "algorand_testnet",
+            "voi_mainnet",      "voi_testnet",
+            "base_mainnet",     "base_sepolia",
+            "tempo_mainnet",    "tempo_testnet",
+            "solana_mainnet",   "solana_devnet",
+            "hedera_mainnet",   "hedera_testnet",
+            "stellar_mainnet",  "stellar_testnet",
+          ],
+          description: "Blockchain network to authorise on. Each chain uses its native primitive (SpendingCapVault, ERC-20 approve, SPL Approve, HTS allowance, Soroban auth_entry).",
+        },
+        customer_wallet_address: {
+          type:        "string",
+          description: "Customer's chain-native address (Algorand 58-char base32, EVM 0x-prefixed hex, Solana base58, Hedera 0.0.X, Stellar G-address).",
+        },
+        cap_amount_minor: {
+          type:        "integer",
+          description: "Total spend cap over cap_period_seconds, in chain-native atomic units. e.g. for 12 × $10 USDC on Algorand: 120_000_000 (6 decimals). For Stellar: 1_200_000_000 (7 decimals).",
+        },
+        cap_period_seconds: {
+          type:        "integer",
+          description: "Cap window length in seconds. Must be >= 86400 (1 day). Typical: 365 * 86400 = 31_536_000 for annual.",
+        },
+        per_cycle_amount_minor: {
+          type:        "integer",
+          description: "Per-pull cap, in atomic units. Each cycle pulls at most this much. Must be <= cap_amount_minor.",
+        },
+        asset: {
+          type:        "string",
+          description: "Asset symbol — defaults to USDC. Native coins (VOI/HBAR/XLM/ETH/SOL) supported per chain.",
+        },
+        metadata: {
+          type:        "object",
+          description: "Free-form tenant metadata, forwarded on every webhook event.",
+          additionalProperties: true,
+        },
+      },
+      required:             ["subscription_id", "chain", "customer_wallet_address", "cap_amount_minor", "cap_period_seconds", "per_cycle_amount_minor"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_authority",
+    description:
+      "Fetch the current state of a Tier 2 recurring authority by id. " +
+      "Returns {id, status, on_chain_address, cap_remaining_minor, cycles_pulled, " +
+      "cycles_failed, last_error, ...}. status transitions: pending → active (after " +
+      "confirm_authority) → revoking → revoked, or paused/resumed mid-life, or " +
+      "expired when the cap_amount or auth lifetime is exhausted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        authority_id: { type: "string", description: "UUID returned by create_recurring_authority." },
+      },
+      required:             ["authority_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_authorities",
+    description:
+      "List Tier 2 recurring authorities for this tenant. Returns {authorities: [...], count}. " +
+      "Optionally filter by subscription_id or status (pending/active/paused/revoking/revoked/expired). " +
+      "Default limit 50, max 200.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        subscription_id: { type: "string", description: "Filter to authorities for one subscription." },
+        status:          { type: "string", description: "Filter by status: pending / active / paused / revoking / revoked / expired." },
+        limit:           { type: "integer", description: "Max results (1-200, default 50)." },
+        offset:          { type: "integer", description: "Pagination offset (default 0)." },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "confirm_authority",
+    description:
+      "Mark a pending Tier 2 authority active after on-chain landing. Most flows " +
+      "use AlgoVoi's hosted widget which calls this automatically via webhook — " +
+      "surfaced here for self-hosted wallet UIs. on_chain_address format depends on " +
+      "the chain: Algorand/VOI 'app:<application_id>', EVM '0x<tx_hash>', Solana " +
+      "'<base58 tx signature>', Hedera '<account_id>@<seconds>.<nanos>', Stellar " +
+      "'<64-char hex tx hash>'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        authority_id:     { type: "string", description: "UUID returned by create_recurring_authority." },
+        on_chain_address: { type: "string", description: "Chain-native handle of the landed authorisation transaction." },
+        first_cycle_due_at: { type: "string", description: "Optional ISO8601 first-cycle due-at; gateway computes one if omitted." },
+      },
+      required:             ["authority_id", "on_chain_address"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "revoke_authority",
+    description:
+      "Revoke an active Tier 2 authority. Gateway constructs the chain-specific " +
+      "revocation transaction (Algorand vault owner_withdraw + remove_agent, EVM " +
+      "approve(0), Solana SPL revoke, Hedera approve(amount=0), Stellar Soroban " +
+      "auth-entry expiry); the customer's wallet signs it. Authority transitions to " +
+      "'revoking' until on-chain landing, then 'revoked'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        authority_id: { type: "string", description: "UUID of the authority to revoke." },
+      },
+      required:             ["authority_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "pause_authority",
+    description:
+      "Pause an active Tier 2 authority — no on-chain action. Stops cycle pulls until " +
+      "resume_authority is called. Useful for billing holds, manual review, or " +
+      "customer-initiated 'pause my subscription' flows.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        authority_id: { type: "string", description: "UUID of the authority to pause." },
+      },
+      required:             ["authority_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "resume_authority",
+    description:
+      "Resume a paused Tier 2 authority. Optionally specify next_cycle_due_at " +
+      "(ISO8601) to delay the first post-resume pull; otherwise pulls resume " +
+      "immediately on the existing schedule.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        authority_id:      { type: "string", description: "UUID of the authority to resume." },
+        next_cycle_due_at: { type: "string", description: "Optional ISO8601 timestamp for the next cycle pull." },
+      },
+      required:             ["authority_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "manual_pull",
+    description:
+      "Manually trigger a one-off Tier 2 pull (catch-up after dunning, prorated " +
+      "mid-cycle billing). Most pulls fire automatically via the cycle reaper — " +
+      "only use this for proration or catch-up flows. amount_minor must be <= " +
+      "the authority's per_cycle_amount_minor. Returns the updated authority row " +
+      "with cycles_pulled incremented on success.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        authority_id:    { type: "string",  description: "UUID of an active authority." },
+        amount_minor:    { type: "integer", description: "Pull amount in atomic units. Must be <= per_cycle_amount_minor." },
+        idempotency_key: { type: "string",  description: "Optional client-supplied key for retry safety (max 128 chars)." },
+      },
+      required:             ["authority_id", "amount_minor"],
       additionalProperties: false,
     },
   },

@@ -64,7 +64,13 @@ function requireString(
 function requireNumber(
   obj: Record<string, unknown>,
   key: string,
-  opts: { gt?: number; le?: number; integer?: boolean; optional?: boolean } = {}
+  opts: {
+    gt?: number;
+    ge?: number;
+    le?: number;
+    integer?: boolean;
+    optional?: boolean;
+  } = {}
 ): number | undefined {
   const v = obj[key];
   if (v === undefined || v === null) {
@@ -80,10 +86,22 @@ function requireNumber(
   if (opts.gt !== undefined && v <= opts.gt) {
     throw new ValidationError(`"${key}" must be > ${opts.gt}`);
   }
+  if (opts.ge !== undefined && v < opts.ge) {
+    throw new ValidationError(`"${key}" must be ≥ ${opts.ge}`);
+  }
   if (opts.le !== undefined && v > opts.le) {
     throw new ValidationError(`"${key}" must be ≤ ${opts.le}`);
   }
   return v;
+}
+
+/** Convenience wrapper around requireNumber that asserts integer. */
+function requireInt(
+  obj: Record<string, unknown>,
+  key: string,
+  opts: { gt?: number; ge?: number; le?: number; optional?: boolean } = {},
+): number | undefined {
+  return requireNumber(obj, key, { ...opts, integer: true });
 }
 
 function requireEnum<T extends string>(
@@ -383,6 +401,176 @@ export function parseSendA2aMessage(raw: unknown): SendA2aMessageInput {
   };
 }
 
+// ── Tier 2 — Standing-Authority Recurring Payments ──────────────────────────
+
+const RECURRING_NETWORKS = [
+  "algorand_mainnet", "algorand_testnet",
+  "voi_mainnet", "voi_testnet",
+  "base_mainnet", "base_sepolia",
+  "tempo_mainnet", "tempo_testnet",
+  "solana_mainnet", "solana_devnet",
+  "hedera_mainnet", "hedera_testnet",
+  "stellar_mainnet", "stellar_testnet",
+] as const;
+
+export type RecurringNetwork = typeof RECURRING_NETWORKS[number];
+
+export interface CreateRecurringAuthorityInput {
+  subscription_id: string;
+  chain: RecurringNetwork;
+  customer_wallet_address: string;
+  cap_amount_minor: number;
+  cap_period_seconds: number;
+  per_cycle_amount_minor: number;
+  asset?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface GetAuthorityInput {
+  authority_id: string;
+}
+
+export interface ListAuthoritiesInput {
+  subscription_id?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ConfirmAuthorityInput {
+  authority_id: string;
+  on_chain_address: string;
+  first_cycle_due_at?: string;
+}
+
+export interface RevokeAuthorityInput {
+  authority_id: string;
+}
+
+export interface PauseAuthorityInput {
+  authority_id: string;
+}
+
+export interface ResumeAuthorityInput {
+  authority_id: string;
+  next_cycle_due_at?: string;
+}
+
+export interface ManualPullInput {
+  authority_id: string;
+  amount_minor: number;
+  idempotency_key?: string;
+}
+
+export function parseCreateRecurringAuthority(raw: unknown): CreateRecurringAuthorityInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, [
+    "subscription_id",
+    "chain",
+    "customer_wallet_address",
+    "cap_amount_minor",
+    "cap_period_seconds",
+    "per_cycle_amount_minor",
+    "asset",
+    "metadata",
+  ]);
+  const out: CreateRecurringAuthorityInput = {
+    subscription_id:        requireString(obj, "subscription_id",        { min: 1, max: 36 })!,
+    chain:                  requireEnum(obj, "chain",                    RECURRING_NETWORKS) as RecurringNetwork,
+    customer_wallet_address: requireString(obj, "customer_wallet_address", { min: 1, max: 200 })!,
+    cap_amount_minor:       requireInt(obj, "cap_amount_minor",          { gt: 0 })!,
+    cap_period_seconds:     requireInt(obj, "cap_period_seconds",        { ge: 86400 })!,
+    per_cycle_amount_minor: requireInt(obj, "per_cycle_amount_minor",    { gt: 0 })!,
+  };
+  if (out.per_cycle_amount_minor > out.cap_amount_minor) {
+    throw new ValidationError(
+      '"per_cycle_amount_minor" cannot exceed "cap_amount_minor"',
+    );
+  }
+  const asset = requireString(obj, "asset", { min: 1, max: 16, optional: true });
+  if (asset) out.asset = asset.toUpperCase();
+  if (obj.metadata !== undefined) {
+    if (obj.metadata === null || typeof obj.metadata !== "object" || Array.isArray(obj.metadata)) {
+      throw new ValidationError('"metadata" must be an object');
+    }
+    out.metadata = obj.metadata as Record<string, unknown>;
+  }
+  return out;
+}
+
+export function parseGetAuthority(raw: unknown): GetAuthorityInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, ["authority_id"]);
+  return { authority_id: requireString(obj, "authority_id", { min: 1, max: 36 })! };
+}
+
+export function parseListAuthorities(raw: unknown): ListAuthoritiesInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, ["subscription_id", "status", "limit", "offset"]);
+  const out: ListAuthoritiesInput = {};
+  const sid = requireString(obj, "subscription_id", { min: 1, max: 36, optional: true });
+  if (sid) out.subscription_id = sid;
+  const status = requireString(obj, "status", { min: 1, max: 32, optional: true });
+  if (status !== undefined) {
+    if (!/^[A-Za-z0-9_]+$/.test(status)) {
+      throw new ValidationError('"status" must be alphanumeric / underscore');
+    }
+    out.status = status;
+  }
+  const limit = requireInt(obj, "limit", { ge: 1, le: 200, optional: true });
+  if (limit !== undefined) out.limit = limit;
+  const offset = requireInt(obj, "offset", { ge: 0, optional: true });
+  if (offset !== undefined) out.offset = offset;
+  return out;
+}
+
+export function parseConfirmAuthority(raw: unknown): ConfirmAuthorityInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, ["authority_id", "on_chain_address", "first_cycle_due_at"]);
+  const out: ConfirmAuthorityInput = {
+    authority_id:    requireString(obj, "authority_id",     { min: 1, max: 36 })!,
+    on_chain_address: requireString(obj, "on_chain_address", { min: 1, max: 200 })!,
+  };
+  const due = requireString(obj, "first_cycle_due_at", { min: 1, max: 64, optional: true });
+  if (due) out.first_cycle_due_at = due;
+  return out;
+}
+
+export function parseRevokeAuthority(raw: unknown): RevokeAuthorityInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, ["authority_id"]);
+  return { authority_id: requireString(obj, "authority_id", { min: 1, max: 36 })! };
+}
+
+export function parsePauseAuthority(raw: unknown): PauseAuthorityInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, ["authority_id"]);
+  return { authority_id: requireString(obj, "authority_id", { min: 1, max: 36 })! };
+}
+
+export function parseResumeAuthority(raw: unknown): ResumeAuthorityInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, ["authority_id", "next_cycle_due_at"]);
+  const out: ResumeAuthorityInput = {
+    authority_id: requireString(obj, "authority_id", { min: 1, max: 36 })!,
+  };
+  const due = requireString(obj, "next_cycle_due_at", { min: 1, max: 64, optional: true });
+  if (due) out.next_cycle_due_at = due;
+  return out;
+}
+
+export function parseManualPull(raw: unknown): ManualPullInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, ["authority_id", "amount_minor", "idempotency_key"]);
+  const out: ManualPullInput = {
+    authority_id: requireString(obj, "authority_id", { min: 1, max: 36 })!,
+    amount_minor: requireInt(obj, "amount_minor",     { gt: 0 })!,
+  };
+  const idem = requireString(obj, "idempotency_key", { min: 1, max: 128, optional: true });
+  if (idem) out.idempotency_key = idem;
+  return out;
+}
+
 export const PARSERS = {
   create_payment_link:       parseCreatePaymentLink,
   verify_payment:            parseVerifyPayment,
@@ -397,4 +585,13 @@ export const PARSERS = {
   verify_ap2_payment:        parseVerifyAp2Payment,
   fetch_agent_card:          parseFetchAgentCard,
   send_a2a_message:          parseSendA2aMessage,
+  // Tier 2 — Standing-Authority Recurring Payments
+  create_recurring_authority: parseCreateRecurringAuthority,
+  get_authority:              parseGetAuthority,
+  list_authorities:           parseListAuthorities,
+  confirm_authority:          parseConfirmAuthority,
+  revoke_authority:           parseRevokeAuthority,
+  pause_authority:            parsePauseAuthority,
+  resume_authority:           parseResumeAuthority,
+  manual_pull:                parseManualPull,
 } as const;

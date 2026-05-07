@@ -23,6 +23,15 @@ import {
   parseVerifyPayment,
   parseVerifyWebhook,
   parseVerifyX402Proof,
+  // Tier 2
+  parseCreateRecurringAuthority,
+  parseGetAuthority,
+  parseListAuthorities,
+  parseConfirmAuthority,
+  parseRevokeAuthority,
+  parsePauseAuthority,
+  parseResumeAuthority,
+  parseManualPull,
   PARSERS,
 } from "../src/schemas.js";
 import {
@@ -78,9 +87,22 @@ afterEach(() => {
 
 // ── TOOL_SCHEMAS (3 tests) ────────────────────────────────────────────────────
 
+// Sprint Tier 2 added 8 tools; total surface is 13 + 8 = 21.
+const EXPECTED_TOOL_COUNT = 21;
+
 describe("TOOL_SCHEMAS", () => {
-  it("has exactly 13 tools", () => {
-    expect(TOOL_SCHEMAS).toHaveLength(13);
+  it(`has exactly ${EXPECTED_TOOL_COUNT} tools`, () => {
+    expect(TOOL_SCHEMAS).toHaveLength(EXPECTED_TOOL_COUNT);
+  });
+  it("includes all 8 Tier 2 standing-authority tools", () => {
+    const names = new Set(TOOL_SCHEMAS.map((t) => t.name));
+    for (const tier2 of [
+      "create_recurring_authority", "get_authority", "list_authorities",
+      "confirm_authority", "revoke_authority", "pause_authority",
+      "resume_authority", "manual_pull",
+    ]) {
+      expect(names.has(tier2)).toBe(true);
+    }
   });
   it("every tool has name, description, inputSchema, additionalProperties=false", () => {
     for (const t of TOOL_SCHEMAS) {
@@ -916,5 +938,127 @@ describe("sendA2aMessage", () => {
   it("rejects http:// agent_url at parse time", () => {
     expect(() => parseSendA2aMessage({ agent_url: "http://bad.example.com", text: "Hi" }))
       .toThrow(ValidationError);
+  });
+});
+
+// ── Tier 2 — Standing-Authority parsers + tools ──────────────────────────────
+
+describe("Tier 2 parsers (extra=forbid + range checks)", () => {
+  function baseCreate() {
+    return {
+      subscription_id:        "00000000-0000-0000-0000-000000000001",
+      chain:                  "algorand_mainnet" as const,
+      customer_wallet_address: "X".repeat(58),
+      cap_amount_minor:       120_000_000,
+      cap_period_seconds:     365 * 86400,
+      per_cycle_amount_minor: 10_000_000,
+    };
+  }
+
+  it("parseCreateRecurringAuthority accepts a valid request", () => {
+    const out = parseCreateRecurringAuthority(baseCreate());
+    expect(out.chain).toBe("algorand_mainnet");
+    expect(out.cap_amount_minor).toBe(120_000_000);
+  });
+
+  it("parseCreateRecurringAuthority defaults asset to USDC when omitted", () => {
+    const out = parseCreateRecurringAuthority(baseCreate());
+    // asset is optional — gateway adds the default. Parser leaves it undefined.
+    expect(out.asset).toBeUndefined();
+  });
+
+  it("parseCreateRecurringAuthority uppercases asset", () => {
+    const out = parseCreateRecurringAuthority({ ...baseCreate(), asset: "usdc" });
+    expect(out.asset).toBe("USDC");
+  });
+
+  it("parseCreateRecurringAuthority rejects unsupported chain", () => {
+    expect(() =>
+      parseCreateRecurringAuthority({ ...baseCreate(), chain: "ethereum_mainnet" }),
+    ).toThrow(ValidationError);
+  });
+
+  it("parseCreateRecurringAuthority rejects period < 1 day", () => {
+    expect(() =>
+      parseCreateRecurringAuthority({ ...baseCreate(), cap_period_seconds: 3600 }),
+    ).toThrow(ValidationError);
+  });
+
+  it("parseCreateRecurringAuthority rejects per_cycle > cap", () => {
+    expect(() =>
+      parseCreateRecurringAuthority({
+        ...baseCreate(),
+        cap_amount_minor: 10,
+        per_cycle_amount_minor: 100,
+      }),
+    ).toThrow(ValidationError);
+  });
+
+  it("parseCreateRecurringAuthority rejects extra fields", () => {
+    expect(() =>
+      parseCreateRecurringAuthority({ ...baseCreate(), evil: "extra" } as any),
+    ).toThrow(ValidationError);
+  });
+
+  it("parseGetAuthority accepts a UUID, rejects oversize", () => {
+    expect(parseGetAuthority({ authority_id: "auth-uuid" }).authority_id).toBe("auth-uuid");
+    expect(() => parseGetAuthority({ authority_id: "x".repeat(100) })).toThrow(ValidationError);
+    expect(() => parseGetAuthority({})).toThrow(ValidationError);
+  });
+
+  it("parseListAuthorities accepts empty + optional filters, rejects bad status", () => {
+    expect(parseListAuthorities({})).toEqual({});
+    const out = parseListAuthorities({ status: "active", limit: 10 });
+    expect(out.status).toBe("active");
+    expect(out.limit).toBe(10);
+    expect(() => parseListAuthorities({ status: "bad-status!" })).toThrow(ValidationError);
+    expect(() => parseListAuthorities({ limit: 500 })).toThrow(ValidationError);
+    expect(() => parseListAuthorities({ offset: -1 })).toThrow(ValidationError);
+  });
+
+  it("parseConfirmAuthority requires authority_id and on_chain_address", () => {
+    const out = parseConfirmAuthority({
+      authority_id: "auth-uuid",
+      on_chain_address: "app:12345",
+    });
+    expect(out.on_chain_address).toBe("app:12345");
+    expect(() =>
+      parseConfirmAuthority({ authority_id: "auth-uuid" } as any),
+    ).toThrow(ValidationError);
+  });
+
+  it("parseRevokeAuthority / parsePauseAuthority require authority_id", () => {
+    expect(parseRevokeAuthority({ authority_id: "a" }).authority_id).toBe("a");
+    expect(parsePauseAuthority({ authority_id: "a" }).authority_id).toBe("a");
+    expect(() => parseRevokeAuthority({})).toThrow(ValidationError);
+    expect(() => parsePauseAuthority({})).toThrow(ValidationError);
+  });
+
+  it("parseResumeAuthority accepts optional next_cycle_due_at", () => {
+    const a = parseResumeAuthority({ authority_id: "a" });
+    expect(a.next_cycle_due_at).toBeUndefined();
+    const b = parseResumeAuthority({
+      authority_id: "a",
+      next_cycle_due_at: "2026-06-07T00:00:00Z",
+    });
+    expect(b.next_cycle_due_at).toBe("2026-06-07T00:00:00Z");
+  });
+
+  it("parseManualPull requires positive integer amount_minor", () => {
+    const out = parseManualPull({ authority_id: "a", amount_minor: 100 });
+    expect(out.amount_minor).toBe(100);
+    expect(() => parseManualPull({ authority_id: "a", amount_minor: 0 })).toThrow(ValidationError);
+    expect(() => parseManualPull({ authority_id: "a", amount_minor: -1 })).toThrow(ValidationError);
+    expect(() => parseManualPull({ authority_id: "a", amount_minor: 1.5 })).toThrow(ValidationError);
+  });
+
+  it("PARSERS registry includes all 8 Tier 2 entries", () => {
+    for (const name of [
+      "create_recurring_authority", "get_authority", "list_authorities",
+      "confirm_authority", "revoke_authority", "pause_authority",
+      "resume_authority", "manual_pull",
+    ]) {
+      expect(PARSERS[name as keyof typeof PARSERS]).toBeTypeOf("function");
+    }
   });
 });
