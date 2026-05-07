@@ -20,14 +20,14 @@ sibling per-chain folders:
 | Language | File | Adapter version | Notes |
 |---|---|---|---|
 | Python | [`python.py`](python.py) | `native-python/algovoi.py` v1.2.0+ | Full Tier 2 surface — 8 lifecycle methods + `is_recurring_event` helper. **Shipped.** |
-| Go | _coming soon_ | `native-go/` | Tracked as the next adapter to ship. Same shape as Python: HTTP wrappers, no chain SDKs. |
+| Go | [`go.go`](go.go) | `native-go/` v1.2.0+ (`recurring.go`) | Same surface as Python with idiomatic Go — typed structs (`AuthorityCreateRequest`, `Authority`), `error` returns, `IsRecurringNetwork`, `IsRecurringEvent`. **Shipped.** 12 unit + round-trip tests pass with `go test ./...`. |
 | PHP | _coming soon_ | `native-php/` | Tracked. |
 | Rust | _coming soon_ | `native-rust/` | Tracked. |
 
-The Go / PHP / Rust adapters already exist for Tier 1 (one-shot
-hosted checkout). Adding Tier 2 to each is a mechanical port of the
-8 methods in `native-python/algovoi.py`'s Tier 2 section — the
-HTTP-shape contract is identical across languages.
+The PHP / Rust adapters already exist for Tier 1 (one-shot hosted
+checkout). Adding Tier 2 to each is a mechanical port of the 8
+methods that exist in Python and Go — the HTTP-shape contract is
+identical across languages.
 
 ---
 

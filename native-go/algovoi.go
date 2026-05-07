@@ -1,18 +1,29 @@
 // Package algovoi provides a zero-dependency Go client for the AlgoVoi payment platform.
 //
 // Supports:
-//   - Hosted checkout (Algorand, VOI, Hedera) — redirect to AlgoVoi payment page
+//
+// Tier 1 — one-shot payments
+//   - Hosted checkout (Algorand, VOI, Hedera, Stellar) — redirect to AlgoVoi payment page
 //   - Extension payment (Algorand, VOI) — in-page wallet flow via algosdk
 //   - Webhook verification with HMAC
 //   - SSRF protection on checkout URL fetches
 //   - Cancel-bypass prevention on hosted return
+//
+// Tier 2 — standing-authority recurring (subscriptions, agent-bound auth)
+//   - Create / list / get / revoke / pause / resume / confirm / pull authorities
+//   - Seven chains: Algorand, VOI, Base, Tempo, Solana, Hedera, Stellar
+//   - Customer signs ONE pre-authorisation; AlgoVoi auto-pulls per cycle
+//   - Wallet performs chain-native signing — adapter is stdlib-only HTTP
+//
+// See recurring.go for the Tier 2 surface and Recurr/<chain>/README.md
+// in this repository for per-chain wallet-side flows.
 //
 // No third-party dependencies — uses only the Go standard library.
 //
 // AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 // Licensed under the Business Source License 1.1 — see LICENSE for details.
 //
-// Version: 1.1.0
+// Version: 1.2.0
 package algovoi
 
 import (
@@ -33,7 +44,7 @@ import (
 )
 
 // Version is the adapter version.
-const Version = "1.1.0"
+const Version = "1.2.0"
 
 // Hard caps and validation patterns.
 const (
