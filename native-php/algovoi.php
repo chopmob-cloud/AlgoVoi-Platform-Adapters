@@ -5,11 +5,21 @@
  * Single-file drop-in for any PHP application. No framework, no composer, no dependencies.
  *
  * Supports:
- *   - Hosted checkout (Algorand, VOI, Hedera) — redirect to AlgoVoi payment page
+ *
+ * Tier 1 — one-shot payments
+ *   - Hosted checkout (Algorand, VOI, Hedera, Stellar) — redirect to AlgoVoi payment page
  *   - Extension payment (Algorand, VOI) — in-page wallet flow via algosdk
  *   - Webhook verification with HMAC
  *   - SSRF protection on checkout URL fetches
  *   - Cancel-bypass prevention on hosted return
+ *
+ * Tier 2 — standing-authority recurring (subscriptions, agent-bound auth)
+ *   - Create / list / get / revoke / pause / resume / confirm / pull authorities
+ *   - Seven chains: Algorand, VOI, Base, Tempo, Solana, Hedera, Stellar
+ *   - Customer signs ONE pre-authorisation; AlgoVoi auto-pulls per cycle
+ *   - Wallet performs chain-native signing — adapter is stdlib-only HTTP
+ *
+ * See `Recurr/<chain>/README.md` in this repository for per-chain wallet-side flows.
  *
  * Usage:
  *   require_once 'algovoi.php';
@@ -20,18 +30,66 @@
  *       'webhook_secret' => 'your_secret',
  *   ]);
  *
+ *   // Tier 1 — one-shot
+ *   $link = $av->hostedCheckout(10.0, 'USD', 'Order #1', 'algorand_mainnet',
+ *                               'https://shop.example/return');
+ *
+ *   // Tier 2 — recurring
+ *   $resp = $av->createRecurringAuthority([
+ *       'subscription_id'         => $subId,
+ *       'chain'                   => 'algorand_mainnet',
+ *       'customer_wallet_address' => 'ABCD...XYZ',
+ *       'cap_amount_minor'        => 120_000_000,    // 12 × $10
+ *       'cap_period_seconds'      => 365 * 86400,
+ *       'per_cycle_amount_minor'  => 10_000_000,
+ *   ]);
+ *   // Hand $resp['customer_signing_payload'] to your frontend wallet UI.
+ *
  * AlgoVoi docs: https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
  * Licensed under the Business Source License 1.1 — see LICENSE for details.
  *
- * Version: 1.1.0
+ * Version: 1.2.0
  */
 
 class AlgoVoi
 {
-    public const VERSION                  = '1.1.0';
-    public const MAX_WEBHOOK_BODY_BYTES   = 65536;   // 64 KB
-    public const MAX_TOKEN_LEN            = 200;
-    public const MAX_TX_ID_LEN            = 200;
+    public const VERSION                   = '1.2.0';
+    public const MAX_WEBHOOK_BODY_BYTES    = 65536;   // 64 KB
+    public const MAX_TOKEN_LEN             = 200;
+    public const MAX_TX_ID_LEN             = 200;
+    public const MAX_RECURRING_BODY_BYTES  = 16384;   // recurring API responses <4 KB in practice
+    public const MAX_UUID_LEN              = 36;     // standard UUID string length
+
+    /**
+     * Tier 2 — every v1 chain has a real provider. Map of chain id =>
+     * true. Use isRecurringNetwork() to test.
+     *
+     * 7 mainnets + 7 testnets (matches native-python / native-go).
+     */
+    public const RECURRING_NETWORKS = [
+        'algorand_mainnet' => true, 'algorand_testnet' => true,
+        'voi_mainnet'      => true, 'voi_testnet'      => true,
+        'base_mainnet'     => true, 'base_sepolia'     => true,
+        'tempo_mainnet'    => true, 'tempo_testnet'    => true,
+        'solana_mainnet'   => true, 'solana_devnet'    => true,
+        'hedera_mainnet'   => true, 'hedera_testnet'   => true,
+        'stellar_mainnet'  => true, 'stellar_testnet'  => true,
+    ];
+
+    /**
+     * Tier 2 webhook event types (in addition to Tier 1's payment.* events).
+     * Use isRecurringEvent() to fork your handler.
+     */
+    public const RECURRING_EVENT_TYPES = [
+        'recurring.authority_created'   => true,
+        'recurring.authority_activated' => true,
+        'recurring.authority_paused'    => true,
+        'recurring.authority_resumed'   => true,
+        'recurring.authority_revoked'   => true,
+        'recurring.authority_expired'   => true,
+        'subscription.charged'          => true,
+        'subscription.payment_failed'   => true,
+    ];
 
     private string $apiBase;
     private string $apiKey;
@@ -318,6 +376,301 @@ class AlgoVoi
         return is_array($decoded) ? $decoded : null;
     }
 
+    /**
+     * Test whether a parsed webhook payload is a Tier 2 (recurring) event.
+     *
+     * Use this to fork your handler:
+     *
+     *     $payload = $av->verifyWebhook($rawBody, $signature);
+     *     if ($payload === null) { http_response_code(401); exit; }
+     *     if (AlgoVoi::isRecurringEvent($payload)) {
+     *         handle_recurring($payload);   // subscription.charged, etc.
+     *     } else {
+     *         handle_one_shot($payload);    // payment.succeeded, etc.
+     *     }
+     */
+    public static function isRecurringEvent(?array $payload): bool
+    {
+        if ($payload === null) {
+            return false;
+        }
+        $type = $payload['event_type'] ?? $payload['type'] ?? null;
+        return is_string($type) && isset(self::RECURRING_EVENT_TYPES[$type]);
+    }
+
+    /** Test whether a chain id is a Tier 2 (recurring) network. */
+    public static function isRecurringNetwork(string $network): bool
+    {
+        return isset(self::RECURRING_NETWORKS[$network]);
+    }
+
+    /* ────────────────────────────────────────────────────────────────────────
+     * Tier 2 — Standing-Authority Recurring Payments
+     *
+     * Lifecycle:
+     *   1. Tenant creates a subscription (POST /v1/subscriptions — out
+     *      of scope of this adapter; use the dashboard or call directly).
+     *   2. createRecurringAuthority(...) — gateway returns
+     *      `customer_signing_payload`, a chain-specific template.
+     *   3. Frontend hands the template to the customer's wallet (Pera /
+     *      Defly / MetaMask / Phantom / HashPack / Freighter / etc.)
+     *      which constructs + signs the on-chain authorisation.
+     *   4. confirmAuthority(...) marks status='active' (or AlgoVoi's
+     *      hosted widget does it via webhook).
+     *   5. AlgoVoi's cycle reaper auto-pulls per cap_period_seconds.
+     *      Each pull emits subscription.charged / subscription.payment_failed.
+     *   6. revokeAuthority / pauseAuthority / resumeAuthority lifecycle.
+     *
+     * All methods return the parsed JSON response on success, or null
+     * on failure (mirrors the Tier 1 pattern).
+     * ──────────────────────────────────────────────────────────────────────── */
+
+    /**
+     * Create a Tier 2 standing authority for an existing subscription.
+     *
+     * Required keys in $req:
+     *   - subscription_id          (string UUID)
+     *   - chain                    (one of RECURRING_NETWORKS)
+     *   - customer_wallet_address  (chain-native; algosdk 58-char base32,
+     *                               EVM 0x-hex 42, Solana base58 32-44,
+     *                               Hedera 0.0.X, Stellar G-address 56)
+     *   - cap_amount_minor         (positive int, atomic units)
+     *   - cap_period_seconds       (positive int, >= 86400 == 1 day)
+     *   - per_cycle_amount_minor   (positive int, <= cap_amount_minor)
+     *
+     * Optional:
+     *   - asset                    (default 'USDC')
+     *   - metadata                 (associative array, forwarded on every webhook)
+     *
+     * Stellar uses 7-decimal precision for USDC; every other chain uses 6.
+     * Pass amounts in chain-native atomic units.
+     *
+     * @return array|null Server response with 'authority',
+     *                    'customer_signing_payload', 'authorisation_url'.
+     *                    Hand 'customer_signing_payload' to your frontend
+     *                    wallet UI — see Recurr/<chain>/README.md.
+     */
+    public function createRecurringAuthority(array $req): ?array
+    {
+        if (!isset($req['chain']) || !self::isRecurringNetwork($req['chain'])) {
+            return null;
+        }
+        $sid = $req['subscription_id'] ?? '';
+        if (!is_string($sid) || $sid === '' || strlen($sid) > self::MAX_UUID_LEN) {
+            return null;
+        }
+        $wallet = $req['customer_wallet_address'] ?? '';
+        if (!is_string($wallet) || $wallet === '') {
+            return null;
+        }
+        foreach (['cap_amount_minor', 'cap_period_seconds', 'per_cycle_amount_minor'] as $k) {
+            if (!isset($req[$k]) || !is_int($req[$k]) || $req[$k] <= 0) {
+                return null;
+            }
+        }
+        if ($req['cap_period_seconds'] < 86400) {
+            return null;
+        }
+        if ($req['per_cycle_amount_minor'] > $req['cap_amount_minor']) {
+            return null;
+        }
+
+        $body = [
+            'subscription_id'         => $sid,
+            'chain'                   => $req['chain'],
+            'customer_wallet_address' => $wallet,
+            'cap_amount_minor'        => $req['cap_amount_minor'],
+            'cap_period_seconds'      => $req['cap_period_seconds'],
+            'per_cycle_amount_minor'  => $req['per_cycle_amount_minor'],
+            'asset'                   => strtoupper($req['asset'] ?? 'USDC'),
+        ];
+        if (isset($req['metadata'])) {
+            if (!is_array($req['metadata'])) {
+                return null;
+            }
+            $body['metadata'] = $req['metadata'];
+        }
+        return $this->requestJson('POST', '/v1/recurring/authorities', $body);
+    }
+
+    /**
+     * Fetch the current state of a recurring authority by id.
+     *
+     * Returns the row with status / on_chain_address (once active) /
+     * cap_remaining_minor / cycles_pulled / cycles_failed / last_error.
+     */
+    public function getAuthority(string $authorityId): ?array
+    {
+        if ($authorityId === '' || strlen($authorityId) > self::MAX_UUID_LEN) {
+            return null;
+        }
+        return $this->requestJson(
+            'GET',
+            '/v1/recurring/authorities/' . rawurlencode($authorityId)
+        );
+    }
+
+    /**
+     * List recurring authorities for this tenant. Optionally filter by
+     * subscription_id or status (pending / active / paused / revoking /
+     * revoked / expired).
+     *
+     * @return array|null List of authority rows (possibly empty), or null on failure.
+     */
+    public function listAuthorities(
+        ?string $subscriptionId = null,
+        ?string $status = null,
+        int $limit = 50,
+        int $offset = 0
+    ): ?array {
+        if ($limit < 1 || $limit > 200 || $offset < 0) {
+            return null;
+        }
+        $params = ['limit' => (string)$limit, 'offset' => (string)$offset];
+        if ($subscriptionId !== null) {
+            if (strlen($subscriptionId) > self::MAX_UUID_LEN) {
+                return null;
+            }
+            $params['subscription_id'] = $subscriptionId;
+        }
+        if ($status !== null) {
+            if (strlen($status) > 32 || !preg_match('/^[A-Za-z0-9_]+$/', $status)) {
+                return null;
+            }
+            $params['status'] = $status;
+        }
+        $path = '/v1/recurring/authorities?' . http_build_query($params);
+        $result = $this->requestJson('GET', $path);
+        // Gateway returns a JSON array (not an object) — both are valid.
+        if (!is_array($result)) {
+            return null;
+        }
+        return $result;
+    }
+
+    /**
+     * Mark a pending authority active after on-chain landing.
+     *
+     * `$onChainAddress` format depends on the chain:
+     *   Algorand / VOI : "app:<application_id>"
+     *   EVM            : "0x<tx_hash>"
+     *   Solana         : "<base58 tx signature>"
+     *   Hedera         : "<account_id>@<seconds>.<nanos>"
+     *   Stellar        : "<64-char hex tx hash>"
+     *
+     * Most tenants don't need to call this — the AlgoVoi widget does it.
+     * Surfaced here for self-hosted wallet UIs.
+     */
+    public function confirmAuthority(
+        string $authorityId,
+        string $onChainAddress,
+        ?string $firstCycleDueAt = null
+    ): ?array {
+        if ($authorityId === '' || strlen($authorityId) > self::MAX_UUID_LEN) {
+            return null;
+        }
+        if ($onChainAddress === '' || strlen($onChainAddress) > 200) {
+            return null;
+        }
+        $body = ['on_chain_address' => $onChainAddress];
+        if ($firstCycleDueAt !== null) {
+            if (strlen($firstCycleDueAt) > 64) {
+                return null;
+            }
+            $body['first_cycle_due_at'] = $firstCycleDueAt;
+        }
+        return $this->requestJson(
+            'POST',
+            '/v1/recurring/authorities/' . rawurlencode($authorityId) . '/confirm',
+            $body
+        );
+    }
+
+    /**
+     * Revoke an active authority. Gateway constructs the chain-specific
+     * revocation transaction; the customer's wallet signs it. Authority
+     * transitions to 'revoking' until on-chain landing, then 'revoked'.
+     */
+    public function revokeAuthority(string $authorityId): ?array
+    {
+        if ($authorityId === '' || strlen($authorityId) > self::MAX_UUID_LEN) {
+            return null;
+        }
+        return $this->requestJson(
+            'POST',
+            '/v1/recurring/authorities/' . rawurlencode($authorityId) . '/revoke',
+            []
+        );
+    }
+
+    /**
+     * Pause an active authority — no on-chain action. Stops cycle pulls
+     * until resumeAuthority(...) is called.
+     */
+    public function pauseAuthority(string $authorityId): ?array
+    {
+        if ($authorityId === '' || strlen($authorityId) > self::MAX_UUID_LEN) {
+            return null;
+        }
+        return $this->requestJson(
+            'POST',
+            '/v1/recurring/authorities/' . rawurlencode($authorityId) . '/pause',
+            []
+        );
+    }
+
+    /**
+     * Resume a paused authority. Pass `$nextCycleDueAt` (ISO8601) to
+     * delay the first post-resume pull; otherwise pulls resume on the
+     * existing schedule.
+     */
+    public function resumeAuthority(string $authorityId, ?string $nextCycleDueAt = null): ?array
+    {
+        if ($authorityId === '' || strlen($authorityId) > self::MAX_UUID_LEN) {
+            return null;
+        }
+        $body = [];
+        if ($nextCycleDueAt !== null) {
+            if (strlen($nextCycleDueAt) > 64) {
+                return null;
+            }
+            $body['next_cycle_due_at'] = $nextCycleDueAt;
+        }
+        return $this->requestJson(
+            'POST',
+            '/v1/recurring/authorities/' . rawurlencode($authorityId) . '/resume',
+            $body
+        );
+    }
+
+    /**
+     * Manually trigger a pull (e.g. catch-up after error escalation,
+     * prorated mid-cycle billing). Most pulls fire automatically via
+     * the cycle reaper — only use this for proration or dunning catch-ups.
+     *
+     * `$amountMinor` must be <= per_cycle_amount_minor of the authority.
+     */
+    public function manualPull(
+        string $authorityId,
+        int $amountMinor,
+        ?string $idempotencyKey = null
+    ): ?array {
+        if ($authorityId === '' || strlen($authorityId) > self::MAX_UUID_LEN) {
+            return null;
+        }
+        if ($amountMinor <= 0) {
+            return null;
+        }
+        $body = ['authority_id' => $authorityId, 'amount_minor' => $amountMinor];
+        if ($idempotencyKey !== null) {
+            if (strlen($idempotencyKey) > 128) {
+                return null;
+            }
+            $body['idempotency_key'] = $idempotencyKey;
+        }
+        return $this->requestJson('POST', '/v1/recurring/pulls', $body);
+    }
+
     /* ────────────────────────────────────────────────────────────────────────
      * HTML Rendering Helpers
      * ──────────────────────────────────────────────────────────────────────── */
@@ -476,6 +829,81 @@ HTML;
 
         return json_decode($response, true);
     }
+
+    /**
+     * Generic JSON HTTPS request to the AlgoVoi API. Used by Tier 2
+     * methods that need GET (list/get) on top of POST.
+     *
+     * Returns parsed JSON on 2xx. Returns null on any non-2xx, network
+     * error, JSON-decode error, or response > MAX_RECURRING_BODY_BYTES
+     * — mirrors post()'s failure mode so Tier 2 methods compose with the
+     * same caller-side null check.
+     *
+     * Hookable via the `algovoiHttpHandler` callable for unit tests
+     * (when set, replaces the curl path entirely — used by recurring_test.php).
+     */
+    private function requestJson(string $method, string $path, ?array $data = null): ?array
+    {
+        if (!in_array($method, ['GET', 'POST', 'DELETE'], true)) {
+            return null;
+        }
+        if (!$this->isHttps($this->apiBase)) {
+            return null;
+        }
+
+        // Test hook — when set, bypass curl. Allows mocked round-trip
+        // tests without spinning up a real HTTPS server.
+        if (isset($this->httpHandler) && is_callable($this->httpHandler)) {
+            $body = $data === null ? null : json_encode($data);
+            return ($this->httpHandler)($method, $this->apiBase . $path, $body, [
+                'Authorization: Bearer ' . $this->apiKey,
+                'X-Tenant-Id: ' . $this->tenantId,
+                'Content-Type: application/json',
+            ]);
+        }
+
+        $ch = curl_init($this->apiBase . $path);
+        $opts = [
+            CURLOPT_CUSTOMREQUEST  => $method,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $this->apiKey,
+                'X-Tenant-Id: ' . $this->tenantId,
+            ],
+        ];
+        if ($data !== null) {
+            $opts[CURLOPT_POSTFIELDS] = json_encode($data);
+            $opts[CURLOPT_HTTPHEADER][] = 'Content-Type: application/json';
+        }
+        curl_setopt_array($ch, $opts);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($response === false || $httpCode < 200 || $httpCode >= 300) {
+            return null;
+        }
+        if (strlen((string)$response) > self::MAX_RECURRING_BODY_BYTES) {
+            return null;
+        }
+        $decoded = json_decode((string)$response, true);
+        if (!is_array($decoded)) {
+            return null;
+        }
+        return $decoded;
+    }
+
+    /**
+     * Test hook — set this callable to bypass curl in unit tests.
+     * The callable receives ($method, $url, $bodyJsonOrNull, $headers)
+     * and must return either an array (success) or null (failure).
+     *
+     * @var callable|null
+     */
+    public $httpHandler = null;
 
     private function scrapeCheckout(string $checkoutUrl): ?array
     {

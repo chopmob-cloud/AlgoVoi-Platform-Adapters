@@ -21,12 +21,12 @@ sibling per-chain folders:
 |---|---|---|---|
 | Python | [`python.py`](python.py) | `native-python/algovoi.py` v1.2.0+ | Full Tier 2 surface — 8 lifecycle methods + `is_recurring_event` helper. **Shipped.** |
 | Go | [`go.go`](go.go) | `native-go/` v1.2.0+ (`recurring.go`) | Same surface as Python with idiomatic Go — typed structs (`AuthorityCreateRequest`, `Authority`), `error` returns, `IsRecurringNetwork`, `IsRecurringEvent`. **Shipped.** 12 unit + round-trip tests pass with `go test ./...`. |
-| PHP | _coming soon_ | `native-php/` | Tracked. |
+| PHP | [`php.php`](php.php) | `native-php/algovoi.php` v1.2.0+ | Same 8-method surface in PHP 8.4-style — typed parameters, `?array` returns, `AlgoVoi::isRecurringNetwork` / `AlgoVoi::isRecurringEvent` static helpers, `RECURRING_NETWORKS` / `RECURRING_EVENT_TYPES` constants. **Shipped.** 18 stdlib-only tests pass with `php recurring_test.php`. |
 | Rust | _coming soon_ | `native-rust/` | Tracked. |
 
-The PHP / Rust adapters already exist for Tier 1 (one-shot hosted
-checkout). Adding Tier 2 to each is a mechanical port of the 8
-methods that exist in Python and Go — the HTTP-shape contract is
+The Rust adapter already exists for Tier 1 (one-shot hosted
+checkout). Adding Tier 2 is a mechanical port of the 8 methods
+that exist in Python, Go, and PHP — the HTTP-shape contract is
 identical across languages.
 
 ---
