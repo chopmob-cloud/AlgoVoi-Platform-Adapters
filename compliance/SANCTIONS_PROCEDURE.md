@@ -17,13 +17,21 @@ match thresholds, and the disposition workflow are NDA.
 
 ## 2. Lists screened
 
-AlgoVoi screens against, at minimum:
+AlgoVoi loads and screens against three primary feeds, with UN
+designations cascading transitively via EU implementing regulations:
 
 - **UK** — HM Treasury Office of Financial Sanctions Implementation
   (OFSI) consolidated list
-- **EU** — EU consolidated financial sanctions list
-- **US** — OFAC SDN and consolidated sanctions lists
-- **UN** — UN Security Council consolidated sanctions list
+- **US** — OFAC SDN list
+- **EU** — EU Consolidated financial sanctions list (this carries
+  every UN Security Council designation that the EU implements via
+  Council Regulation; in practice this means every UN designation
+  with cross-border effect)
+
+A direct UN feed is **not** loaded in v1 — UN designations reach the
+screening cache through the EU consolidated feed. Adding a direct UN
+ingest is on the post-£150k roadmap; for the avoidance of doubt the
+attestation only advertises feeds we directly fetch.
 
 Where list updates are published, AlgoVoi's screening provider ingests
 the update and rescreens the existing tenant base.
