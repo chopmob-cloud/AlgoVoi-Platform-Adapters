@@ -23,8 +23,9 @@ sibling per-chain folders:
 | Go | [`go.go`](go.go) | `native-go/` v1.2.0+ (`recurring.go`) | Same surface as Python with idiomatic Go — typed structs (`AuthorityCreateRequest`, `Authority`), `error` returns, `IsRecurringNetwork`, `IsRecurringEvent`. **Shipped.** 12 unit + round-trip tests pass with `go test ./...`. |
 | PHP | [`php.php`](php.php) | `native-php/algovoi.php` v1.2.0+ | Same 8-method surface in PHP 8.4-style — typed parameters, `?array` returns, `AlgoVoi::isRecurringNetwork` / `AlgoVoi::isRecurringEvent` static helpers, `RECURRING_NETWORKS` / `RECURRING_EVENT_TYPES` constants. **Shipped.** 18 stdlib-only tests pass with `php recurring_test.php`. |
 | Rust | [`rust.rs`](rust.rs) | `native-rust/` v1.2.0+ (`src/recurring.rs`) | Same 8-method surface, `Result<T, Error>` returns, typed structs, `BTreeMap<String, String>` for metadata. Caller-pluggable `HttpClient` trait (use `ureq` / `reqwest` / `hyper` / etc.). Manual JSON encode/decode (no `serde` dep — keeps the `# No [dependencies]` Cargo.toml promise). **Shipped.** 22 new Tier 2 tests + 23 pre-existing Tier 1 = 45/45 pass with `cargo test --lib`. |
+| TypeScript | [`typescript.ts`](typescript.ts) | `native-typescript/algovoi.ts` v1.2.0+ | Single-file, zero-dep TS adapter. Universal `fetch` + WebCrypto — runs on Node 18+, Bun, Deno, browsers, Cloudflare Workers, Vercel Edge. Same 8-method surface; typed interfaces + `Promise<T \| null>` returns + `isRecurringEvent` / `isRecurringNetwork` helpers. **Shipped.** 24/24 tests pass with `node --experimental-strip-types recurring_test.ts`. |
 
-All four native adapters now ship Tier 2. The MCP server, no-code
+All five language adapters now ship Tier 2. The MCP server, no-code
 adapters, and platform plugins remain on the roadmap — track those
 in the parent repo's open issues.
 

@@ -33,7 +33,7 @@ Included:
 - **Recurring / standing-authority subscriptions ([`Recurr/`](Recurr/))** — Tier 2 lets a customer sign ONCE and AlgoVoi auto-pulls per cycle on all 7 chains (Algorand SpendingCapVault, EVM ERC-20 approve, Solana SPL Approve, Hedera HTS allowance, Stellar Soroban auth_entry, VOI). Per-chain wallet-side reference flows + chain-agnostic merchant-side examples. **`native-python/algovoi.py` v1.2.0+** ships the merchant HTTP wrappers (8 lifecycle methods)
 - **Drop-in plugins** for WooCommerce, OpenCart, PrestaShop, and Shopware (tested and deployed)
 - **CMS payment gateways** for Drupal Commerce, Easy Digital Downloads (WordPress), and Ghost — all Comet-validated 2026-04-15
-- **Native adapters** for PHP, Python, Go, and Rust (zero external dependencies) — all hardened to v1.1.0 on 2026-04-15
+- **Native adapters** for PHP, Python, Go, Rust, and TypeScript (zero external dependencies) — all at v1.2.0 with full Tier 2 (recurring) surface
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
 - **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 7 chains)
 - **AI agent framework adapters** for LangChain, LlamaIndex, CrewAI, Hugging Face, AutoGen, Semantic Kernel, Pydantic AI, DSPy, Vercel AI SDK, Google A2A, LangGraph, and Agno — gate LLM-agnostic pipelines, RAG chains, multi-agent crews, and autonomous agents (MPP + AP2 + x402, all 7 chains)
@@ -135,6 +135,7 @@ platform-adapters/
 ├── native-python/        # Stdlib-only Python adapter
 ├── native-go/            # Stdlib-only Go package
 ├── native-rust/          # Zero-crate Rust library
+├── native-typescript/    # Single-file TS adapter (Node 18+/Bun/Deno/browsers/Edge)
 ├── magento2/             # Magento 2 / Adobe Commerce module (PHP)
 ├── amazon-mws/           # Amazon SP-API webhook adapter (Python)
 ├── tiktok-shop/          # TikTok Shop Open Platform adapter (Python)
