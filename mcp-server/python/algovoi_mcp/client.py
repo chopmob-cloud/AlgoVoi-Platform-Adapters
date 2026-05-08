@@ -379,6 +379,157 @@ class AlgoVoiClient:
                     "amount": amt, "payer": op.get("from")}
         return {"verified": False, "error": "payment to payout address not found"}
 
+    # ──────────────────────────────────────────────────────────────────────
+    # Tier 2 — Standing-Authority Recurring Payments
+    #
+    # Eight HTTP wrappers, one per /v1/recurring/* endpoint. Mirrors the
+    # TypeScript MCP server's surface exactly.
+    # ──────────────────────────────────────────────────────────────────────
+
+    def _get_list(self, path: str) -> list[dict]:
+        """GET helper that expects a JSON array response.
+
+        ``_get`` is dict-typed and wraps non-dict responses as
+        ``{'raw': ...}``; the list endpoint returns a JSON array directly,
+        so we need a separate path. Returns an empty list on shape
+        mismatch rather than a half-typed dict.
+        """
+        req = Request(
+            self.api_base + path,
+            method="GET",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "X-Tenant-Id":   self.tenant_id,
+            },
+        )
+        try:
+            with urlopen(req, timeout=self.timeout, context=self._ssl_ctx) as resp:  # noqa: S310
+                data = json.loads(resp.read())
+                if not isinstance(data, list):
+                    return []
+                return [item for item in data if isinstance(item, dict)]
+        except URLError as e:
+            raise RuntimeError("AlgoVoi request failed") from e
+        except (json.JSONDecodeError, OSError) as e:
+            raise RuntimeError("AlgoVoi request returned invalid data") from e
+
+    def create_recurring_authority(
+        self,
+        *,
+        subscription_id: str,
+        chain: str,
+        customer_wallet_address: str,
+        cap_amount_minor: int,
+        cap_period_seconds: int,
+        per_cycle_amount_minor: int,
+        asset: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ) -> dict:
+        """Create a Tier 2 standing authority for an existing subscription."""
+        body: dict = {
+            "subscription_id":         subscription_id,
+            "chain":                   chain,
+            "customer_wallet_address": customer_wallet_address,
+            "cap_amount_minor":        cap_amount_minor,
+            "cap_period_seconds":      cap_period_seconds,
+            "per_cycle_amount_minor":  per_cycle_amount_minor,
+            "asset":                   (asset or "USDC").upper(),
+        }
+        if metadata is not None:
+            body["metadata"] = metadata
+        return self._post("/v1/recurring/authorities", body)
+
+    def get_authority(self, authority_id: str) -> dict:
+        """Fetch the current state of a recurring authority by id."""
+        from urllib.parse import quote
+        return self._get(
+            f"/v1/recurring/authorities/{quote(authority_id, safe='')}",
+        )
+
+    def list_authorities(
+        self,
+        *,
+        subscription_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict]:
+        """List recurring authorities for this tenant."""
+        from urllib.parse import urlencode
+        params: dict = {"limit": str(limit), "offset": str(offset)}
+        if subscription_id:
+            params["subscription_id"] = subscription_id
+        if status:
+            params["status"] = status
+        return self._get_list(
+            f"/v1/recurring/authorities?{urlencode(params)}",
+        )
+
+    def confirm_authority(
+        self,
+        authority_id: str,
+        *,
+        on_chain_address: str,
+        first_cycle_due_at: Optional[str] = None,
+    ) -> dict:
+        """Mark a pending authority active after on-chain landing."""
+        from urllib.parse import quote
+        body: dict = {"on_chain_address": on_chain_address}
+        if first_cycle_due_at:
+            body["first_cycle_due_at"] = first_cycle_due_at
+        return self._post(
+            f"/v1/recurring/authorities/{quote(authority_id, safe='')}/confirm",
+            body,
+        )
+
+    def revoke_authority(self, authority_id: str) -> dict:
+        """Revoke an active authority (constructs on-chain revocation tx)."""
+        from urllib.parse import quote
+        return self._post(
+            f"/v1/recurring/authorities/{quote(authority_id, safe='')}/revoke",
+            {},
+        )
+
+    def pause_authority(self, authority_id: str) -> dict:
+        """Pause an active authority — no on-chain action."""
+        from urllib.parse import quote
+        return self._post(
+            f"/v1/recurring/authorities/{quote(authority_id, safe='')}/pause",
+            {},
+        )
+
+    def resume_authority(
+        self,
+        authority_id: str,
+        *,
+        next_cycle_due_at: Optional[str] = None,
+    ) -> dict:
+        """Resume a paused authority."""
+        from urllib.parse import quote
+        body: dict = {}
+        if next_cycle_due_at:
+            body["next_cycle_due_at"] = next_cycle_due_at
+        return self._post(
+            f"/v1/recurring/authorities/{quote(authority_id, safe='')}/resume",
+            body,
+        )
+
+    def manual_pull(
+        self,
+        *,
+        authority_id: str,
+        amount_minor: int,
+        idempotency_key: Optional[str] = None,
+    ) -> dict:
+        """Manually trigger a one-off pull (catch-up / proration)."""
+        body: dict = {
+            "authority_id": authority_id,
+            "amount_minor": amount_minor,
+        }
+        if idempotency_key:
+            body["idempotency_key"] = idempotency_key
+        return self._post("/v1/recurring/pulls", body)
+
     def payout_address_for(self, network: str) -> str:
         """Return the payout address for the given network key.
         Strips native-coin suffix (e.g. algorand_mainnet_algo → algorand_mainnet)

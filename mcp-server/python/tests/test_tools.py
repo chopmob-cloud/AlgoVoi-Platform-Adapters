@@ -64,8 +64,20 @@ def make_client(**overrides) -> AlgoVoiClient:
 # ── Tool schemas (3 tests) ────────────────────────────────────────────────────
 
 class TestToolSchemas:
-    def test_thirteen_tools(self):
-        assert len(server.TOOL_SCHEMAS) == 13
+    # Sprint Tier 2 added 8 tools; total surface is 13 + 8 = 21.
+    EXPECTED_TOOL_COUNT = 21
+
+    def test_tool_count(self):
+        assert len(server.TOOL_SCHEMAS) == self.EXPECTED_TOOL_COUNT
+
+    def test_includes_all_8_tier2_tools(self):
+        names = {t["name"] for t in server.TOOL_SCHEMAS}
+        for tier2 in (
+            "create_recurring_authority", "get_authority", "list_authorities",
+            "confirm_authority", "revoke_authority", "pause_authority",
+            "resume_authority", "manual_pull",
+        ):
+            assert tier2 in names, f"missing Tier 2 tool: {tier2}"
 
     def test_every_schema_shape(self):
         for t in server.TOOL_SCHEMAS:
@@ -834,3 +846,118 @@ class TestSendA2aMessage:
     def test_rejects_http_url(self):
         with pytest.raises(ValidationError):
             SendA2aMessageInput(agent_url="http://bad.example.com", text="Hi")
+
+
+# ── Tier 2 — Standing-Authority Recurring Payments parsers ───────────────────
+
+class TestTier2Parsers:
+    """Pydantic schema validation for the 8 Tier 2 tools."""
+
+    def _base_create(self):
+        return dict(
+            subscription_id="00000000-0000-0000-0000-000000000001",
+            chain="algorand_mainnet",
+            customer_wallet_address="X" * 58,
+            cap_amount_minor=120_000_000,
+            cap_period_seconds=365 * 86400,
+            per_cycle_amount_minor=10_000_000,
+        )
+
+    def test_create_accepts_valid_request(self):
+        from algovoi_mcp.schemas import CreateRecurringAuthorityInput
+        out = CreateRecurringAuthorityInput(**self._base_create())
+        assert out.chain == "algorand_mainnet"
+        assert out.cap_amount_minor == 120_000_000
+        assert out.asset is None  # default applied at HTTP layer, not schema
+
+    def test_create_uppercases_asset_at_client_boundary(self):
+        # Schema preserves case; uppercase happens in client layer.
+        from algovoi_mcp.schemas import CreateRecurringAuthorityInput
+        out = CreateRecurringAuthorityInput(**{**self._base_create(), "asset": "usdc"})
+        assert out.asset == "usdc"
+
+    def test_create_rejects_unsupported_chain(self):
+        from algovoi_mcp.schemas import CreateRecurringAuthorityInput
+        with pytest.raises(ValidationError):
+            CreateRecurringAuthorityInput(**{**self._base_create(), "chain": "ethereum_mainnet"})
+
+    def test_create_rejects_period_below_one_day(self):
+        from algovoi_mcp.schemas import CreateRecurringAuthorityInput
+        with pytest.raises(ValidationError):
+            CreateRecurringAuthorityInput(**{**self._base_create(), "cap_period_seconds": 3600})
+
+    def test_create_rejects_per_cycle_exceeds_cap(self):
+        from algovoi_mcp.schemas import CreateRecurringAuthorityInput
+        bad = {**self._base_create(), "cap_amount_minor": 10, "per_cycle_amount_minor": 100}
+        with pytest.raises(ValidationError):
+            CreateRecurringAuthorityInput(**bad)
+
+    def test_create_rejects_extra_field(self):
+        from algovoi_mcp.schemas import CreateRecurringAuthorityInput
+        with pytest.raises(ValidationError):
+            CreateRecurringAuthorityInput(**{**self._base_create(), "evil": "extra"})
+
+    def test_get_authority_requires_id(self):
+        from algovoi_mcp.schemas import GetAuthorityInput
+        assert GetAuthorityInput(authority_id="auth-uuid").authority_id == "auth-uuid"
+        with pytest.raises(ValidationError):
+            GetAuthorityInput()
+        with pytest.raises(ValidationError):
+            GetAuthorityInput(authority_id="x" * 100)
+
+    def test_list_authorities_accepts_empty_and_filters(self):
+        from algovoi_mcp.schemas import ListAuthoritiesInput
+        empty = ListAuthoritiesInput()
+        assert empty.limit is None
+        out = ListAuthoritiesInput(status="active", limit=10)
+        assert out.status == "active"
+        assert out.limit == 10
+        with pytest.raises(ValidationError):
+            ListAuthoritiesInput(status="bad-status!")
+        with pytest.raises(ValidationError):
+            ListAuthoritiesInput(limit=500)
+        with pytest.raises(ValidationError):
+            ListAuthoritiesInput(offset=-1)
+
+    def test_confirm_authority_requires_two_fields(self):
+        from algovoi_mcp.schemas import ConfirmAuthorityInput
+        out = ConfirmAuthorityInput(authority_id="a", on_chain_address="app:12345")
+        assert out.on_chain_address == "app:12345"
+        with pytest.raises(ValidationError):
+            ConfirmAuthorityInput(authority_id="a")
+        with pytest.raises(ValidationError):
+            ConfirmAuthorityInput(on_chain_address="x")
+
+    def test_revoke_pause_require_authority_id(self):
+        from algovoi_mcp.schemas import RevokeAuthorityInput, PauseAuthorityInput
+        assert RevokeAuthorityInput(authority_id="a").authority_id == "a"
+        assert PauseAuthorityInput(authority_id="a").authority_id == "a"
+        with pytest.raises(ValidationError):
+            RevokeAuthorityInput()
+        with pytest.raises(ValidationError):
+            PauseAuthorityInput()
+
+    def test_resume_authority_optional_due_at(self):
+        from algovoi_mcp.schemas import ResumeAuthorityInput
+        a = ResumeAuthorityInput(authority_id="a")
+        assert a.next_cycle_due_at is None
+        b = ResumeAuthorityInput(authority_id="a", next_cycle_due_at="2026-06-07T00:00:00Z")
+        assert b.next_cycle_due_at == "2026-06-07T00:00:00Z"
+
+    def test_manual_pull_requires_positive_amount(self):
+        from algovoi_mcp.schemas import ManualPullInput
+        out = ManualPullInput(authority_id="a", amount_minor=100)
+        assert out.amount_minor == 100
+        with pytest.raises(ValidationError):
+            ManualPullInput(authority_id="a", amount_minor=0)
+        with pytest.raises(ValidationError):
+            ManualPullInput(authority_id="a", amount_minor=-1)
+
+    def test_schemas_by_tool_includes_all_8(self):
+        from algovoi_mcp.schemas import SCHEMAS_BY_TOOL
+        for tier2 in (
+            "create_recurring_authority", "get_authority", "list_authorities",
+            "confirm_authority", "revoke_authority", "pause_authority",
+            "resume_authority", "manual_pull",
+        ):
+            assert tier2 in SCHEMAS_BY_TOOL, f"missing {tier2}"

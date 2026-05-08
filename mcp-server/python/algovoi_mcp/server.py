@@ -40,13 +40,21 @@ from .idempotency import IdempotencyCache
 from .networks import CAIP2, NETWORK_INFO, NETWORKS, PROTOCOLS
 from .redact import scrub
 from .schemas import (
+    ConfirmAuthorityInput,
     CreatePaymentLinkInput,
+    CreateRecurringAuthorityInput,
     FetchAgentCardInput,
     GenerateAp2MandateInput,
     GenerateMppChallengeInput,
     GenerateX402ChallengeInput,
+    GetAuthorityInput,
+    ListAuthoritiesInput,
     ListNetworksInput,
+    ManualPullInput,
+    PauseAuthorityInput,
     PrepareExtensionPaymentInput,
+    ResumeAuthorityInput,
+    RevokeAuthorityInput,
     SCHEMAS_BY_TOOL,
     SendA2aMessageInput,
     VerifyAp2PaymentInput,
@@ -413,6 +421,99 @@ def tool_send_a2a_message(args: SendA2aMessageInput) -> dict:
         }
 
 
+# ── 14-21. Tier 2 — Standing-Authority Recurring Payments ────────────────────
+#
+# Eight tools exposing the full subscription lifecycle. Mirrors the
+# TypeScript MCP tier 2 surface. Each function takes a validated
+# Pydantic model and returns a dict shaped for the MCP wire.
+
+def tool_create_recurring_authority(
+    client: AlgoVoiClient, args: CreateRecurringAuthorityInput,
+) -> dict:
+    resp = client.create_recurring_authority(
+        subscription_id         = args.subscription_id,
+        chain                   = args.chain,
+        customer_wallet_address = args.customer_wallet_address,
+        cap_amount_minor        = args.cap_amount_minor,
+        cap_period_seconds      = args.cap_period_seconds,
+        per_cycle_amount_minor  = args.per_cycle_amount_minor,
+        asset                   = args.asset,
+        metadata                = args.metadata,
+    )
+    authority = resp.get("authority", {})
+    return {
+        "authority_id":            authority.get("id"),
+        "status":                  authority.get("status"),
+        "chain":                   authority.get("chain"),
+        "cap_amount_minor":        authority.get("cap_amount_minor"),
+        "customer_signing_payload": resp.get("customer_signing_payload"),
+        "authorisation_url":       resp.get("authorisation_url"),
+        "next_step": (
+            "Pass customer_signing_payload to the customer's wallet "
+            "(Pera/Defly/MetaMask/Phantom/HashPack/Freighter) for signing. "
+            "After the on-chain transaction lands, call confirm_authority"
+            "(authority_id, on_chain_address)."
+        ),
+    }
+
+
+def tool_get_authority(client: AlgoVoiClient, args: GetAuthorityInput) -> dict:
+    return client.get_authority(args.authority_id)
+
+
+def tool_list_authorities(
+    client: AlgoVoiClient, args: ListAuthoritiesInput,
+) -> dict:
+    auths = client.list_authorities(
+        subscription_id = args.subscription_id,
+        status          = args.status,
+        limit           = args.limit if args.limit is not None else 50,
+        offset          = args.offset if args.offset is not None else 0,
+    )
+    return {"authorities": auths, "count": len(auths)}
+
+
+def tool_confirm_authority(
+    client: AlgoVoiClient, args: ConfirmAuthorityInput,
+) -> dict:
+    return client.confirm_authority(
+        args.authority_id,
+        on_chain_address   = args.on_chain_address,
+        first_cycle_due_at = args.first_cycle_due_at,
+    )
+
+
+def tool_revoke_authority(
+    client: AlgoVoiClient, args: RevokeAuthorityInput,
+) -> dict:
+    return client.revoke_authority(args.authority_id)
+
+
+def tool_pause_authority(
+    client: AlgoVoiClient, args: PauseAuthorityInput,
+) -> dict:
+    return client.pause_authority(args.authority_id)
+
+
+def tool_resume_authority(
+    client: AlgoVoiClient, args: ResumeAuthorityInput,
+) -> dict:
+    return client.resume_authority(
+        args.authority_id,
+        next_cycle_due_at = args.next_cycle_due_at,
+    )
+
+
+def tool_manual_pull(
+    client: AlgoVoiClient, args: ManualPullInput,
+) -> dict:
+    return client.manual_pull(
+        authority_id    = args.authority_id,
+        amount_minor    = args.amount_minor,
+        idempotency_key = args.idempotency_key,
+    )
+
+
 # ── Tool schemas (MCP wire format — JSON Schema) ──────────────────────────────
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
@@ -667,6 +768,202 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    # ── Tier 2 — Standing-Authority Recurring Payments ────────────────────
+    {
+        "name": "create_recurring_authority",
+        "description": (
+            "Create a Tier 2 standing authority for an existing AlgoVoi subscription. "
+            "Tier 2 = 'customer signs ONCE, AlgoVoi auto-pulls per cycle' — the "
+            "subscription / agent-bound spending pattern (vs Tier 1's pay-on-every-invoice). "
+            "Returns {authority_id, status, customer_signing_payload, next_step}. "
+            "The customer_signing_payload is a chain-specific template (Algorand "
+            "SpendingCapVault 6-action group, EVM ERC-20 approve, Solana SPL Approve, "
+            "Hedera HTS allowance, or Stellar Soroban auth_entry) — hand it to the "
+            "customer's wallet (Pera/Defly/MetaMask/Phantom/HashPack/Freighter) for signing. "
+            "After the on-chain transaction lands, call confirm_authority to mark the "
+            "authority active. AlgoVoi's cycle reaper then auto-pulls per cap_period_seconds. "
+            "Stellar uses 7-decimal precision for USDC; every other chain uses 6 — pass "
+            "cap_amount_minor in chain-native atomic units. "
+            "Authentication: requires ALGOVOI_API_KEY and ALGOVOI_TENANT_ID env vars. "
+            "Errors: throws if chain is unsupported, period < 86400, or per_cycle_amount_minor > cap_amount_minor."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "subscription_id": {
+                    "type":        "string",
+                    "description": "UUID of the Tier 1 subscription this authority is bound to. Create one via the dashboard or POST /v1/subscriptions first.",
+                },
+                "chain": {
+                    "type":        "string",
+                    "enum": [
+                        "algorand_mainnet", "algorand_testnet",
+                        "voi_mainnet",      "voi_testnet",
+                        "base_mainnet",     "base_sepolia",
+                        "tempo_mainnet",    "tempo_testnet",
+                        "solana_mainnet",   "solana_devnet",
+                        "hedera_mainnet",   "hedera_testnet",
+                        "stellar_mainnet",  "stellar_testnet",
+                    ],
+                    "description": "Blockchain network to authorise on. Each chain uses its native primitive.",
+                },
+                "customer_wallet_address": {
+                    "type":        "string",
+                    "description": "Customer's chain-native address (Algorand 58-char base32, EVM 0x-prefixed hex, Solana base58, Hedera 0.0.X, Stellar G-address).",
+                },
+                "cap_amount_minor": {
+                    "type":        "integer",
+                    "description": "Total spend cap over cap_period_seconds, in chain-native atomic units. e.g. 12 × $10 USDC on Algorand: 120_000_000 (6 decimals). Stellar: 1_200_000_000 (7 decimals).",
+                },
+                "cap_period_seconds": {
+                    "type":        "integer",
+                    "description": "Cap window length in seconds. Must be >= 86400 (1 day). Typical: 365 * 86400 = 31_536_000 for annual.",
+                },
+                "per_cycle_amount_minor": {
+                    "type":        "integer",
+                    "description": "Per-pull cap, in atomic units. Each cycle pulls at most this much. Must be <= cap_amount_minor.",
+                },
+                "asset": {
+                    "type":        "string",
+                    "description": "Asset symbol — defaults to USDC. Native coins (VOI/HBAR/XLM/ETH/SOL) supported per chain.",
+                },
+                "metadata": {
+                    "type":        "object",
+                    "description": "Free-form tenant metadata, forwarded on every webhook event.",
+                    "additionalProperties": True,
+                },
+            },
+            "required":             ["subscription_id", "chain", "customer_wallet_address", "cap_amount_minor", "cap_period_seconds", "per_cycle_amount_minor"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "get_authority",
+        "description": (
+            "Fetch the current state of a Tier 2 recurring authority by id. "
+            "Returns {id, status, on_chain_address, cap_remaining_minor, cycles_pulled, "
+            "cycles_failed, last_error, ...}. status transitions: pending → active (after "
+            "confirm_authority) → revoking → revoked, or paused/resumed mid-life, or "
+            "expired when the cap_amount or auth lifetime is exhausted."
+        ),
+        "inputSchema": {
+            "type":       "object",
+            "properties": {
+                "authority_id": {"type": "string", "description": "UUID returned by create_recurring_authority."},
+            },
+            "required":             ["authority_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "list_authorities",
+        "description": (
+            "List Tier 2 recurring authorities for this tenant. Returns {authorities: [...], count}. "
+            "Optionally filter by subscription_id or status (pending/active/paused/revoking/revoked/expired). "
+            "Default limit 50, max 200."
+        ),
+        "inputSchema": {
+            "type":       "object",
+            "properties": {
+                "subscription_id": {"type": "string",  "description": "Filter to authorities for one subscription."},
+                "status":          {"type": "string",  "description": "Filter by status: pending / active / paused / revoking / revoked / expired."},
+                "limit":           {"type": "integer", "description": "Max results (1-200, default 50)."},
+                "offset":          {"type": "integer", "description": "Pagination offset (default 0)."},
+            },
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "confirm_authority",
+        "description": (
+            "Mark a pending Tier 2 authority active after on-chain landing. Most flows "
+            "use AlgoVoi's hosted widget which calls this automatically via webhook — "
+            "surfaced here for self-hosted wallet UIs. on_chain_address format depends on "
+            "the chain: Algorand/VOI 'app:<application_id>', EVM '0x<tx_hash>', Solana "
+            "'<base58 tx signature>', Hedera '<account_id>@<seconds>.<nanos>', Stellar "
+            "'<64-char hex tx hash>'."
+        ),
+        "inputSchema": {
+            "type":       "object",
+            "properties": {
+                "authority_id":      {"type": "string", "description": "UUID returned by create_recurring_authority."},
+                "on_chain_address":  {"type": "string", "description": "Chain-native handle of the landed authorisation transaction."},
+                "first_cycle_due_at": {"type": "string", "description": "Optional ISO8601 first-cycle due-at; gateway computes one if omitted."},
+            },
+            "required":             ["authority_id", "on_chain_address"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "revoke_authority",
+        "description": (
+            "Revoke an active Tier 2 authority. Gateway constructs the chain-specific "
+            "revocation transaction (Algorand vault owner_withdraw + remove_agent, EVM "
+            "approve(0), Solana SPL revoke, Hedera approve(amount=0), Stellar Soroban "
+            "auth-entry expiry); the customer's wallet signs it. Authority transitions to "
+            "'revoking' until on-chain landing, then 'revoked'."
+        ),
+        "inputSchema": {
+            "type":       "object",
+            "properties": {
+                "authority_id": {"type": "string", "description": "UUID of the authority to revoke."},
+            },
+            "required":             ["authority_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "pause_authority",
+        "description": (
+            "Pause an active Tier 2 authority — no on-chain action. Stops cycle pulls until "
+            "resume_authority is called. Useful for billing holds, manual review, or "
+            "customer-initiated 'pause my subscription' flows."
+        ),
+        "inputSchema": {
+            "type":       "object",
+            "properties": {
+                "authority_id": {"type": "string", "description": "UUID of the authority to pause."},
+            },
+            "required":             ["authority_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "resume_authority",
+        "description": (
+            "Resume a paused Tier 2 authority. Optionally specify next_cycle_due_at "
+            "(ISO8601) to delay the first post-resume pull; otherwise pulls resume "
+            "immediately on the existing schedule."
+        ),
+        "inputSchema": {
+            "type":       "object",
+            "properties": {
+                "authority_id":      {"type": "string", "description": "UUID of the authority to resume."},
+                "next_cycle_due_at": {"type": "string", "description": "Optional ISO8601 timestamp for the next cycle pull."},
+            },
+            "required":             ["authority_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "manual_pull",
+        "description": (
+            "Manually trigger a one-off Tier 2 pull (catch-up after dunning, prorated "
+            "mid-cycle billing). Most pulls fire automatically via the cycle reaper — "
+            "only use this for proration or catch-up flows. amount_minor must be <= "
+            "the authority's per_cycle_amount_minor."
+        ),
+        "inputSchema": {
+            "type":       "object",
+            "properties": {
+                "authority_id":    {"type": "string",  "description": "UUID of an active authority."},
+                "amount_minor":    {"type": "integer", "description": "Pull amount in atomic units. Must be <= per_cycle_amount_minor."},
+                "idempotency_key": {"type": "string",  "description": "Optional client-supplied key for retry safety (max 128 chars)."},
+            },
+            "required":             ["authority_id", "amount_minor"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -728,6 +1025,23 @@ def _dispatch(
         result = tool_fetch_agent_card(args)                       # type: ignore[arg-type]
     elif name == "send_a2a_message":
         result = tool_send_a2a_message(args)                       # type: ignore[arg-type]
+    # Tier 2 — Standing-Authority Recurring Payments
+    elif name == "create_recurring_authority":
+        result = tool_create_recurring_authority(client, args)     # type: ignore[arg-type]
+    elif name == "get_authority":
+        result = tool_get_authority(client, args)                  # type: ignore[arg-type]
+    elif name == "list_authorities":
+        result = tool_list_authorities(client, args)               # type: ignore[arg-type]
+    elif name == "confirm_authority":
+        result = tool_confirm_authority(client, args)              # type: ignore[arg-type]
+    elif name == "revoke_authority":
+        result = tool_revoke_authority(client, args)               # type: ignore[arg-type]
+    elif name == "pause_authority":
+        result = tool_pause_authority(client, args)                # type: ignore[arg-type]
+    elif name == "resume_authority":
+        result = tool_resume_authority(client, args)               # type: ignore[arg-type]
+    elif name == "manual_pull":
+        result = tool_manual_pull(client, args)                    # type: ignore[arg-type]
     else:
         raise ValueError(f"unknown tool: {name}")
 

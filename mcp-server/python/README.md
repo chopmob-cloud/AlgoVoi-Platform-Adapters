@@ -2,9 +2,11 @@
 
 # algovoi-mcp
 
-MCP server for [AlgoVoi](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters) — create crypto payment links, verify payments, and generate MPP / x402 challenges from any MCP client (Claude Desktop, Claude Code, Cursor, Windsurf).
+MCP server for [AlgoVoi](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters) — **21 tools** across one-shot payments, agent-protocol challenges (MPP / x402 / AP2 / A2A), and Tier 2 standing-authority subscriptions, from any MCP client (Claude Desktop, Claude Code, Cursor, Windsurf).
 
-Supports **all 16 AlgoVoi networks**: USDC on Algorand, VOI, Hedera, Stellar (mainnet + testnet) and native ALGO, VOI, HBAR, XLM (mainnet + testnet).
+**Tier 1** (one-shot): create payment links, verify payments, prepare extension payments, verify webhooks, list networks, plus MPP / x402 / AP2 / A2A challenge + verify tools — supports all 16 AlgoVoi networks (USDC on Algorand / VOI / Hedera / Stellar mainnet+testnet, plus native ALGO / VOI / HBAR / XLM).
+
+**Tier 2** (standing-authority recurring) *new in v1.3.0*: create / get / list / confirm / revoke / pause / resume / manual-pull authorities — supports all 14 chain ids (7 mainnets + 7 testnets, including Base / Tempo / Solana / Hedera / Stellar). See the [parent repo's `Recurr/` folder](https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters/tree/master/Recurr) for per-chain wallet-side integration code.
 
 ## Install
 

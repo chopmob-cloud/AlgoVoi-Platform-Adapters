@@ -138,6 +138,112 @@ class SendA2aMessageInput(BaseModel):
         return v
 
 
+# ── Tier 2 — Standing-Authority Recurring Payments ───────────────────────────
+
+# 14 chain ids matching native-* / TS MCP / -Hand SDK.
+RecurringNetworkLiteral = Literal[
+    "algorand_mainnet", "algorand_testnet",
+    "voi_mainnet",      "voi_testnet",
+    "base_mainnet",     "base_sepolia",
+    "tempo_mainnet",    "tempo_testnet",
+    "solana_mainnet",   "solana_devnet",
+    "hedera_mainnet",   "hedera_testnet",
+    "stellar_mainnet",  "stellar_testnet",
+]
+
+# 8 webhook event types in addition to Tier 1's payment.* events.
+RECURRING_EVENT_TYPES: tuple[str, ...] = (
+    "recurring.authority_created",
+    "recurring.authority_activated",
+    "recurring.authority_paused",
+    "recurring.authority_resumed",
+    "recurring.authority_revoked",
+    "recurring.authority_expired",
+    "subscription.charged",
+    "subscription.payment_failed",
+)
+
+
+class CreateRecurringAuthorityInput(BaseModel):
+    """Input for create_recurring_authority — opens a Tier 2 standing authority.
+
+    Stellar uses 7-decimal precision for USDC; every other chain uses 6.
+    Pass ``cap_amount_minor`` in chain-native atomic units.
+    """
+
+    model_config = _STRICT
+    subscription_id:        str  = Field(min_length=1, max_length=36)
+    chain:                  RecurringNetworkLiteral
+    customer_wallet_address: str = Field(min_length=1, max_length=200)
+    cap_amount_minor:       int  = Field(gt=0)
+    cap_period_seconds:     int  = Field(ge=86_400)
+    per_cycle_amount_minor: int  = Field(gt=0)
+    asset:                  Optional[str] = Field(default=None, min_length=1, max_length=16)
+    metadata:               Optional[dict] = None
+
+    @field_validator("per_cycle_amount_minor")
+    @classmethod
+    def _per_cycle_le_cap(cls, v: int, info) -> int:
+        cap = info.data.get("cap_amount_minor")
+        if cap is not None and v > cap:
+            raise ValueError(
+                '"per_cycle_amount_minor" cannot exceed "cap_amount_minor"',
+            )
+        return v
+
+
+class GetAuthorityInput(BaseModel):
+    model_config = _STRICT
+    authority_id: str = Field(min_length=1, max_length=36)
+
+
+class ListAuthoritiesInput(BaseModel):
+    model_config = _STRICT
+    subscription_id: Optional[str] = Field(default=None, min_length=1, max_length=36)
+    status:          Optional[str] = Field(default=None, min_length=1, max_length=32)
+    limit:           Optional[int] = Field(default=None, ge=1, le=200)
+    offset:          Optional[int] = Field(default=None, ge=0)
+
+    @field_validator("status")
+    @classmethod
+    def _status_alnum_underscore(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not all(c.isalnum() or c == "_" for c in v):
+            raise ValueError('"status" must be alphanumeric / underscore')
+        return v
+
+
+class ConfirmAuthorityInput(BaseModel):
+    model_config = _STRICT
+    authority_id:       str  = Field(min_length=1, max_length=36)
+    on_chain_address:   str  = Field(min_length=1, max_length=200)
+    first_cycle_due_at: Optional[str] = Field(default=None, min_length=1, max_length=64)
+
+
+class RevokeAuthorityInput(BaseModel):
+    model_config = _STRICT
+    authority_id: str = Field(min_length=1, max_length=36)
+
+
+class PauseAuthorityInput(BaseModel):
+    model_config = _STRICT
+    authority_id: str = Field(min_length=1, max_length=36)
+
+
+class ResumeAuthorityInput(BaseModel):
+    model_config = _STRICT
+    authority_id:      str  = Field(min_length=1, max_length=36)
+    next_cycle_due_at: Optional[str] = Field(default=None, min_length=1, max_length=64)
+
+
+class ManualPullInput(BaseModel):
+    model_config = _STRICT
+    authority_id:    str  = Field(min_length=1, max_length=36)
+    amount_minor:    int  = Field(gt=0)
+    idempotency_key: Optional[str] = Field(default=None, min_length=1, max_length=128)
+
+
 # Mapping from tool name → schema class — used by the dispatcher to pick
 # the right model at runtime.  Keep in sync with TOOL_SCHEMAS in server.py.
 SCHEMAS_BY_TOOL: dict[str, type[BaseModel]] = {
@@ -154,12 +260,21 @@ SCHEMAS_BY_TOOL: dict[str, type[BaseModel]] = {
     "verify_ap2_payment":        VerifyAp2PaymentInput,
     "fetch_agent_card":          FetchAgentCardInput,
     "send_a2a_message":          SendA2aMessageInput,
+    # Tier 2 — Standing-Authority Recurring Payments (added v1.3.0)
+    "create_recurring_authority": CreateRecurringAuthorityInput,
+    "get_authority":              GetAuthorityInput,
+    "list_authorities":           ListAuthoritiesInput,
+    "confirm_authority":          ConfirmAuthorityInput,
+    "revoke_authority":           RevokeAuthorityInput,
+    "pause_authority":            PauseAuthorityInput,
+    "resume_authority":           ResumeAuthorityInput,
+    "manual_pull":                ManualPullInput,
 }
 
 # Sanity check at import time — if anyone adds a new tool without the matching
 # schema, this surfaces immediately rather than at tool-call time.
 _EXPECTED = set(SCHEMAS_BY_TOOL.keys())
-assert len(_EXPECTED) == 13, f"expected 13 tool schemas, got {len(_EXPECTED)}"
+assert len(_EXPECTED) == 21, f"expected 21 tool schemas, got {len(_EXPECTED)}"
 # Cross-check each schema's network fields against the canonical NETWORKS tuple.
 for _n in (
     "algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet",

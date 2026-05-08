@@ -9,7 +9,7 @@ Ships as **two packages**:
 | [**TypeScript**](./typescript) | `npm i -g @algovoi/mcp-server` | `npx -y @algovoi/mcp-server` |
 | [**Python**](./python) | `pip install algovoi-mcp` | `uvx algovoi-mcp` or `algovoi-mcp` |
 
-**TypeScript** exposes **21 tools** (13 + 8 Tier 2 standing-authority recurring tools added in v1.3.0). **Python** currently exposes the same 13 tools as v1.2.1; Tier 2 parity is tracked for the next Python release. Pick TypeScript if you need Tier 2 (subscriptions / agent-bound spending authorities); pick Python if you need any of the existing 13 tools and prefer Python's MCP runtime.
+**Both packages now expose all 21 tools** (13 Tier 1 + 8 Tier 2 standing-authority recurring tools, both shipped at v1.3.0). Pick whichever runtime your MCP client / deployment stack prefers — same surface, same JSON Schema definitions, same Pydantic-strict / extra-forbid validation.
 
 ---
 
@@ -61,7 +61,7 @@ Ships as **two packages**:
 
 Supported networks: **Algorand**, **VOI**, **Hedera**, **Stellar** (USDC on all four + native ALGO/VOI/HBAR/XLM).
 
-### Tier 2 — Standing-authority recurring tools *(new in v1.3.0, TypeScript only)*
+### Tier 2 — Standing-authority recurring tools *(new in v1.3.0 — both TS and Python)*
 
 Tier 2 is **"customer signs ONCE, AlgoVoi auto-pulls per cycle"** — the
 subscription / agent-bound spending pattern. Each chain uses its native
