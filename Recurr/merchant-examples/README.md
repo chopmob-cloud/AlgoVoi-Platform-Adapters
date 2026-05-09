@@ -55,34 +55,37 @@ POST /v1/recurring/authorities/{id}/confirm
 
 ---
 
-## Why these aren't language-specific
+## Why the merchant layer is chain-agnostic
 
-The reason `python.py` is the only file here is that **Tier 2's
-merchant side has no chain-specific code**. `create_recurring_authority`
+Tier 2's merchant side has **no chain-specific code**. `create_recurring_authority`
 takes a `chain` field, the gateway returns the right
 `customer_signing_payload` for that chain, and your wallet UI handles
-chain-native signing using the matching per-chain folder.
-
-So a Go merchant adapter would be the same 8 methods translated to
-Go's idioms — no chain-specific switches at the Go layer. Same for
-PHP and Rust. We'll add `go.go` / `php.php` / `rust.rs` here as the
-underlying language adapters extend their Tier 2 surface.
+chain-native signing using the matching per-chain folder. The 8-method
+API surface is identical across every language adapter — only the
+type signatures and idioms differ.
 
 ---
 
-## Running `python.py`
+## Running any example
+
+Every example defaults to a smoke-check that lists supported chains and
+event types without making any network calls. Replace the `api_key` /
+`tenant_id` / `webhook_secret` placeholders with real values to exercise
+the full lifecycle.
 
 ```bash
-# From this directory:
+# Python
 python python.py
 
-# Or copy native-python/algovoi.py adjacent to python.py and run from anywhere
-cp ../../native-python/algovoi.py .
-python python.py
+# Go  (run from the native-go directory so the local package resolves)
+cd ../../native-go && go run ../Recurr/merchant-examples/go.go
+
+# PHP
+php php.php
+
+# Rust  (add algovoi + ureq to your Cargo.toml first — see file header)
+cargo run --example rust
+
+# TypeScript (Node 18+)
+node --experimental-strip-types typescript.ts
 ```
-
-The default run is a smoke check that lists supported chains + event
-types without making network calls. Replace the `api_key` /
-`tenant_id` / `webhook_secret` at the top of the file with real values,
-then call `example_create_authority(subscription_id, customer_wallet, chain)`
-to exercise a real lifecycle.

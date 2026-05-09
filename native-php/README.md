@@ -11,12 +11,13 @@ https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters
 
 | File | Description |
 |------|-------------|
-| `algovoi.php` | Client library — hosted checkout, extension payment, webhook HMAC verification |
+| `algovoi.php` | Client library — hosted checkout, extension payment, webhook HMAC verification, Tier 2 recurring |
 | `example.php` | Usage examples for hosted checkout, extension payment, and webhook handling |
+| `recurring_test.php` | 18 stdlib-only unit tests for Tier 2 (run with `php recurring_test.php`) |
 
 ---
 
-## Quick start
+## Quick start — Tier 1 (one-shot payment)
 
 ```php
 require_once __DIR__ . '/algovoi.php';
@@ -65,6 +66,53 @@ if ($av->verifyHostedReturn($_SESSION['algovoi_token'] ?? '')) {
 >   schemes other than `https`.
 > - `verifyExtensionPayment` length-caps both `token` and `tx_id`
 >   (200 chars each).
+
+---
+
+## Quick start — Tier 2 (recurring / standing authority)
+
+Tier 2 is "customer signs once, AlgoVoi auto-pulls per cycle". Requires an
+existing subscription UUID (create one via the dashboard or `POST /v1/subscriptions`).
+
+```php
+// 1. Create a standing authority for a monthly $10 subscription.
+$resp = $av->createRecurringAuthority([
+    'subscription_id'         => 'YOUR_SUBSCRIPTION_UUID',
+    'chain'                   => 'algorand_mainnet',  // or any of the 7 chains
+    'customer_wallet_address' => 'CUSTOMER_ALGO_ADDRESS',
+    'cap_amount_minor'        => 120_000_000,          // $120 cap (6 decimals)
+    'cap_period_seconds'      => 365 * 86400,          // 1-year window
+    'per_cycle_amount_minor'  => 10_000_000,           // $10/month per pull
+    'asset'                   => 'USDC',
+]);
+// $resp['customer_signing_payload'] — hand to the customer's wallet UI
+
+// 2. After on-chain landing, confirm (AlgoVoi's hosted widget does this for you):
+$auth = $av->confirmAuthority($resp['authority']['id'], [
+    'on_chain_address' => 'app:12345678',  // format varies by chain
+]);
+
+// 3. Lifecycle management:
+$auth = $av->getAuthority($authorityId);
+$auth = $av->pauseAuthority($authorityId);
+$auth = $av->resumeAuthority($authorityId);
+$auth = $av->revokeAuthority($authorityId);  // on-chain revocation
+
+// 4. Webhook classification:
+$payload = $av->verifyWebhook($rawBody, $_SERVER['HTTP_X_ALGOVOI_SIGNATURE_V1'] ?? '');
+if ($payload !== null && AlgoVoi::isRecurringEvent($payload)) {
+    $eventType = $payload['event_type'];
+    // "subscription.charged", "subscription.payment_failed",
+    // "recurring.authority_activated", etc.
+}
+```
+
+Stellar uses 7-decimal USDC precision (`1_200_000_000` = 120 USDC).
+All other chains use 6 decimals.
+
+See [`Recurr/merchant-examples/php.php`](../Recurr/merchant-examples/php.php)
+for a full runnable example and
+[`Recurr/README.md`](../Recurr/README.md) for the chain matrix.
 
 ---
 

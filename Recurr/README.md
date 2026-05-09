@@ -36,10 +36,48 @@ cap on-chain — over-pulling is impossible at the consensus layer.
 
 ---
 
+## Prerequisite — you need a Tier 1 subscription first
+
+Tier 2 **builds on top of** a Tier 1 subscription. Before calling
+`create_recurring_authority` you must have a subscription UUID.
+
+Create one via the AlgoVoi dashboard, **or** via the API:
+
+```python
+# Python — create a subscription first
+sub = av.post("/v1/subscriptions", {
+    "customer_id": "CUSTOMER_UUID",
+    "amount_minor": 10_000_000,   # $10 USDC
+    "currency": "USD",
+    "chain": "algorand_mainnet",
+    "receiver_address": "YOUR_ALGO_ADDRESS",
+    "cadence": "monthly",
+})
+subscription_id = sub["id"]   # pass this to create_recurring_authority
+```
+
+```typescript
+// TypeScript — same step
+const sub = await av["_post"]("/v1/subscriptions", {
+  customer_id: "CUSTOMER_UUID",
+  amount_minor: 10_000_000,
+  currency: "USD",
+  chain: "algorand_mainnet",
+  receiver_address: "YOUR_ALGO_ADDRESS",
+  cadence: "monthly",
+});
+const subscriptionId = sub.id;  // pass this to createRecurringAuthority
+```
+
+> **Dashboard path (recommended for most merchants):** Log in → Subscriptions → New.
+> The gateway returns the `id` you need.
+
+---
+
 ## Lifecycle
 
 ```
-1. Tenant creates a subscription              (POST /v1/subscriptions; out of scope here)
+1. Tenant creates a subscription              (POST /v1/subscriptions — see above)
                 ↓
 2. Tenant calls create_recurring_authority    (POST /v1/recurring/authorities)
                 ↓
@@ -137,12 +175,13 @@ across every chain. Use one of the language adapters:
 | Language | Folder | Tier 2 status |
 |---|---|---|
 | Python | [`../native-python/`](../native-python/) | ✅ v1.2.0 |
-| Go | [`../native-go/`](../native-go/) | (tracked — coming soon) |
-| PHP | [`../native-php/`](../native-php/) | (tracked — coming soon) |
-| Rust | [`../native-rust/`](../native-rust/) | (tracked — coming soon) |
+| TypeScript / JS | [`../native-typescript/`](../native-typescript/) | ✅ v1.2.0 |
+| Go | [`../native-go/`](../native-go/) | ✅ v1.2.0 |
+| PHP | [`../native-php/`](../native-php/) | ✅ v1.2.0 |
+| Rust | [`../native-rust/`](../native-rust/) | ✅ v1.2.0 |
 
-Or see [`merchant-examples/`](merchant-examples/) for a runnable Python
-sample.
+Or see [`merchant-examples/`](merchant-examples/) for runnable Python and
+TypeScript samples.
 
 ### "I'm a platform plugin author" (WooCommerce / Shopify / etc.)
 
