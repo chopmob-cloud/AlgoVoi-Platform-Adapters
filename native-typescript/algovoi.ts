@@ -176,7 +176,8 @@ export interface PullRequest {
   authority_id: string;
   /** Atomic units. Must be <= per_cycle_amount_minor. */
   amount_minor: number;
-  idempotency_key?: string;
+  /** Optional free-text note stored on the pull row (max 128 chars). */
+  note?: string;
 }
 
 // =====================================================================
@@ -629,13 +630,13 @@ export class AlgoVoi {
     if (!Number.isFinite(req.amount_minor) || !Number.isInteger(req.amount_minor) || req.amount_minor <= 0) {
       return null;
     }
-    if (req.idempotency_key && req.idempotency_key.length > 128) return null;
+    if (req.note && req.note.length > 128) return null;
 
     const body: Record<string, unknown> = {
       authority_id: req.authority_id,
       amount_minor: req.amount_minor,
     };
-    if (req.idempotency_key) body.idempotency_key = req.idempotency_key;
+    if (req.note) body.note = req.note;
     return this._post<Authority>("/v1/recurring/pulls", body);
   }
 

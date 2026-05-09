@@ -102,7 +102,12 @@ async function exampleCreateAuthority(
  *   EVM            : "0x<tx_hash>"
  *   Solana         : "<base58 tx signature>"
  *   Hedera         : "<account_id>@<seconds>.<nanos>"
- *   Stellar        : "<64-char hex tx hash>"
+ *   Stellar        : "<G-address of customer>" (56-char base32 pubkey)
+ *
+ * Note: for Stellar, the signed SorobanAuthorizationEntry XDR is stored
+ * internally by the gateway. If using the hosted auth page
+ * (recurr.algovoi.co.uk) the gateway confirms automatically — only call
+ * this when self-hosting the wallet UI.
  */
 async function exampleConfirmAuthority(authorityID: string, onChainHandle: string) {
   const confirmed = await av.confirmAuthority(authorityID, {
@@ -167,7 +172,7 @@ async function exampleManualPull(authorityID: string, amountMinor: number) {
   const r = await av.manualPull({
     authority_id: authorityID,
     amount_minor: amountMinor,
-    idempotency_key: `manual_${authorityID}_${amountMinor}`,
+    note: "manual catch-up pull",
   });
   if (!r) {
     console.log("[pull] failed (check per-cycle cap)");

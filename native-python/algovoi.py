@@ -836,7 +836,7 @@ class AlgoVoi:
         self,
         authority_id: str,
         amount_minor: int,
-        idempotency_key: Optional[str] = None,
+        note: Optional[str] = None,
     ) -> Optional[dict]:
         """
         Manually trigger a pull (e.g. catch-up after error escalation,
@@ -844,10 +844,11 @@ class AlgoVoi:
         the cycle reaper — tenants don't need to call this in normal use.
 
         Args:
-            authority_id:    UUID of an active authority.
-            amount_minor:    Pull amount in atomic units. Must be
-                             <= per_cycle_amount_minor of the authority.
-            idempotency_key: Optional client-supplied key for retry safety.
+            authority_id: UUID of an active authority.
+            amount_minor: Pull amount in atomic units. Must be
+                          <= per_cycle_amount_minor of the authority.
+            note:         Optional free-text note stored on the pull row
+                          (max 128 chars). Useful for audit trails.
 
         Returns the updated authority row (with cycles_pulled incremented
         on success). HTTP 202 — the chain submission is async.
@@ -860,10 +861,10 @@ class AlgoVoi:
             "authority_id": authority_id,
             "amount_minor": amount_minor,
         }
-        if idempotency_key is not None:
-            if not isinstance(idempotency_key, str) or len(idempotency_key) > 128:
+        if note is not None:
+            if not isinstance(note, str) or len(note) > 128:
                 return None
-            body["idempotency_key"] = idempotency_key
+            body["note"] = note
         return self._post("/v1/recurring/pulls", body)
 
     # ── Internal Helpers ─────────────────────────────────────────────────

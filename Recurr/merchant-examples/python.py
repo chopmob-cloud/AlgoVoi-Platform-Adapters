@@ -101,7 +101,12 @@ def example_confirm_authority(authority_id: str, on_chain_handle: str):
         EVM            : "0x<tx_hash>"
         Solana         : "<base58 tx signature>"
         Hedera         : "<account_id>@<seconds>.<nanos>" (Hedera tx id)
-        Stellar        : "<64-char hex tx hash>"
+        Stellar        : "<G-address of customer>" (56-char base32 pubkey)
+
+    Note: for Stellar, the signed SorobanAuthorizationEntry XDR is handled
+    internally by the AlgoVoi gateway and does not need to be passed here.
+    If using the hosted auth page (recurr.algovoi.co.uk) the gateway confirms
+    automatically — tenants only call this when self-hosting the wallet UI.
     """
     confirmed = av.confirm_authority(
         authority_id=authority_id,
@@ -172,7 +177,7 @@ def example_manual_pull(authority_id: str, amount_minor: int):
     result = av.manual_pull(
         authority_id=authority_id,
         amount_minor=amount_minor,
-        idempotency_key=f"manual_{authority_id}_{amount_minor}",
+        note=f"manual catch-up pull",
     )
     if result is None:
         print("[pull] failed (check per-cycle cap)")
