@@ -180,9 +180,13 @@ func (c *Client) CreateRecurringAuthority(req AuthorityCreateRequest) (*Authorit
 		return nil, fmt.Errorf("algovoi: per_cycle_amount_minor cannot exceed cap_amount_minor")
 	}
 
-	// Default asset
+	// Default asset and allowlist — Tier 2 standing authorities settle in
+	// USDC across all 7 chains (VOI aUSDC is Tier 1 only).
 	if req.Asset == "" {
 		req.Asset = "USDC"
+	}
+	if req.Asset != "USDC" {
+		return nil, fmt.Errorf("algovoi: unsupported asset %q for Tier 2 (use \"USDC\")", req.Asset)
 	}
 
 	body, err := c.recurringPost("/v1/recurring/authorities", req)

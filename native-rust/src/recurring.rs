@@ -364,6 +364,9 @@ fn parse_create_response(json: &str) -> AuthorityCreateResponse {
 // ---------------------------------------------------------------------------
 
 fn encode_create_request(req: &AuthorityCreateRequest) -> String {
+    // Tier 2 standing authorities settle in USDC across all 7 chains.
+    // Empty asset defaults to "USDC"; any other value is rejected by
+    // create_recurring_authority before this function is called.
     let asset_upper = if req.asset.is_empty() {
         "USDC".to_string()
     } else {
@@ -534,6 +537,13 @@ impl Client {
         if req.per_cycle_amount_minor > req.cap_amount_minor {
             return Err(Error::InvalidInput(
                 "per_cycle_amount_minor cannot exceed cap_amount_minor".into(),
+            ));
+        }
+        // Tier 2 standing authorities settle in USDC across all 7 chains.
+        // Empty defaults to "USDC"; any other value is an error.
+        if !req.asset.is_empty() && req.asset.to_uppercase() != "USDC" {
+            return Err(Error::InvalidInput(
+                "unsupported asset for Tier 2: use \"USDC\" or leave empty".into(),
             ));
         }
         if !is_https(self.api_base()) {

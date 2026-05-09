@@ -484,8 +484,9 @@ class AlgoVoi
             'per_cycle_amount_minor'  => $req['per_cycle_amount_minor'],
             'asset'                   => strtoupper($req['asset'] ?? 'USDC'),
         ];
-        // Validate asset against known Tier 2 tickers.
-        $allowedAssets = ['USDC', 'AUSDC'];
+        // Tier 2 standing authorities always settle in USDC across all 7 chains.
+        // VOI uses aUSDC for Tier 1 one-shot payments, but Tier 2 is USDC-only.
+        $allowedAssets = ['USDC'];
         if (!in_array($body['asset'], $allowedAssets, true)) {
             return null;
         }
