@@ -520,6 +520,9 @@ impl Client {
         if req.customer_wallet_address.is_empty() {
             return Err(Error::InvalidInput("customer_wallet_address required".into()));
         }
+        if req.customer_wallet_address.len() > 128 {
+            return Err(Error::InvalidInput("customer_wallet_address too long (max 128 chars)".into()));
+        }
         if req.cap_amount_minor <= 0 || req.cap_period_seconds <= 0 || req.per_cycle_amount_minor <= 0 {
             return Err(Error::InvalidInput("amounts and period must be positive".into()));
         }
@@ -980,6 +983,33 @@ mod tests {
 
         config.api_base = "https://example.com".into();
         let _ = Client::new(config);
+    }
+
+    #[test]
+    fn create_rejects_oversize_wallet_address() {
+        let c = make_client();
+        let http = MockHttp::new(200, "{}");
+        let mut req = make_request();
+        req.customer_wallet_address = "A".repeat(129);
+        let result = c.create_recurring_authority(&http, &req);
+        assert!(result.is_err());
+        assert!(http.captured.borrow().is_empty(), "no HTTP call should be made");
+    }
+
+    #[test]
+    fn create_accepts_wallet_address_at_boundary() {
+        // 128 chars is the exact limit — should not be rejected by the adapter
+        // (gateway validates the actual address format).
+        let c = make_client();
+        let http = MockHttp::new(201, CREATE_RESPONSE);
+        let mut req = make_request();
+        req.customer_wallet_address = "A".repeat(128);
+        // Should not return an InvalidInput error (may fail on mock response parse, not on validation)
+        let result = c.create_recurring_authority(&http, &req);
+        // The mock returns valid JSON, so we expect success here
+        assert!(result.is_ok() || matches!(result, Err(Error::InvalidResponse(_))));
+        // At minimum, HTTP was called (passed client-side validation)
+        assert!(!http.captured.borrow().is_empty());
     }
 
     #[test]

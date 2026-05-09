@@ -167,6 +167,9 @@ func (c *Client) CreateRecurringAuthority(req AuthorityCreateRequest) (*Authorit
 	if req.CustomerWalletAddress == "" {
 		return nil, fmt.Errorf("algovoi: customer_wallet_address required")
 	}
+	if len(req.CustomerWalletAddress) > 128 {
+		return nil, fmt.Errorf("algovoi: customer_wallet_address too long (max 128 chars)")
+	}
 	if req.CapAmountMinor <= 0 || req.PerCycleAmountMinor <= 0 || req.CapPeriodSeconds <= 0 {
 		return nil, fmt.Errorf("algovoi: amounts and period must be positive")
 	}

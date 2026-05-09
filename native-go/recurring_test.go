@@ -139,6 +139,13 @@ func TestCreateRecurringAuthorityInputValidation(t *testing.T) {
 			CapAmountMinor:        10, CapPeriodSeconds: 86400 * 30,
 			PerCycleAmountMinor: 100,
 		}},
+		{"wallet address too long", AuthorityCreateRequest{
+			SubscriptionID:        "sub",
+			Chain:                 "algorand_mainnet",
+			CustomerWalletAddress: strings.Repeat("A", 129),
+			CapAmountMinor:        100, CapPeriodSeconds: 86400,
+			PerCycleAmountMinor: 10,
+		}},
 	}
 	for _, c2 := range cases {
 		flagged = false

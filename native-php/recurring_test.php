@@ -200,6 +200,56 @@ it('createRecurringAuthority rejects per_cycle > cap', function () {
     assertEq(false, $called);
 });
 
+it('createRecurringAuthority rejects wallet address > 128 chars', function () {
+    $av = makeClient();
+    $called = false;
+    $av->httpHandler = function () use (&$called) { $called = true; return null; };
+    $r = $av->createRecurringAuthority([
+        'subscription_id'         => 'sub',
+        'chain'                   => 'algorand_mainnet',
+        'customer_wallet_address' => str_repeat('A', 129),
+        'cap_amount_minor'        => 100,
+        'cap_period_seconds'      => 86400,
+        'per_cycle_amount_minor'  => 10,
+    ]);
+    assertEq(null, $r);
+    assertEq(false, $called, 'validation must short-circuit before HTTP');
+});
+
+it('createRecurringAuthority rejects non-string metadata values', function () {
+    $av = makeClient();
+    $called = false;
+    $av->httpHandler = function () use (&$called) { $called = true; return null; };
+    $r = $av->createRecurringAuthority([
+        'subscription_id'         => 'sub',
+        'chain'                   => 'algorand_mainnet',
+        'customer_wallet_address' => 'X',
+        'cap_amount_minor'        => 100,
+        'cap_period_seconds'      => 86400,
+        'per_cycle_amount_minor'  => 10,
+        'metadata'                => ['plan' => ['nested' => 'object']],  // nested array — not allowed
+    ]);
+    assertEq(null, $r);
+    assertEq(false, $called, 'validation must short-circuit before HTTP');
+});
+
+it('createRecurringAuthority rejects invalid asset', function () {
+    $av = makeClient();
+    $called = false;
+    $av->httpHandler = function () use (&$called) { $called = true; return null; };
+    $r = $av->createRecurringAuthority([
+        'subscription_id'         => 'sub',
+        'chain'                   => 'algorand_mainnet',
+        'customer_wallet_address' => 'X',
+        'cap_amount_minor'        => 100,
+        'cap_period_seconds'      => 86400,
+        'per_cycle_amount_minor'  => 10,
+        'asset'                   => 'ETH',  // not in allowlist
+    ]);
+    assertEq(null, $r);
+    assertEq(false, $called, 'validation must short-circuit before HTTP');
+});
+
 it('getAuthority rejects empty / oversize id', function () {
     $av = makeClient();
     assertEq(null, $av->getAuthority(''));

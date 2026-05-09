@@ -460,7 +460,7 @@ class AlgoVoi
             return null;
         }
         $wallet = $req['customer_wallet_address'] ?? '';
-        if (!is_string($wallet) || $wallet === '') {
+        if (!is_string($wallet) || $wallet === '' || strlen($wallet) > 128) {
             return null;
         }
         foreach (['cap_amount_minor', 'cap_period_seconds', 'per_cycle_amount_minor'] as $k) {
@@ -484,9 +484,20 @@ class AlgoVoi
             'per_cycle_amount_minor'  => $req['per_cycle_amount_minor'],
             'asset'                   => strtoupper($req['asset'] ?? 'USDC'),
         ];
+        // Validate asset against known Tier 2 tickers.
+        $allowedAssets = ['USDC', 'AUSDC'];
+        if (!in_array($body['asset'], $allowedAssets, true)) {
+            return null;
+        }
         if (isset($req['metadata'])) {
             if (!is_array($req['metadata'])) {
                 return null;
+            }
+            // Enforce string keys and string values — matches Rust's BTreeMap<String,String>.
+            foreach ($req['metadata'] as $k => $v) {
+                if (!is_string($k) || !is_string($v)) {
+                    return null;
+                }
             }
             $body['metadata'] = $req['metadata'];
         }
@@ -869,6 +880,10 @@ HTML;
             CURLOPT_TIMEOUT        => 30,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
+            // Pre-read size guard: abort transfer if Content-Length header
+            // exceeds the cap before buffering begins. The post-read check
+            // at line ~889 remains as defence-in-depth for chunked responses.
+            CURLOPT_MAXFILESIZE    => self::MAX_RECURRING_BODY_BYTES,
             CURLOPT_HTTPHEADER     => [
                 'Authorization: Bearer ' . $this->apiKey,
                 'X-Tenant-Id: ' . $this->tenantId,
