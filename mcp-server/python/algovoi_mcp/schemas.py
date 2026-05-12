@@ -20,10 +20,14 @@ _STRICT = ConfigDict(strict=True, extra="forbid")
 NetworkLiteral  = Literal[
     # Mainnet
     "algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet",
+    "base_mainnet", "solana_mainnet", "tempo_mainnet",
     "algorand_mainnet_algo", "voi_mainnet_voi", "hedera_mainnet_hbar", "stellar_mainnet_xlm",
+    "base_mainnet_eth", "solana_mainnet_sol",
     # Testnet
     "algorand_testnet", "voi_testnet", "hedera_testnet", "stellar_testnet",
+    "base_sepolia", "tempo_testnet", "solana_devnet",
     "algorand_testnet_algo", "voi_testnet_voi", "hedera_testnet_hbar", "stellar_testnet_xlm",
+    "solana_devnet_sol",
 ]
 ExtNetworkLiteral = Literal[
     "algorand_mainnet", "voi_mainnet", "algorand_mainnet_algo", "voi_mainnet_voi",
@@ -278,8 +282,12 @@ assert len(_EXPECTED) == 21, f"expected 21 tool schemas, got {len(_EXPECTED)}"
 # Cross-check each schema's network fields against the canonical NETWORKS tuple.
 for _n in (
     "algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet",
+    "base_mainnet", "solana_mainnet", "tempo_mainnet",
     "algorand_mainnet_algo", "voi_mainnet_voi", "hedera_mainnet_hbar", "stellar_mainnet_xlm",
+    "base_mainnet_eth", "solana_mainnet_sol",
     "algorand_testnet", "voi_testnet", "hedera_testnet", "stellar_testnet",
+    "base_sepolia", "tempo_testnet", "solana_devnet",
     "algorand_testnet_algo", "voi_testnet_voi", "hedera_testnet_hbar", "stellar_testnet_xlm",
+    "solana_devnet_sol",
 ):
     assert _n in NETWORKS, f"network {_n!r} not in networks.NETWORKS"
