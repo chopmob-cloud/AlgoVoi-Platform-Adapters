@@ -248,6 +248,22 @@ class ManualPullInput(BaseModel):
     idempotency_key: Optional[str] = Field(default=None, min_length=1, max_length=128)
 
 
+class DiscoverResourcesInput(BaseModel):
+    model_config = _STRICT
+
+
+class ScreenRecipientInput(BaseModel):
+    model_config = _STRICT
+    recipient_address: str           = Field(min_length=4, max_length=128)
+    network:           NetworkLiteral
+    amount_microunits: Optional[int] = Field(default=None, ge=0)
+    asset:             Optional[str] = Field(default=None, max_length=128)
+
+
+class GetComplianceAttestationInput(BaseModel):
+    model_config = _STRICT
+
+
 # Mapping from tool name → schema class — used by the dispatcher to pick
 # the right model at runtime.  Keep in sync with TOOL_SCHEMAS in server.py.
 SCHEMAS_BY_TOOL: dict[str, type[BaseModel]] = {
@@ -273,12 +289,16 @@ SCHEMAS_BY_TOOL: dict[str, type[BaseModel]] = {
     "pause_authority":            PauseAuthorityInput,
     "resume_authority":           ResumeAuthorityInput,
     "manual_pull":                ManualPullInput,
+    # Discovery & Compliance (public endpoints, no auth required)
+    "discover_resources":         DiscoverResourcesInput,
+    "screen_recipient":           ScreenRecipientInput,
+    "get_compliance_attestation": GetComplianceAttestationInput,
 }
 
 # Sanity check at import time — if anyone adds a new tool without the matching
 # schema, this surfaces immediately rather than at tool-call time.
 _EXPECTED = set(SCHEMAS_BY_TOOL.keys())
-assert len(_EXPECTED) == 21, f"expected 21 tool schemas, got {len(_EXPECTED)}"
+assert len(_EXPECTED) == 24, f"expected 24 tool schemas, got {len(_EXPECTED)}"
 # Cross-check each schema's network fields against the canonical NETWORKS tuple.
 for _n in (
     "algorand_mainnet", "voi_mainnet", "hedera_mainnet", "stellar_mainnet",
