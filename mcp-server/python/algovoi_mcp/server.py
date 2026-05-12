@@ -55,7 +55,10 @@ from .schemas import (
     PrepareExtensionPaymentInput,
     ResumeAuthorityInput,
     RevokeAuthorityInput,
+    DiscoverResourcesInput,
+    GetComplianceAttestationInput,
     SCHEMAS_BY_TOOL,
+    ScreenRecipientInput,
     SendA2aMessageInput,
     VerifyAp2PaymentInput,
     VerifyMppReceiptInput,
@@ -514,6 +517,60 @@ def tool_manual_pull(
     )
 
 
+def tool_discover_resources(client: AlgoVoiClient, _args: DiscoverResourcesInput) -> dict:
+    """Fetch the public AlgoVoi Bazaar catalog — all x402/MPP payable resources."""
+    url = f"{client.api_base}/discovery/resources"
+    req = Request(url, headers={"Accept": "application/json"}, method="GET")
+    ctx = ssl.create_default_context()
+    try:
+        with urlopen(req, timeout=30, context=ctx) as resp:
+            return json.loads(resp.read())
+    except (HTTPError, URLError) as exc:
+        return {"error": "discovery_unavailable", "detail": str(exc)}
+
+
+def tool_screen_recipient(client: AlgoVoiClient, args: ScreenRecipientInput) -> dict:
+    """Pre-payment SAMLA s.20 / OFSI / OFAC sanctions + KYB screen."""
+    payload: dict = {
+        "recipient_address": args.recipient_address,
+        "network":           args.network,
+    }
+    if args.amount_microunits is not None:
+        payload["amount_microunits"] = args.amount_microunits
+    if args.asset is not None:
+        payload["asset"] = args.asset
+    body = json.dumps(payload).encode()
+    url = f"{client.api_base}/compliance/screen"
+    req = Request(
+        url, data=body,
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        method="POST",
+    )
+    ctx = ssl.create_default_context()
+    try:
+        with urlopen(req, timeout=30, context=ctx) as resp:
+            return json.loads(resp.read())
+    except HTTPError as exc:
+        body_err = exc.read().decode("utf-8", errors="replace")[:200]
+        return {"error": "screen_failed", "status": exc.code, "detail": body_err}
+    except URLError as exc:
+        return {"error": "screen_unavailable", "detail": str(exc.reason)}
+
+
+def tool_get_compliance_attestation(
+    client: AlgoVoiClient, _args: GetComplianceAttestationInput
+) -> dict:
+    """Fetch the operator's public compliance posture (frameworks, sanctions sources, KYB, audit chain)."""
+    url = f"{client.api_base}/compliance/attestation"
+    req = Request(url, headers={"Accept": "application/json"}, method="GET")
+    ctx = ssl.create_default_context()
+    try:
+        with urlopen(req, timeout=30, context=ctx) as resp:
+            return json.loads(resp.read())
+    except (HTTPError, URLError) as exc:
+        return {"error": "attestation_unavailable", "detail": str(exc)}
+
+
 # ── Tool schemas (MCP wire format — JSON Schema) ──────────────────────────────
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
@@ -964,6 +1021,70 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "additionalProperties": False,
         },
     },
+    # ── Discovery & Compliance ────────────────────────────────────────────────
+    {
+        "name": "discover_resources",
+        "description": (
+            "Fetch the public AlgoVoi Bazaar catalog — all x402 and MPP payable resources "
+            "listed by active tenants, including the agent-trust-bench endpoints. Each entry "
+            "includes resource_id, price, accepted networks, and payment protocol details. "
+            "Mirrors `npx agentcash try https://api.algovoi.co.uk` — no API key required."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "screen_recipient",
+        "description": (
+            "Pre-payment compliance screen: checks a recipient wallet address against "
+            "OFSI / OFAC SDN / EU Consolidated sanctions lists plus AlgoVoi KYB status. "
+            "Returns verdict ('allow' | 'block' | 'flag'), sanctions_clear, risk_tier, and "
+            "reasons. Operates under SAMLA 2018 s.20 — reasons are intentionally generic; "
+            "specific list matches are never disclosed. No API key required; rate-limited "
+            "60/min. Call this before submitting any payment to an unknown counterparty."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "recipient_address": {
+                    "type": "string",
+                    "description": "On-chain wallet address of the payment recipient (4–128 chars).",
+                },
+                "network": {
+                    "type": "string",
+                    "description": "Network key (e.g. 'algorand_mainnet', 'base_mainnet', 'solana_mainnet').",
+                },
+                "amount_microunits": {
+                    "type": "integer",
+                    "description": "Optional: payment amount in atomic units — used for risk-tier calculation.",
+                },
+                "asset": {
+                    "type": "string",
+                    "description": "Optional: asset identifier (e.g. '31566704' for Algorand USDC).",
+                },
+            },
+            "required":             ["recipient_address", "network"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "get_compliance_attestation",
+        "description": (
+            "Fetch the operator's public compliance posture: active regulatory frameworks "
+            "(UK MLRs 2017, SAMLA 2018 s.20, UK GDPR), live sanctions sources (OFSI, OFAC, "
+            "EU), KYB gate status, audit chain heads (SHA-256 hash-chained ledger), and "
+            "off-VM Object Lock shipment status. No API key required. Use to verify the "
+            "platform's compliance state before processing high-value or regulated payments."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -1041,7 +1162,13 @@ def _dispatch(
     elif name == "resume_authority":
         result = tool_resume_authority(client, args)               # type: ignore[arg-type]
     elif name == "manual_pull":
-        result = tool_manual_pull(client, args)                    # type: ignore[arg-type]
+        result = tool_manual_pull(client, args)                            # type: ignore[arg-type]
+    elif name == "discover_resources":
+        result = tool_discover_resources(client, args)                     # type: ignore[arg-type]
+    elif name == "screen_recipient":
+        result = tool_screen_recipient(client, args)                       # type: ignore[arg-type]
+    elif name == "get_compliance_attestation":
+        result = tool_get_compliance_attestation(client, args)             # type: ignore[arg-type]
     else:
         raise ValueError(f"unknown tool: {name}")
 
@@ -1133,7 +1260,7 @@ async def run_stdio() -> None:
     """Read env vars, build server, and run stdio transport."""
     api_key        = _require_env("ALGOVOI_API_KEY")
     tenant_id      = _require_env("ALGOVOI_TENANT_ID")
-    api_base       = os.environ.get("ALGOVOI_API_BASE", "https://api1.ilovechicken.co.uk")
+    api_base       = os.environ.get("ALGOVOI_API_BASE", "https://api.algovoi.co.uk")
     webhook_secret = os.environ.get("ALGOVOI_WEBHOOK_SECRET")
     enabled_tools  = _parse_enabled_tools(os.environ.get("MCP_ENABLED_TOOLS"))
 
@@ -1145,6 +1272,9 @@ async def run_stdio() -> None:
         ("voi_mainnet",      "ALGOVOI_PAYOUT_VOI"),
         ("hedera_mainnet",   "ALGOVOI_PAYOUT_HEDERA"),
         ("stellar_mainnet",  "ALGOVOI_PAYOUT_STELLAR"),
+        ("base_mainnet",     "ALGOVOI_PAYOUT_BASE"),
+        ("solana_mainnet",   "ALGOVOI_PAYOUT_SOLANA"),
+        ("tempo_mainnet",    "ALGOVOI_PAYOUT_TEMPO"),
     ]
     payout_addresses: dict[str, str] = {}
     for key, env_var in chain_env:
@@ -1155,7 +1285,8 @@ async def run_stdio() -> None:
         sys.stderr.write(
             "\n[algovoi-mcp] no payout address configured.\n"
             "Set ALGOVOI_PAYOUT_ALGORAND, ALGOVOI_PAYOUT_VOI, ALGOVOI_PAYOUT_HEDERA,\n"
-            "ALGOVOI_PAYOUT_STELLAR (or ALGOVOI_PAYOUT_ADDRESS as a universal fallback).\n\n"
+            "ALGOVOI_PAYOUT_STELLAR, ALGOVOI_PAYOUT_BASE, ALGOVOI_PAYOUT_SOLANA,\n"
+            "ALGOVOI_PAYOUT_TEMPO (or ALGOVOI_PAYOUT_ADDRESS as a universal fallback).\n\n"
         )
         raise SystemExit(2)
 
