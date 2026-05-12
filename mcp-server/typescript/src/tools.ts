@@ -39,6 +39,9 @@ import type {
   PrepareExtensionPaymentInput,
   ResumeAuthorityInput,
   RevokeAuthorityInput,
+  DiscoverResourcesInput,
+  GetComplianceAttestationInput,
+  ScreenRecipientInput,
   SendA2aMessageInput,
   VerifyAp2PaymentInput,
   VerifyMppReceiptInput,
@@ -591,6 +594,54 @@ export async function manualPull(
   });
 }
 
+export async function discoverResources(
+  client: AlgoVoiClient,
+  _args: DiscoverResourcesInput,
+): Promise<unknown> {
+  const res = await fetch(`${client.apiBase}/discovery/resources`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    return { error: "discovery_unavailable", status: res.status };
+  }
+  return res.json();
+}
+
+export async function screenRecipient(
+  client: AlgoVoiClient,
+  args: ScreenRecipientInput,
+): Promise<unknown> {
+  const body: Record<string, unknown> = {
+    recipient_address: args.recipient_address,
+    network:           args.network,
+  };
+  if (args.amount_microunits !== undefined) body.amount_microunits = args.amount_microunits;
+  if (args.asset !== undefined) body.asset = args.asset;
+  const res = await fetch(`${client.apiBase}/compliance/screen`, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body:    JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    return { error: "screen_failed", status: res.status, detail: detail.slice(0, 200) };
+  }
+  return res.json();
+}
+
+export async function getComplianceAttestation(
+  client: AlgoVoiClient,
+  _args: GetComplianceAttestationInput,
+): Promise<unknown> {
+  const res = await fetch(`${client.apiBase}/compliance/attestation`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    return { error: "attestation_unavailable", status: res.status };
+  }
+  return res.json();
+}
+
 // ── Tool schemas (MCP wire — JSON Schema) ─────────────────────────────────────
 
 export const TOOL_SCHEMAS = [
@@ -1039,6 +1090,67 @@ export const TOOL_SCHEMAS = [
         idempotency_key: { type: "string",  description: "Optional client-supplied key for retry safety (max 128 chars)." },
       },
       required:             ["authority_id", "amount_minor"],
+      additionalProperties: false,
+    },
+  },
+  // ── Discovery & Compliance ────────────────────────────────────────────────
+  {
+    name: "discover_resources",
+    description:
+      "Fetch the public AlgoVoi Bazaar catalog — all x402 and MPP payable resources " +
+      "listed by active tenants, including the agent-trust-bench endpoints. Each entry " +
+      "includes resource_id, price, accepted networks, and payment protocol details. " +
+      "Mirrors `npx agentcash try https://api.algovoi.co.uk` — no API key required.",
+    inputSchema: {
+      type:                 "object",
+      properties:           {},
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "screen_recipient",
+    description:
+      "Pre-payment compliance screen: checks a recipient wallet address against " +
+      "OFSI / OFAC SDN / EU Consolidated sanctions lists plus AlgoVoi KYB status. " +
+      "Returns verdict ('allow' | 'block' | 'flag'), sanctions_clear, risk_tier, and " +
+      "reasons. Operates under SAMLA 2018 s.20 — reasons are intentionally generic; " +
+      "specific list matches are never disclosed. No API key required; rate-limited " +
+      "60/min. Call this before submitting any payment to an unknown counterparty.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        recipient_address: {
+          type:        "string",
+          description: "On-chain wallet address of the payment recipient (4–128 chars).",
+        },
+        network: {
+          type:        "string",
+          description: "Network key (e.g. 'algorand_mainnet', 'base_mainnet', 'solana_mainnet').",
+        },
+        amount_microunits: {
+          type:        "integer",
+          description: "Optional: payment amount in atomic units — used for risk-tier calculation.",
+        },
+        asset: {
+          type:        "string",
+          description: "Optional: asset identifier (e.g. '31566704' for Algorand USDC).",
+        },
+      },
+      required:             ["recipient_address", "network"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_compliance_attestation",
+    description:
+      "Fetch the operator's public compliance posture: active regulatory frameworks " +
+      "(UK MLRs 2017, SAMLA 2018 s.20, UK GDPR), live sanctions sources (OFSI, OFAC, " +
+      "EU), KYB gate status, audit chain heads (SHA-256 hash-chained ledger), and " +
+      "off-VM Object Lock shipment status. No API key required. Use to verify the " +
+      "platform's compliance state before processing high-value or regulated payments.",
+    inputSchema: {
+      type:                 "object",
+      properties:           {},
       additionalProperties: false,
     },
   },
