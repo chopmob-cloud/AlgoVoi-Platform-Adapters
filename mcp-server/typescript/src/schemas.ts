@@ -571,6 +571,47 @@ export function parseManualPull(raw: unknown): ManualPullInput {
   return out;
 }
 
+export interface DiscoverResourcesInput {
+  // no parameters — public endpoint
+}
+
+export interface ScreenRecipientInput {
+  recipient_address: string;
+  network:           string;
+  amount_microunits?: number;
+  asset?:            string;
+}
+
+export interface GetComplianceAttestationInput {
+  // no parameters — public endpoint
+}
+
+export function parseDiscoverResources(raw: unknown): DiscoverResourcesInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, []);
+  return {};
+}
+
+export function parseScreenRecipient(raw: unknown): ScreenRecipientInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, ["recipient_address", "network", "amount_microunits", "asset"]);
+  const out: ScreenRecipientInput = {
+    recipient_address: requireString(obj, "recipient_address", { min: 4, max: 128 })!,
+    network:           requireString(obj, "network",           { min: 4, max: 64  })!,
+  };
+  const amt = requireInt(obj, "amount_microunits", { ge: 0, optional: true });
+  if (amt !== undefined) out.amount_microunits = amt;
+  const asset = requireString(obj, "asset", { min: 1, max: 128, optional: true });
+  if (asset) out.asset = asset;
+  return out;
+}
+
+export function parseGetComplianceAttestation(raw: unknown): GetComplianceAttestationInput {
+  const obj = expectObject(raw);
+  assertKeys(obj, []);
+  return {};
+}
+
 export const PARSERS = {
   create_payment_link:       parseCreatePaymentLink,
   verify_payment:            parseVerifyPayment,
@@ -594,4 +635,8 @@ export const PARSERS = {
   pause_authority:            parsePauseAuthority,
   resume_authority:           parseResumeAuthority,
   manual_pull:                parseManualPull,
+  // Discovery & Compliance
+  discover_resources:         parseDiscoverResources,
+  screen_recipient:           parseScreenRecipient,
+  get_compliance_attestation: parseGetComplianceAttestation,
 } as const;
