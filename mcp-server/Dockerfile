@@ -22,7 +22,7 @@ FROM node:22-alpine
 
 # Install the published npm package globally. We pin a specific version so
 # Glama's build output is reproducible and doesn't silently update on rebuild.
-RUN npm install -g @algovoi/mcp-server@1.2.1
+RUN npm install -g @algovoi/mcp-server@1.4.0
 
 # Run as an unprivileged user.
 RUN addgroup -S mcp && adduser -S mcp -G mcp
