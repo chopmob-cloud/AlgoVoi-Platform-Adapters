@@ -1,0 +1,62 @@
+<div class="payment-method" data-bind="css: {'_active': (getCode() == isChecked())}">
+    <div class="payment-method-title field choice">
+        <input type="radio"
+               name="payment[method]"
+               class="radio"
+               data-bind="attr: {'id': getCode()}, value: getCode(), checked: isChecked, click: selectPaymentMethod, visible: isRadioButtonVisible()" />
+        <label data-bind="attr: {'for': getCode()}" class="label">
+            <span data-bind="text: getTitle()"></span>
+        </label>
+    </div>
+
+    <div class="payment-method-content" data-bind="visible: isChecked() == getCode()">
+        <div class="payment-method-billing-address">
+            <!-- ko foreach: $parent.getRegion('messages') -->
+            <!-- ko template: getTemplate() --><!-- /ko -->
+            <!-- /ko -->
+        </div>
+
+        <!-- Chain selector -->
+        <div class="algovoi-chain-selector" style="margin: 1rem 0;">
+            <p style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #666; margin-bottom: 8px;">
+                Select network
+            </p>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <!-- ko foreach: getChains() -->
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px;">
+                    <input type="radio"
+                           name="algovoi_network"
+                           data-bind="value: value,
+                                      checked: $parent.selectedNetwork,
+                                      click: $parent.selectNetwork.bind($parent, $data)"
+                           style="accent-color: #3b82f6;" />
+                    <span data-bind="text: label"></span>
+                </label>
+                <!-- /ko -->
+            </div>
+        </div>
+
+        <p style="font-size: 13px; color: #637381; margin: 0.5rem 0 1rem;">
+            You will be redirected to a secure payment page to complete your order with USDC.
+        </p>
+
+        <div class="checkout-agreements-block">
+            <!-- ko foreach: $parent.getRegion('before-place-order') -->
+            <!-- ko template: getTemplate() --><!-- /ko -->
+            <!-- /ko -->
+        </div>
+
+        <div class="actions-toolbar">
+            <div class="primary">
+                <button class="action primary checkout"
+                        type="submit"
+                        data-bind="click: placeOrder,
+                                   attr: {title: $t('Place Order')},
+                                   enable: (getCode() == isChecked())"
+                        disabled>
+                    <span data-bind="i18n: 'Place Order'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

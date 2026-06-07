@@ -1,0 +1,51 @@
+{
+  "name": "@algovoi/mcp-server",
+  "version": "1.4.0",
+  "mcpName": "io.github.chopmob-cloud/algovoi-mcp-server",
+  "description": "MCP server for AlgoVoi — create crypto payment links, verify payments, generate MPP / x402 / AP2 / A2A challenges, and manage Tier 2 standing-authority subscriptions on 7 chains, from any MCP client (Claude Desktop, Claude Code, Cursor, Windsurf). 21 tools across one-shot payments, agent-protocol challenges, A2A messaging, and recurring billing (Algorand, VOI, Base, Tempo, Solana, Hedera, Stellar).",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "algovoi-mcp-server": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "algovoi",
+    "payments",
+    "crypto",
+    "usdc",
+    "algorand",
+    "voi",
+    "hedera",
+    "stellar",
+    "claude",
+    "cursor"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

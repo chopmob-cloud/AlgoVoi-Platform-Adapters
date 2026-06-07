@@ -1,0 +1,28 @@
+{
+  "name": "@algovoi/activepieces-piece",
+  "version": "1.0.0",
+  "description": "Activepieces community piece for AlgoVoi — accept crypto payments on Algorand, VOI, Hedera & Stellar",
+  "keywords": ["activepieces-piece", "crypto", "payments", "algorand", "hedera", "stellar", "usdc"],
+  "license": "MIT",
+  "homepage": "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters",
+  "author": { "name": "AlgoVoi", "email": "hello@algovoi.com" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chopmob-cloud/AlgoVoi-Platform-Adapters.git",
+    "directory": "no-code/activepieces/algovoi-piece"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@activepieces/pieces-framework": ">=0.20.0"
+  },
+  "devDependencies": {
+    "@activepieces/pieces-framework": "^0.20.0",
+    "typescript": "^5.4.0"
+  }
+}

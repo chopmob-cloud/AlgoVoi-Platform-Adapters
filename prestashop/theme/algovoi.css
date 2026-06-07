@@ -1,0 +1,672 @@
+/* AlgoVoi dark theme for PrestaShop — matches WooCommerce/OpenCart dark theme */
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+html, body {
+  background: #0f1117 !important;
+  color: #e2e8f0 !important;
+}
+
+body, p, span, div, li, td, th, a, label, input, select, textarea, button,
+h1, h2, h3, h4, h5, h6, .card-title, .product-title {
+  color: #e2e8f0 !important;
+}
+
+a { color: #3b82f6 !important; }
+a:hover { color: #60a5fa !important; text-decoration: none; }
+
+/* ── Layout containers ────────────────────────────────────────────────────── */
+#wrapper, #main, .container, .page-wrapper,
+#header, #footer, .header-top, .header-nav, .header-banner,
+.footer-container, #footer .links, #footer .block-contact {
+  background: #0f1117 !important;
+}
+
+/* ── Top bar / nav ────────────────────────────────────────────────────────── */
+.header-top, .header-nav {
+  background: #12151f !important;
+  border-bottom: 1px solid #1e2130 !important;
+}
+
+.top-menu > li > a,
+.top-menu .top-menu > li > a {
+  color: #e2e8f0 !important;
+}
+
+.top-menu > li > a:hover { color: #3b82f6 !important; }
+
+/* ── Search bar ───────────────────────────────────────────────────────────── */
+.search-widget input[type="text"],
+input#search_query_top {
+  background: #1e2130 !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #2d3252 !important;
+  border-radius: 6px;
+}
+
+.search-widget button[type="submit"] {
+  background: #3b82f6 !important;
+  color: #fff !important;
+  border: none;
+}
+
+/* ── Cart / user icons ────────────────────────────────────────────────────── */
+.blockcart a, ._blockcart-count,
+.user-info a { color: #e2e8f0 !important; }
+
+/* ── Product cards ────────────────────────────────────────────────────────── */
+.product-miniature, .product-miniature .card,
+article.product-miniature {
+  background: #1e2130 !important;
+  border: 1px solid #2d3252 !important;
+  border-radius: 8px;
+}
+
+.product-miniature .product-title a { color: #e2e8f0 !important; }
+.product-miniature .price,
+.product-price { color: #3b82f6 !important; font-weight: 600; }
+
+.product-miniature .card-body { background: #1e2130 !important; }
+
+/* ── Product detail page ──────────────────────────────────────────────────── */
+.product-cover, .product-images { background: #1e2130 !important; }
+.product-information { background: #0f1117 !important; }
+.product-prices .current-price, .product-price { color: #3b82f6 !important; }
+.product-description { color: #cbd5e1 !important; }
+
+/* ── Forms ────────────────────────────────────────────────────────────────── */
+input, select, textarea {
+  background: #1e2130 !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #2d3252 !important;
+  border-radius: 6px;
+}
+
+input::placeholder, textarea::placeholder { color: #64748b !important; }
+
+.form-control {
+  background: #1e2130 !important;
+  color: #e2e8f0 !important;
+  border-color: #2d3252 !important;
+}
+
+.form-control:focus {
+  background: #1e2130 !important;
+  color: #e2e8f0 !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.3) !important;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn-primary, .add-to-cart, button.btn-primary,
+.cart-detailed-actions .btn, .checkout-step .btn {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #fff !important;
+  border-radius: 6px;
+}
+
+.btn-primary:hover, .add-to-cart:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.btn-secondary, .btn-default {
+  background: #1e2130 !important;
+  border-color: #2d3252 !important;
+  color: #e2e8f0 !important;
+}
+
+/* ── Cards / blocks ───────────────────────────────────────────────────────── */
+.card, .block, .cms-block, .featured-products,
+.product-accessories, .product-miniature .thumbnail-container {
+  background: #1e2130 !important;
+  border-color: #2d3252 !important;
+}
+
+.card-header, .block-title {
+  background: #12151f !important;
+  color: #e2e8f0 !important;
+  border-bottom: 1px solid #2d3252 !important;
+}
+
+/* ── Breadcrumb ───────────────────────────────────────────────────────────── */
+.breadcrumb { background: #12151f !important; }
+.breadcrumb-item a { color: #3b82f6 !important; }
+.breadcrumb-item.active { color: #94a3b8 !important; }
+
+/* ── Checkout steps ───────────────────────────────────────────────────────── */
+.checkout-step { background: #1e2130 !important; border-color: #2d3252 !important; }
+.checkout-step.-current { background: #1e2130 !important; }
+.step-title { color: #e2e8f0 !important; }
+.checkout-step .content { background: #0f1117 !important; }
+#cart-subtotal-products, #cart-subtotal-shipping,
+#cart-subtotal-tax, .cart-total { color: #e2e8f0 !important; }
+
+/* ── Sidebar / facets ─────────────────────────────────────────────────────── */
+.block-categories, .facets, #search_filters {
+  background: #1e2130 !important;
+  border-color: #2d3252 !important;
+}
+
+.facets .facet-title, .block-categories .category-title { color: #e2e8f0 !important; }
+.facets .facet-label { color: #cbd5e1 !important; }
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+table { background: #1e2130 !important; color: #e2e8f0 !important; }
+thead th { background: #12151f !important; color: #e2e8f0 !important; border-color: #2d3252 !important; }
+tbody tr { background: #1e2130 !important; border-color: #2d3252 !important; }
+tbody tr:nth-child(even) { background: #181d2e !important; }
+
+/* ── Alerts / notifications ───────────────────────────────────────────────── */
+.alert-success { background: #052e16 !important; color: #86efac !important; border-color: #166534 !important; }
+.alert-danger, .alert-warning { background: #1c0a00 !important; color: #fca5a5 !important; border-color: #7f1d1d !important; }
+.alert-info { background: #0c1a3a !important; color: #93c5fd !important; border-color: #1d4ed8 !important; }
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+#footer { background: #0a0d14 !important; border-top: 1px solid #1e2130 !important; }
+#footer .links ul li a { color: #94a3b8 !important; }
+#footer .links ul li a:hover { color: #3b82f6 !important; }
+#footer h4, #footer .h4, #footer .title { color: #e2e8f0 !important; }
+
+/* ── Featured section title ───────────────────────────────────────────────── */
+.featured-products .section-title, h2.section-title,
+.products-section-title { color: #e2e8f0 !important; }
+
+/* ── Dropdown menus ───────────────────────────────────────────────────────── */
+.dropdown-menu {
+  background: #1e2130 !important;
+  border-color: #2d3252 !important;
+}
+
+.dropdown-item { color: #e2e8f0 !important; }
+.dropdown-item:hover { background: #2d3252 !important; color: #3b82f6 !important; }
+
+/* ── Pagination ───────────────────────────────────────────────────────────── */
+.page-item .page-link {
+  background: #1e2130 !important;
+  border-color: #2d3252 !important;
+  color: #e2e8f0 !important;
+}
+
+.page-item.active .page-link { background: #3b82f6 !important; border-color: #3b82f6 !important; }
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #0f1117; }
+::-webkit-scrollbar-thumb { background: #2d3252; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+
+/* ── Extra fixes based on visual audit ───────────────────────────────────── */
+
+/* Product card image area — white bg from thumbnail-container */
+.product-miniature .thumbnail-container,
+.product-miniature .thumbnail-top,
+.product-miniature .product-thumbnail,
+.product-miniature .thumbnail-container .product-thumbnail {
+  background: #1e2130 !important;
+}
+
+/* Highlighted informations hover bar */
+.highlighted-informations {
+  background: #2d3252 !important;
+  color: #e2e8f0 !important;
+}
+.highlighted-informations a, .highlighted-informations .quick-view {
+  color: #e2e8f0 !important;
+}
+
+/* Product description separator line */
+.product-miniature .thumbnail-container:hover .product-description::after,
+.product-miniature .thumbnail-container:focus .product-description::after {
+  border-top-color: #3b82f6 !important;
+}
+
+/* img-thumbnail used in product images */
+.product-miniature img, .img-thumbnail {
+  background-color: #1e2130 !important;
+  border-color: #2d3252 !important;
+}
+
+/* Footer columns — ensure uniform dark background */
+.footer-container .wrapper, .footer-container .links,
+.block-social, .block-contact,
+#footer .col-md-3, #footer .col-lg-4, #footer .col-md-12,
+.page-footer .footer-container > .container > .row > div {
+  background: #0a0d14 !important;
+  color: #94a3b8 !important;
+}
+
+/* Footer separating line */
+.footer-container hr, #footer hr {
+  border-color: #2d3252 !important;
+}
+
+/* Newsletter/email subscription block — belt-and-braces disable */
+.block_newsletter, #block_newsletter_wrapper {
+  display: none !important;
+}
+
+/* "All new products" link row */
+.all-product-link, .new-products .all-product-link,
+section.featured-products .all-product-link {
+  display: none !important;
+}
+
+/* ps_newproducts block — hide entire section if still rendered */
+section.new-products, #new_products_block_left,
+.products-section[class*="new"] { display: none !important; }
+
+/* Social block icons */
+.block-social li a { background-color: #1e2130 !important; }
+.block-social li a:hover { background-color: #3b82f6 !important; }
+
+/* Any remaining white or near-white backgrounds */
+[style*="background:#fff"],
+[style*="background-color:#fff"],
+[style*="background: #fff"],
+[style*="background-color: #fff"] {
+  background: #1e2130 !important;
+  background-color: #1e2130 !important;
+}
+
+/* Ensure links that are yellow/teal from PS default become blue */
+a, a:link, a:visited { color: #3b82f6 !important; }
+#footer a, #footer a:link, #footer a:visited { color: #94a3b8 !important; }
+#footer a:hover { color: #3b82f6 !important; }
+
+/* ── v4 fixes: footer column borders, store info, checkout ──────────────── */
+
+/* Remove footer column vertical dividers */
+#footer .col-md-3, #footer .col-lg-3, #footer .col-lg-4,
+#footer .col-sm-4, #footer .col-xs-12,
+.footer-container .row > div {
+  border: none !important;
+  border-right: none !important;
+  border-left: none !important;
+}
+
+/* Store information block text */
+#footer .block-contact p,
+#footer .block-contact address,
+.footer-container .block-contact,
+.footer-container .block-contact * {
+  color: #94a3b8 !important;
+}
+
+/* Copyright bar */
+.footer-before-reinsurance, #footer .copyright {
+  background: #0a0d14 !important;
+  color: #475569 !important;
+  border-top: 1px solid #1e2130 !important;
+}
+
+/* Checkout — white order summary panel */
+.cart-summary, .cart-summary-products,
+.cart-detailed-totals, .block-promo {
+  background: #1e2130 !important;
+  border-color: #2d3252 !important;
+  color: #e2e8f0 !important;
+}
+
+.cart-summary .separator, .cart-summary hr {
+  border-color: #2d3252 !important;
+}
+
+/* Order confirmation page */
+#order-confirmation, .order-confirmation-table {
+  background: #0f1117 !important;
+  color: #e2e8f0 !important;
+}
+
+.order-confirmation-table td, .order-confirmation-table th {
+  background: #1e2130 !important;
+  border-color: #2d3252 !important;
+}
+
+/* Login / account pages */
+.login-form, .register-form,
+#authentication .page-content,
+#my-account .page-content {
+  background: #1e2130 !important;
+  border-color: #2d3252 !important;
+}
+
+/* Modal dialogs */
+.modal-content {
+  background: #1e2130 !important;
+  color: #e2e8f0 !important;
+  border-color: #2d3252 !important;
+}
+.modal-header { border-color: #2d3252 !important; }
+.modal-footer { border-color: #2d3252 !important; background: #12151f !important; }
+
+/* Quick-view modal */
+#product-modal .modal-content,
+#blockcart-modal .modal-content {
+  background: #1e2130 !important;
+}
+
+/* ── v5: center product grid + placeholder image fix ─────────────────────── */
+
+/* Center product rows when fewer cards than columns */
+#js-product-list .products.row,
+.featured-products .products.row,
+.product-list .products.row,
+section.featured-products > div > .products {
+  justify-content: center !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+}
+
+/* Ensure product cards have consistent width in centered grid */
+.featured-products .product-miniature,
+#js-product-list .product-miniature {
+  display: flex !important;
+}
+
+/* No-image placeholder — hide the text, keep it dark */
+.product-miniature .thumbnail-container img[src*='en-default'],
+.product-miniature img[src*='no_picture'],
+.product-miniature img[src*='default'] {
+  background: #1e2130 !important;
+}
+
+/* ── v6: section backgrounds + logo fix ─────────────────────────────────── */
+
+/* Popular Products / Featured section — match page background */
+.featured-products, section.featured-products,
+.products-section, #main .featured-products,
+.page-home section { background: #0f1117 !important; }
+
+/* Section title bar */
+.featured-products .section-title,
+h2.h3.products-section-title,
+.products-section-title,
+.featured-products h2 {
+  color: #e2e8f0 !important;
+  background: transparent !important;
+  border-bottom: 1px solid #2d3252;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Product grid row — center when < full row */
+.featured-products .products.row,
+#js-product-list .products.row {
+  justify-content: center !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+}
+
+/* Ensure logo area transparent — removes any white logo bg */
+.header-top .logo, #header .logo, .logo img {
+  background: transparent !important;
+}
+
+/* ── v7: CSS logo replacement (bypasses Cloudflare cached my-store logo) ── */
+
+/* Hide the cached logo image */
+#header .logo img,
+.header-top .logo img,
+a.logo img {
+  display: none !important;
+}
+
+/* Replace with CSS text logo */
+#header .logo::after,
+.header-top .logo::after,
+a.logo::after {
+  content: '';
+  display: block;
+  width: 240px;
+  height: 52px;
+  background-image: none;
+}
+
+/* Use a text-based approach via pseudo-element on the link */
+a.logo {
+  display: flex !important;
+  align-items: center !important;
+  text-decoration: none !important;
+  font-size: 0 !important;  /* hide original text */
+  position: relative;
+  min-width: 200px;
+  min-height: 52px;
+}
+
+a.logo::before {
+  content: 'AlgoVoi';
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #e2e8f0 0%, #e2e8f0 50%, #3b82f6 50%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: 'DejaVu Sans', Arial, sans-serif;
+  line-height: 1;
+  padding: 4px 0;
+}
+
+/* ── v8: remove quick view hover ─────────────────────────────────────────── */
+.quick-view, .js-quick-view,
+.highlighted-informations .quick-view,
+.product-miniature .quick-view { display: none !important; }
+
+/* ── v9: product page — description tabs + reviews ───────────────────────── */
+
+/* Description / Product Details tab area */
+.tabs, .product-tabs,
+#product-details, .product-description,
+.product-description-short,
+.tabs .tab-content, .tabs .nav-tabs,
+#description, #product-details-tab,
+.product-tabs .tab-content,
+.product-tabs .nav-tabs {
+  background: #0f1117 !important;
+  border-color: #2d3252 !important;
+  color: #cbd5e1 !important;
+}
+
+/* Tab nav pills/links */
+.product-tabs .nav-link,
+.tabs .nav-link {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border-color: transparent !important;
+}
+
+.product-tabs .nav-link.active,
+.tabs .nav-link.active {
+  background: #0f1117 !important;
+  color: #3b82f6 !important;
+  border-bottom-color: #3b82f6 !important;
+}
+
+/* Horizontal rule under tabs */
+.product-tabs .nav-tabs,
+.tabs .nav-tabs {
+  border-bottom-color: #2d3252 !important;
+}
+
+/* Remove white background from tab pane */
+.tab-pane, .tab-pane.active,
+#tab-description, #tab-product_details {
+  background: #0f1117 !important;
+  color: #cbd5e1 !important;
+}
+
+/* Comments / reviews section — belt-and-braces hide */
+#product-comments-list-header, #product-comments-list,
+.comments-nb, #new-comment-tab,
+section[id*=comment], div[id*=comment],
+.product-comments, #productcomments { display: none !important; }
+
+/* ── v10: add-to-cart modal dark theme ───────────────────────────────────── */
+
+/* Modal overlay and container */
+#blockcart-modal .modal-dialog,
+#blockcart-modal .modal-content,
+#blockcart-modal .modal-body,
+#blockcart-modal .modal-header,
+#blockcart-modal .modal-footer,
+#blockcart-modal { background: #1e2130 !important; color: #e2e8f0 !important; border-color: #2d3252 !important; }
+
+/* Success bar at top */
+#blockcart-modal .cart-content-btn,
+#blockcart-modal .modal-header { border-bottom: 1px solid #2d3252 !important; }
+
+/* Product title and details */
+#blockcart-modal .product-name,
+#blockcart-modal .product-price,
+#blockcart-modal h6, #blockcart-modal p,
+#blockcart-modal span, #blockcart-modal div { color: #e2e8f0 !important; background: transparent !important; }
+
+/* Total / subtotal row */
+#blockcart-modal .cart-total,
+#blockcart-modal .cart-subtotals,
+#blockcart-modal .product-total { background: #12151f !important; border-color: #2d3252 !important; }
+
+/* Divider line between product and totals */
+#blockcart-modal .divide-right { border-right-color: #2d3252 !important; }
+
+/* Close button */
+#blockcart-modal .close, #blockcart-modal button.close { color: #e2e8f0 !important; }
+
+/* Continue shopping button */
+#blockcart-modal .btn-secondary { background: #2d3252 !important; border-color: #2d3252 !important; color: #e2e8f0 !important; }
+
+/* Proceed to checkout button */
+#blockcart-modal .btn-primary { background: #3b82f6 !important; border-color: #3b82f6 !important; color: #fff !important; }
+
+/* No image placeholder inside modal */
+#blockcart-modal img { background: #1e2130 !important; }
+
+/* ── v11: hide customer reassurance blocks ───────────────────────────────── */
+.customer-reassurance, #customer-reassurance,
+.block-reassurance, [id*='reassurance'],
+[class*='reassurance'] { display: none !important; }
+
+/* ── v12: hide search bar + fix white cart box ───────────────────────────── */
+
+/* Hide search widget entirely */
+.search-widget, #search_widget,
+.header-top .search-widget,
+form[action*=search] { display: none !important; }
+
+/* Cart button — remove white background */
+.blockcart, .blockcart a,
+#_desktop_cart .blockcart,
+.cart-preview, .cart-preview a,
+.blockcart .header,
+._blockcart-count {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #e2e8f0 !important;
+}
+
+.blockcart .cart-products-count { color: #e2e8f0 !important; }
+.blockcart i.material-icons { color: #e2e8f0 !important; }
+
+/* ── v13: AlgoVoi text logo ──────────────────────────────────────────────── */
+
+/* Remove old CSS pseudo-element logo (no longer needed) */
+a.logo::before { content: none !important; }
+a.logo img, #header .logo img { display: none !important; }
+
+.av-logo-link {
+  display: flex !important;
+  align-items: center !important;
+  text-decoration: none !important;
+  padding: 8px 0;
+}
+
+.av-logo-text {
+  font-size: 1.9rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  color: #e2e8f0 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  line-height: 1;
+  -webkit-text-fill-color: initial !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+}
+
+.av-logo-blue {
+  color: #3b82f6 !important;
+}
+
+.av-logo-link:hover .av-logo-text { opacity: 0.85; }
+
+/* ── v14: fix checkboxes ─────────────────────────────────────────────────── */
+
+/* Restore native checkbox appearance — dark theme overrides break them */
+input[type=checkbox] {
+  appearance: auto !important;
+  -webkit-appearance: checkbox !important;
+  background: #1e2130 !important;
+  accent-color: #3b82f6 !important;
+  width: 16px !important;
+  height: 16px !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+}
+
+input[type=radio] {
+  appearance: auto !important;
+  -webkit-appearance: radio !important;
+  accent-color: #3b82f6 !important;
+  cursor: pointer !important;
+}
+
+/* ── v17: footer background fix ─────────────────────────────────────────── */
+
+/* Kill every background source on the footer and its containers */
+footer,
+footer#footer,
+#footer,
+#footer > *,
+#footer > * > *,
+#footer .footer-container,
+#footer .footer-container > *,
+#footer .footer-container > * > *,
+#footer .footer-container > * > * > *,
+.footer-container,
+.footer-container > *,
+.footer-container > * > *,
+.footer-container > * > * > *,
+.footer-container .links,
+.footer-container .links ul,
+.footer-container .links li,
+.footer-container .block-contact,
+.footer-container .col-sm-3,
+.footer-container .col-md-3,
+.footer-container .col-lg-3,
+.footer-container [class*=col-],
+.footer-copyright {
+  background: #0f1117 !important;
+  background-color: #0f1117 !important;
+  border-top: none !important;
+  border-color: transparent !important;
+}
+
+/* Restore text colours */
+#footer a, .footer-container a               { color: #94a3b8 !important; }
+#footer a:hover, .footer-container a:hover   { color: #e2e8f0 !important; }
+#footer h3, .footer-container h3             { color: #e2e8f0 !important; background: none !important; }
+#footer p, .footer-container p               { color: #94a3b8 !important; }
+.footer-copyright a, .footer-copyright p     { color: #64748b !important; }
+
+/* Push Your Account + Store Information to the right */
+.footer-container .row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+}
+
+/* Top wrapper match */
+#wrapper,
+body > #wrapper > .container { background: #0f1117 !important; }

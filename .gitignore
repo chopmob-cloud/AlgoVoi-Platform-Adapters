@@ -1,0 +1,65 @@
+# Environment / secrets
+.env
+.env.*
+*.env
+keys.txt
+test-creds.md
+*.keys.txt
+openai.txt
+anthropic.txt
+gemini.txt
+*_key.txt
+*_keys.txt
+ap2_smoke_keys.json
+algo_mnemonic.txt
+
+# Local overrides
+*.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+.claude/
+
+# Nginx server configs (contain server-specific IPs and paths)
+nginx/
+shopify-app/
+
+# WooCommerce dev/test helpers — not for distribution
+woocommerce/wc-basic-auth.php
+
+# Accounting adapter source — private, not distributed (see README)
+quickbooks-online/*.py
+xero/*.py
+freshbooks/*.py
+sage-business-cloud/*.py
+zoho-books/*.py
+wave/*.py
+myob/*.py
+
+# MCP server build artifacts
+mcp-server/typescript/*.tgz
+mcp-server/python/*.egg-info/
+
+# Cloud — server-side apps live on server, not in this repo
+cloud/
+
+# Grants — internal documents
+grants/
+
+# No-code node_modules, build artifacts and lock files
+no-code/zapier/zapier-app/node_modules/
+no-code/zapier/zapier-app/build/
+no-code/n8n/n8n-nodes-algovoi/node_modules/
+no-code/n8n/n8n-nodes-algovoi/dist/
+no-code/activepieces/algovoi-piece/node_modules/
+no-code/activepieces/algovoi-piece/dist/
+no-code/**/package-lock.json
+compliance/
+dist/
