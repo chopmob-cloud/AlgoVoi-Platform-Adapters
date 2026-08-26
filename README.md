@@ -41,7 +41,7 @@ Included:
 - **Agent protocol middleware** for MPP and AP2 (gate APIs behind payment challenges)
 - **AI platform adapters** for OpenAI, Claude, Gemini, Bedrock, Cohere, xAI/Grok, and Mistral (MPP + AP2 + x402, all 7 chains)
 - **AI agent framework adapters** for LangChain, LlamaIndex, CrewAI, Hugging Face, AutoGen, Semantic Kernel, Pydantic AI, DSPy, Vercel AI SDK, Google A2A, LangGraph, and Agno — gate LLM-agnostic pipelines, RAG chains, multi-agent crews, and autonomous agents (MPP + AP2 + x402, all 7 chains)
-- **No-code / automation adapters** for Zapier, Make (Integromat), n8n, and **X (Twitter)** — drop-in Python classes that bridge AlgoVoi payment flows into any no-code workflow, with webhook verification, MPP + x402 + AP2 challenge generation, and all 28 networks; the X adapter auto-posts payment confirmations and checkout links to X via webhook (OAuth 1.0a, stdlib-only, 4-chain mainnet verified 2026-04-18)
+- **No-code / automation adapters** for Zapier, Make (Integromat), n8n, and **X (Twitter)** — drop-in Python classes that bridge AlgoVoi payment flows into any no-code workflow, with webhook verification, MPP + x402 + AP2 challenge generation, and all 14 networks (7 mainnet + 7 testnet); the X adapter auto-posts payment confirmations and checkout links to X via webhook (OAuth 1.0a, stdlib-only, 4-chain mainnet verified 2026-04-18)
 - **MCP server** (`@algovoi/mcp-server` / `algovoi-mcp`) — exposes 13 AlgoVoi tools natively inside Claude Desktop, Claude Code, Cursor, and Windsurf via the Model Context Protocol
 - **x402 embeddable widget** for any HTML page (Cloudflare Pages)
 - **Integration guides and Python adapters for 45+ platforms** — all end-to-end tested on `api.algovoi.co.uk` across all 7 chains
@@ -1146,7 +1146,7 @@ All three adapters were shipped on **17 April 2026** and are Comet-validated end
 
 **Total: 225/225 tests · 21/21 smoke checks (Phase 1) · 3/3 live create_payment_link + verify_payment (Phase 2)**
 
-Supported across all 28 networks (14 mainnet + 14 testnet) on Algorand, VOI, Hedera, Stellar, Base, Solana, and Tempo. All three adapters support MPP, x402, and AP2 challenge generation.
+Supported across all 14 networks (7 mainnet + 7 testnet) on Algorand, VOI, Hedera, Stellar, Base, Solana, and Tempo. All three adapters support MPP, x402, and AP2 challenge generation.
 
 ### Zapier — Quick start
 
