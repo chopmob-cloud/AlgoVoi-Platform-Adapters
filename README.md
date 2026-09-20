@@ -4,15 +4,15 @@
 
 # AlgoVoi Platform Adapters
 
-Drop-in payment adapters for connecting e-commerce platforms, AI agent frameworks, and automation tools to **AlgoVoi** — a compliance-aware crypto payment gateway with native stablecoin support across seven blockchains.
+Drop-in payment adapters for connecting e-commerce platforms, AI agent frameworks, and automation tools to **AlgoVoi** — a compliance-aware crypto payment gateway where agents negotiate a shared stablecoin settlement lane: seven native mainnet chains, with cross-chain settlement negotiated between agents on any two of them. The adapters in this repository are end-to-end tested on the seven native chains (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo).
 
 ---
 
 ## What is AlgoVoi?
 
-AlgoVoi is compliance-aware payment infrastructure for stablecoin settlement. The same gateway that handles payment routing across seven chains also runs continuous sanctions screening, KYB gating, and a write-once SHA-256 audit chain on every payment — so merchants and autonomous agents don't quietly carry UK MLRs / OFAC / SAMLA exposure they didn't sign up for. Compliance posture is published live at [`/compliance/attestation`](https://api.algovoi.co.uk/compliance/attestation).
+AlgoVoi is compliance-aware payment infrastructure for stablecoin settlement. The same gateway that negotiates settlement across seven native mainnet chains — in any cross-chain pairing among them — also runs continuous sanctions screening, KYB gating, and a write-once SHA-256 audit chain on every payment — so merchants and autonomous agents don't quietly carry UK MLRs / OFAC / SAMLA exposure they didn't sign up for. Compliance posture is published live at [`/compliance/attestation`](https://api.algovoi.co.uk/compliance/attestation).
 
-The compliance perimeter is the product. Multi-chain breadth (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo) and protocol coverage (x402, MPP, AP2, A2A) are how we deliver it on a single endpoint, without merchants having to manage wallets or blockchain integrations directly.
+The compliance perimeter is the product. Multi-chain breadth — seven native mainnet chains (Algorand, VOI, Hedera, Stellar, Base, Solana, Tempo), with settlement negotiated between agents on any two of them rather than fixed to one — and protocol coverage (x402, MPP, AP2, A2A) are how we deliver it on a single endpoint, without merchants having to manage wallets or blockchain integrations directly.
 
 Supported settlement assets:
 
@@ -26,6 +26,8 @@ Supported settlement assets:
 | USDC  | Solana mainnet   | SPL token (`EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`), issued by Circle |
 | USDCe | Tempo mainnet    | TIP-20 token (`0x20c000000000000000000000b9537d11c60e8b50`, 6 decimals); Tempo is a Stripe/Paradigm EVM L1 (chain ID 4217) with USDC as the native gas token |
 | ALGO / VOI / HBAR / XLM / ETH / SOL | Any mainnet | Native coin payments also supported on every chain (6/6/8/7/18/9 decimals respectively) |
+
+> These seven are the native chains; agents on different chains negotiate a shared lane and settle once, any cross-chain pairing among them. The hosted AlgoVoi pay rail additionally settles natively on Arc, Monad, Polygon, Arbitrum and OP Mainnet. The platform integration guides and adapter smoke tests in this repository cover the seven native chains above.
 
 ---
 
