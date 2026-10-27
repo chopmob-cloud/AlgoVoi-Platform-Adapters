@@ -361,7 +361,8 @@ def tool_fetch_agent_card(args: FetchAgentCardInput) -> dict:
         card = json.loads(body)
         return {"agent_url": args.agent_url, "card": card, "error": None}
     except Exception as exc:
-        return {"agent_url": args.agent_url, "card": None, "error": str(exc)}
+        # L3: don't expose internal URLs, IPs, or stack details in the error field
+        return {"agent_url": args.agent_url, "card": None, "error": f"{type(exc).__name__}: fetch failed"}
 
 
 # ── 13. send_a2a_message ──────────────────────────────────────────────────────
@@ -416,11 +417,12 @@ def tool_send_a2a_message(args: SendA2aMessageInput) -> dict:
             "error":            f"HTTP {exc.code}: {exc.reason}",
         }
     except Exception as exc:
+        # L3: don't expose internal URLs, IPs, or stack details in the error field
         return {
             "payment_required": False,
             "agent_url":        args.agent_url,
             "task":             None,
-            "error":            str(exc),
+            "error":            f"{type(exc).__name__}: request failed",
         }
 
 

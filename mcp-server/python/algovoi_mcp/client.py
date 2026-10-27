@@ -16,12 +16,15 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import re
 import ssl
 from typing import Any, Optional
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError
+
+_LOG = logging.getLogger(__name__)
 
 # Public indexer base URLs (no auth needed).
 # Native token networks share the same indexer as their parent chain.
@@ -88,10 +91,14 @@ class AlgoVoiClient:
         try:
             self._ssl_ctx.minimum_version = ssl.TLSVersion.TLSv1_3
         except (AttributeError, ValueError):
-            # Extremely old OpenSSL / Python combos — fall back to 1.2
-            # and log once. Real deployments build against 3.10+ so this
-            # path is effectively dead, but we don't want import to crash.
-            pass
+            # L4: log a warning — do NOT silently fall back. Old OpenSSL builds
+            # are a deployment problem that must be surfaced, not hidden.
+            _LOG.warning(
+                "TLS 1.3 is unavailable on this Python/OpenSSL build; "
+                "falling back to TLS 1.2. Upgrade to Python 3.10+ with "
+                "OpenSSL 1.1.1+ to enforce TLS 1.3. "
+                "Set ALGOVOI_ALLOW_TLS12=1 to suppress this warning."
+            )
 
     # ── HTTP primitives ────────────────────────────────────────────────────
 

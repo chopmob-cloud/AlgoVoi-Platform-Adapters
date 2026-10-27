@@ -9,11 +9,63 @@ business logic runs.  Unknown / mistyped fields are rejected with a clear
 
 from __future__ import annotations
 
+import ipaddress
+import socket
 from typing import Literal, Optional
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .networks import NETWORKS
+
+# M4: cloud-metadata hostnames blocked regardless of resolved IP
+_BLOCKED_HOSTNAMES: frozenset[str] = frozenset({
+    "169.254.169.254",
+    "fd00:ec2::254",
+    "metadata.google.internal",
+    "metadata.google",
+    "metadata.goog",
+    "instance-data",          # common cloud-init alias
+})
+
+
+def _is_forbidden_addr(addr_str: str) -> bool:
+    try:
+        addr = ipaddress.ip_address(addr_str)
+        return (
+            addr.is_private or addr.is_loopback or addr.is_link_local
+            or addr.is_unspecified or addr.is_multicast or addr.is_reserved
+        )
+    except ValueError:
+        return False
+
+
+def _block_ssrf_url(url: str) -> None:
+    """M4: reject agent_url values that target private/loopback/cloud-metadata addresses."""
+    try:
+        host = urlparse(url).hostname or ""
+    except Exception:
+        raise ValueError("malformed agent_url")
+    if not host:
+        raise ValueError("agent_url has no hostname")
+    if host.lower() in _BLOCKED_HOSTNAMES:
+        raise ValueError(f"agent_url hostname {host!r} is not permitted")
+    if _is_forbidden_addr(host):
+        raise ValueError(f"agent_url targets a disallowed address: {host}")
+    # Hostname (not an IP literal) — resolve and check every returned address
+    try:
+        ipaddress.ip_address(host)
+        return  # it's an IP literal already checked above
+    except ValueError:
+        pass
+    try:
+        for *_, sockaddr in socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP):
+            if _is_forbidden_addr(sockaddr[0]):
+                raise ValueError(
+                    f"agent_url hostname {host!r} resolves to a disallowed address: {sockaddr[0]}"
+                )
+    except OSError:
+        pass  # DNS failure — let urlopen surface it
 
 _STRICT = ConfigDict(strict=True, extra="forbid")
 
@@ -124,6 +176,7 @@ class FetchAgentCardInput(BaseModel):
     def _must_be_https(cls, v: str) -> str:
         if not v.startswith("https://"):
             raise ValueError('"agent_url" must start with https://')
+        _block_ssrf_url(v)
         return v
 
 
@@ -139,6 +192,7 @@ class SendA2aMessageInput(BaseModel):
     def _must_be_https(cls, v: str) -> str:
         if not v.startswith("https://"):
             raise ValueError('"agent_url" must start with https://')
+        _block_ssrf_url(v)
         return v
 
 
